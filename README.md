@@ -1,24 +1,27 @@
-# Dungeon Portal
+# Dungeon Portal (dcv01)
 
-AI-driven, text-first dungeon crawler built on Next.js with Supabase saves, Groq models for logic/narration, and PHB/DMG-grounded rules.
+Branch `dcv01` focuses on hybrid facts+flavor, deterministic mechanics, and 5e reference data wiring for Dungeon Portal.
 
-## Features
-- Quick-start archetypes (Fighter/Rogue/Cleric/Wizard) with class gear/bonuses and XP/level progression.
-- Deterministic combat/state resolution; narrator bound to resolved rolls, PHB actions/conditions, and DMG style.
-- Sidebar path mini-map, class/XP display, inventory and threats, plus cached scene art (with variant pooling).
-- Supabase-backed save/load; hydration/backfill; neutral starts and easy starter mobs.
+## What’s in this branch
+- Facts-first logs: Accountant writes `LogEntry.summary`; Narrator adds at most one short flavor line with strict bans on numbers/items/skills.
+- Structured intents: user text parsed into attack/defend/run/look/check-sheet/cast-ability, with class weapon proficiencies applied.
+- 5e reference layer: typed loaders for weapons, armor, skills, basic actions, conditions, and wizard spell list (`data/5e/spells-wizard.json`).
+- GameState backfill: skills and logs migrate on hydrate so older saves keep working.
 
-## Setup
-1) Install deps: `npm install`
-2) Env: copy `.env.local.example` to `.env.local` and fill:
-```
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-GROQ_API_KEY=...
-```
-3) Run dev: `npm run dev`
+## Run
+1) Install: `npm install`
+2) Env: set Supabase + Groq keys in `.env.local` (see `Project_README.md` for details).
+3) Dev server: `npm run dev` then open http://localhost:3000.
 
-## Notes
-- PHB/DMG references: see `public/D&D 5e - Players Handbook.pdf` and `DM-rules.md`. Curated snippets in `data/5e/*`.
-- Scene cache: images saved under `public/scene-cache` per scene key with small variant pool.
-- Saved games table requires unique constraint on `user_id`.
+## Quick checks
+- `check skills` → factual summary of skills/equipped gear (no Narrator).
+- `attack the rat with longsword` → uses 5e weapon dice and notes weapon in facts.
+- `cast fireball on rat` → currently returns a factual rejection (spells data loaded but not yet resolved).
+- `look around` → factual scan of threats plus optional flavor.
+See `SMOKE.md` for a fuller manual runbook.
+
+## Docs & references
+- Branch notes: `DOcs/dcv01-notes.md`
+- Flavor/Narrator task context: `Flavor.md`
+- 5e data: `data/5e/*.json` (including wizard spells)
+- Original overview: `Project_README.md`
