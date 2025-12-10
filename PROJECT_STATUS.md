@@ -15,6 +15,7 @@
 - Refreshed sidebar synchronization by re-cloning nearby entities on updates so threat lists re-render reliably (`app/actions.ts`).
 - Tightened narrator output: capped at 3 sentences, only mentions stats/inventory when changed, and enforces consistency with provided state (`app/actions.ts`).
 - Included last roll values in narrator context and instructed it to never contradict HP/roll/entity data (`app/actions.ts`).
+- Start-of-run is neutral (combat off) and monsters act only after hostile/defensive actions; “look” no longer triggers surprise damage (`app/actions.ts`).
 
 ## Future Plans
 - Add automated tests for dice parsing and state hydration to catch regressions.

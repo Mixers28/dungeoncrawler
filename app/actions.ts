@@ -236,7 +236,9 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   let monsterAttackRoll = 0;
   let monsterDamageRoll = 0;
   let monsterDamageNotation = "";
-  if (activeMonster && newState.nearbyEntities.find(e => e.name === activeMonster.name && e.status === 'alive') && actionIntent !== 'run') {
+  const monsterStillAlive = activeMonster && newState.nearbyEntities.find(e => e.name === activeMonster.name && e.status === 'alive');
+  const monsterIsActive = newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend';
+  if (monsterStillAlive && monsterIsActive && actionIntent !== 'run') {
     monsterAttackRoll = Math.floor(Math.random() * 20) + 1 + activeMonster.attackBonus;
     monsterDamageNotation = activeMonster.damageDice;
     const playerAc = currentState.ac + newState.tempAcBonus;
@@ -252,7 +254,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   // 6. CLEANUP COMBAT FLAGS
   newState.tempAcBonus = 0;
   const anyAlive = newState.nearbyEntities.some(e => e.status === 'alive');
-  newState.isCombatActive = anyAlive && newState.hp > 0;
+  newState.isCombatActive = (anyAlive && (newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend')) && newState.hp > 0;
   newState.nearbyEntities = [...newState.nearbyEntities];
 
   // 7. STORY ACT BOUNDS
@@ -311,7 +313,7 @@ export async function createNewGame(): Promise<GameState> {
     worldSeed: Math.floor(Math.random() * 999999),
     narrativeHistory: [],
     sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentImage: "",
-    isCombatActive: true // Start in combat if monster is there
+    isCombatActive: false // Start neutral; combat begins on hostile actions
   };
 
   const { url, registry } = resolveSceneImage(initialState);
@@ -420,7 +422,7 @@ export async function resetGame() {
     worldSeed: Math.floor(Math.random() * 999999),
     narrativeHistory: [],
     sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentImage: "",
-    isCombatActive: true
+    isCombatActive: false
   };
 
   const { url, registry } = resolveSceneImage(freshState);
