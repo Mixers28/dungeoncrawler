@@ -1,0 +1,14 @@
+[
+  { "name": "Attack", "summary": "Make a weapon or unarmed attack." },
+  { "name": "Cast a Spell", "summary": "Cast a spell with casting time 1 action." },
+  { "name": "Dash", "summary": "Gain extra movement equal to your speed this turn." },
+  { "name": "Disengage", "summary": "Your movement doesn’t provoke opportunity attacks this turn." },
+  { "name": "Dodge", "summary": "Until next turn, attacks against you have disadvantage; Dex saves with advantage if you can see." },
+  { "name": "Help", "summary": "Grant an ally advantage on next ability check or attack vs a creature within 5 ft." },
+  { "name": "Hide", "summary": "Attempt to become hidden; requires cover/concealment." },
+  { "name": "Ready", "summary": "Prepare an action with a trigger; use reaction to execute." },
+  { "name": "Search", "summary": "Focus on finding something; DM chooses ability check." },
+  { "name": "Use an Object", "summary": "Interact with or activate an object requiring your action." },
+  { "name": "Grapple", "summary": "Athletics check vs target’s Athletics/Acrobatics; on success target is Grappled (speed 0)." },
+  { "name": "Shove", "summary": "Athletics vs target’s Athletics/Acrobatics; on success push 5 ft or knock prone." }
+]

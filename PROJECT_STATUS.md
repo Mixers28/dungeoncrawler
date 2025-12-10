@@ -19,6 +19,7 @@
 - Narrator now uses provided roll values and HP delta and must not claim pending rolls or damage when none occurred (`app/actions.ts`).
 - Scene images are cached locally in `public/scene-cache` keyed by scene+seed; repeat visits reuse cached files instead of re-calling the generator (`app/actions.ts`).
 - Narrator prompt updated to mirror DM principles: concise (≤3 sentences), telegraph threats, no surprise damage without triggers, and must use provided rolls/HP/entity data faithfully (`app/actions.ts`).
+- Added 5e reference snippets (abilities, conditions, basic actions) and fed them to the narrator for grounded descriptions (`data/5e/*`, `lib/refs.ts`, `app/actions.ts`).
 
 ## Future Plans
 - Add automated tests for dice parsing and state hydration to catch regressions.

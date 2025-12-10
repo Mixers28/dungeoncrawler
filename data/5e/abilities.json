@@ -1,0 +1,8 @@
+[
+  { "name": "Strength", "abbr": "STR", "summary": "Physical power, athletics, lifting, pushing." },
+  { "name": "Dexterity", "abbr": "DEX", "summary": "Agility, reflexes, stealth, aim." },
+  { "name": "Constitution", "abbr": "CON", "summary": "Endurance, toughness, resisting hardship." },
+  { "name": "Intelligence", "abbr": "INT", "summary": "Reason, knowledge, investigation." },
+  { "name": "Wisdom", "abbr": "WIS", "summary": "Perception, insight, willpower, survival." },
+  { "name": "Charisma", "abbr": "CHA", "summary": "Force of personality, presence, persuasion." }
+]

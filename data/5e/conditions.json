@@ -1,0 +1,15 @@
+[
+  { "name": "Blinded", "summary": "Can't see; auto-fails sight checks; attacks vs target have advantage, target attacks have disadvantage." },
+  { "name": "Charmed", "summary": "Can't attack charmer; charmer has advantage on social checks vs target." },
+  { "name": "Deafened", "summary": "Can't hear; auto-fails sound checks." },
+  { "name": "Frightened", "summary": "Disadvantage while source is visible; can't willingly move closer to source." },
+  { "name": "Grappled", "summary": "Speed 0; ends if grappler is incapacitated or moved away." },
+  { "name": "Incapacitated", "summary": "Can't take actions or reactions." },
+  { "name": "Invisible", "summary": "Unseen; advantage to hit unseen creature, disadvantage to hit others." },
+  { "name": "Paralyzed", "summary": "Incapacitated, can't move; auto-fail Str/Dex saves; attacks have advantage; melee crits." },
+  { "name": "Poisoned", "summary": "Disadvantage on attack rolls and ability checks." },
+  { "name": "Prone", "summary": "Crawl; disadvantage on attacks; attackers within 5 ft have advantage, others have disadvantage." },
+  { "name": "Restrained", "summary": "Speed 0; attacks vs target have advantage; target attacks have disadvantage; Dex saves disadvantage." },
+  { "name": "Stunned", "summary": "Incapacitated, can't move; attacks vs target have advantage; fails Str/Dex saves." },
+  { "name": "Unconscious", "summary": "Incapacitated, drop items, prone; attacks vs target have advantage; melee crits; fails Str/Dex saves." }
+]

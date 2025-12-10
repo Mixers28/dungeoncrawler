@@ -8,6 +8,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createClient } from '../utils/supabase/server';
 import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS, KEY_ITEMS } from '../lib/rules';
+import { buildRulesReferenceSnippet } from '../lib/refs';
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -392,6 +393,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
 
   const actData = STORY_ACTS[newState.storyAct] || STORY_ACTS[0];
   const locationDescription = newState.roomRegistry[newState.location] || roomDesc || "An undefined space.";
+  const rulesSnippet = buildRulesReferenceSnippet();
 
   const stream = createStreamableValue('');
   
@@ -417,6 +419,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
         - STORY ACT: "${actData.name}" Goal: "${actData.goal}" Clue: "${actData.clue}"
         - INVENTORY: ${newState.inventory.map(i => `${i.name} x${i.quantity}`).join(', ') || "Empty"}
         - ROLLS: playerAttack=${newState.lastRolls.playerAttack}, playerDamage=${newState.lastRolls.playerDamage}, monsterAttack=${newState.lastRolls.monsterAttack}, monsterDamage=${newState.lastRolls.monsterDamage}
+        - RULES REFERENCE: ${rulesSnippet}
         
         RULES:
         1. Keep it tight: max 3 sentences; focus on what the character perceives now.
