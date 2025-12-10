@@ -534,7 +534,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
         - RULES REFERENCE: ${rulesSnippet}
         
         RULES:
-        1. Keep it tight: max 3 sentences; focus on what the character perceives now.
+        1. Keep it tight: 1-2 sentences max; focus on what the character perceives now.
         2. Treat EVENT_SUMMARY as authoritative and already resolved. Do not say rolls are pending or future-tense outcomes.
         3. IF PLAYER TOOK DAMAGE (delta < 0 or TOOK_DAMAGE_THIS_TURN=true): Mention the wound once. If delta is 0 or TOOK_DAMAGE_THIS_TURN=false, do not mention being hurt.
         4. IF PLAYER BLOCKED: Mention the deflection briefly.
