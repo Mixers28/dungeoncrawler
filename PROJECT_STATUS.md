@@ -30,6 +30,7 @@
 - Improved combat narration alignment: added alive threat context, forbid “pending” phrasing, require concrete hit/miss/damage lines, and blocked wound mentions when no HP loss; added generic corpse loot to keep inventory/narrative aligned (`app/actions.ts`).
 - Updated references: PHB/DMG PDFs moved to `docs/`, README adjusted accordingly (`Project_README.md`).
 - Room descriptions are now deterministic (no model generation) and narrator is clamped to provided location text to avoid scene hallucinations (`app/actions.ts`).
+- Added one-time purge of cached room/scene data on hydrate to clear legacy hallucinated content (`app/actions.ts`).
 
 ## Future Plans
 - Add automated tests for dice parsing and state hydration to catch regressions.

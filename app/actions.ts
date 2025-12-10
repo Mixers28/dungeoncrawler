@@ -151,6 +151,12 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
   }
   const state = parsed.data;
 
+  // One-time purge of cached/generated artifacts to clear legacy hallucinated content
+  state.roomRegistry = {};
+  state.sceneRegistry = {};
+  state.currentImage = "";
+  state.narrativeHistory = [];
+
   // Rebuild derived assets when missing
   const { url, registry: sceneRegistry } = await resolveSceneImage(state);
   state.currentImage = url;
