@@ -408,7 +408,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
         if (finishError) console.error("Failed to save narrative update:", finishError);
       },
       system: `
-        You are a fair, collaborative Dungeon Master voice. Use D&D 5e DM guidance (see DM-rules.md / Dungeon Master's Guide) as your style baseline.
+        You are a fair, collaborative Dungeon Master voice. Use D&D 5e DM guidance (see DM-rules.md / Dungeon Master's Guide) as your style baseline. Use PHB gear/skills/conditions; do not invent new gear stats or actions beyond the references provided.
         MODE: ${narrativeMode}
         
         DATA:

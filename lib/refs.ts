@@ -20,5 +20,7 @@ export function buildRulesReferenceSnippet() {
   const actions = RULES_REFERENCES.basicActions.slice(0, 6).map(a => `${a.name}: ${a.summary}`).join(' | ');
   const conds = RULES_REFERENCES.conditions.slice(0, 4).map(c => `${c.name}: ${c.summary}`).join(' | ');
   const skillsSnippet = RULES_REFERENCES.skills.slice(0, 6).map(s => `${s.name} (${s.ability})`).join(', ');
-  return `ACTIONS: ${actions}\nCONDITIONS: ${conds}\nSKILLS: ${skillsSnippet}`;
+  const weaponsSnippet = RULES_REFERENCES.weapons.slice(0, 4).map(w => `${w.name} (${w.damage})`).join(', ');
+  const armorSnippet = RULES_REFERENCES.armor.slice(0, 3).map(a => `${a.name} AC ${a.baseAC}${typeof a.maxDex === 'number' ? `+DEX<=${a.maxDex}` : ''}`).join(', ');
+  return `ACTIONS: ${actions}\nCONDITIONS: ${conds}\nSKILLS: ${skillsSnippet}\nWEAPONS: ${weaponsSnippet}\nARMOR: ${armorSnippet}`;
 }
