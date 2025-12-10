@@ -115,6 +115,7 @@ const gameStateSchema = z.object({
 });
 
 type GameState = z.infer<typeof gameStateSchema>;
+type ActionIntent = 'attack' | 'defend' | 'run' | 'other';
 
 async function hydrateState(rawState: unknown): Promise<GameState> {
   const parsed = gameStateSchema.safeParse(rawState);
@@ -164,6 +165,14 @@ async function resolveRoomDescription(state: GameState): Promise<{ desc: string,
   return { desc: roomData.description, registry: newRegistry };
 }
 
+function getActionIntent(userAction: string): ActionIntent {
+  const action = userAction.toLowerCase();
+  if (/(attack|hit|strike|stab|slash|shoot|swing|bash)/.test(action)) return 'attack';
+  if (/(defend|block|dodge|parry|guard|brace)/.test(action)) return 'defend';
+  if (/(run|flee|escape|retreat)/.test(action)) return 'run';
+  return 'other';
+}
+
 // --- MAIN LOGIC ENGINE ---
 async function _updateGameState(currentState: GameState, userAction: string) {
   // 1. DETERMINE PLAYER WEAPON & DAMAGE
@@ -174,90 +183,98 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     weaponName = weapon.name;
     playerDmgDice = WEAPON_TABLE[weapon.name] || "1d4";
   }
-  const playerDmgRoll = rollDice(playerDmgDice);
 
-  // 2. DETERMINE MONSTER RETALIATION
-  // We roll for the monster here in JS so the AI can't cheat the math
-  const activeMonster = currentState.nearbyEntities.find(e => e.status === 'alive');
-  let monsterAttackRoll = 0;
-  let monsterDmgRoll = 0;
-  let monsterDamageNotation = "";
-  
-  if (activeMonster) {
-    monsterAttackRoll = Math.floor(Math.random() * 20) + 1 + activeMonster.attackBonus;
-    monsterDamageNotation = activeMonster.damageDice;
-    monsterDmgRoll = rollDice(monsterDamageNotation);
-  }
+  const actionIntent = getActionIntent(userAction);
 
-  const d20 = Math.floor(Math.random() * 20) + 1; // Player Hit Roll
-  
-  // @ts-ignore
-  const currentActData = STORY_ACTS[currentState.storyAct] || STORY_ACTS[0];
-  const { desc: roomDesc, registry: roomReg } = await resolveRoomDescription(currentState);
-  currentState.roomRegistry = roomReg; 
-
-  // 3. GENERATE STATE
-  const { object: newState } = await generateObject({
-    model: groq(MODEL_LOGIC), 
-    schema: gameStateSchema,
-    mode: 'json', 
-    system: `
-      You are the Dungeon Master Engine.
-      SETTING: Medieval Fantasy.
-      
-      INPUT DATA:
-      - Player Weapon: ${weaponName} (Dmg: ${playerDmgDice} -> Rolled: ${playerDmgRoll})
-      - Player Attack Roll: ${d20}
-      - Monster: ${activeMonster ? activeMonster.name : "None"}
-      - Monster Attack Roll: ${monsterAttackRoll} (vs Player AC ${currentState.ac})
-      - Monster Damage Roll: ${monsterDmgRoll} (from ${monsterDamageNotation || "n/a"})
-      
-      COMBAT RULES (STRICT):
-      1. DETECT INTENT: 
-         - If user says "Attack", "Hit", "Strike": It is an ATTACK.
-         - If user says "Defend", "Block", "Dodge": It is DEFENSE. Set 'tempAcBonus' = 4. Do NOT attack monster.
-         - If user says "Run", "Flee": Attempt to clear 'nearbyEntities' or change 'location'.
-      
-      2. RESOLVE PLAYER ACTION:
-         - IF ATTACK: Compare ${d20} vs Monster AC. If Hit, subtract ${playerDmgRoll} from Monster HP.
-         - IF DEFENSE: Player deals 0 damage, but gains AC bonus.
-      
-      3. RESOLVE MONSTER RETALIATION (Automatic):
-         - IF Monster is alive AND Player did not flee:
-         - Compare ${monsterAttackRoll} vs (Player AC + tempAcBonus).
-         - IF HIT: Subtract ${monsterDmgRoll} from PLAYER HP.
-         - IF MISS: Player takes 0 damage.
-      
-      4. UPDATE SUMMARY:
-         - Combine both actions. 
-         - E.g., "You hit Rat for 3 dmg. Rat bit you for 2 dmg."
-         - E.g., "You blocked the Rat's bite (AC boosted)."
-      
-      5. STATUS:
-         - If Monster HP <= 0, status='dead', isCombatActive=false.
-         - If Player HP <= 0, Game Over.
-         - If Monster is alive, isCombatActive=true.
-    `,
-    prompt: `State: ${JSON.stringify(currentState)} Action: "${userAction}"`,
-  });
-
-  // Reset temp AC bonus after turn calculation
-  newState.tempAcBonus = 0;
-  const maxAct = Math.max(...Object.keys(STORY_ACTS).map(Number));
-  newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
-  newState.lastRolls = {
-    playerAttack: d20,
-    playerDamage: playerDmgRoll,
-    monsterAttack: monsterAttackRoll,
-    monsterDamage: monsterDmgRoll,
+  // 2. PREP STATE
+  const newState: GameState = {
+    ...currentState,
+    inventory: currentState.inventory.map(i => ({ ...i })),
+    quests: currentState.quests.map(q => ({ ...q })),
+    nearbyEntities: currentState.nearbyEntities.map(e => ({ ...e })),
+    roomRegistry: { ...currentState.roomRegistry },
+    sceneRegistry: { ...currentState.sceneRegistry },
+    tempAcBonus: 0,
+    narrativeHistory: [...(currentState.narrativeHistory || [])],
   };
 
-  const { url, registry: imgReg } = resolveSceneImage(newState);
+  // 3. ACTIVE MONSTER CONTEXT
+  const activeMonsterIndex = newState.nearbyEntities.findIndex(e => e.status === 'alive');
+  const activeMonster = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
+
+  // 4. PLAYER TURN
+  let playerAttackRoll = 0;
+  let playerDamageRoll = 0;
+  const summaryParts: string[] = [];
+
+  if (actionIntent === 'attack' && activeMonster) {
+    playerAttackRoll = Math.floor(Math.random() * 20) + 1; // no bonus for now
+    if (playerAttackRoll >= activeMonster.ac) {
+      playerDamageRoll = rollDice(playerDmgDice);
+      const updatedHp = Math.max(0, activeMonster.hp - playerDamageRoll);
+      newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+        idx === activeMonsterIndex
+          ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+          : entity
+      );
+      summaryParts.push(`You hit ${activeMonster.name} for ${playerDamageRoll} damage (roll ${playerAttackRoll} vs AC ${activeMonster.ac}).`);
+    } else {
+      summaryParts.push(`You miss ${activeMonster.name} (roll ${playerAttackRoll} vs AC ${activeMonster.ac}).`);
+    }
+  } else if (actionIntent === 'defend') {
+    newState.tempAcBonus = 4;
+    summaryParts.push("You brace for impact, raising your guard.");
+  } else if (actionIntent === 'run') {
+    newState.nearbyEntities = [];
+    newState.isCombatActive = false;
+    summaryParts.push("You flee the encounter.");
+  } else {
+    summaryParts.push(`You ${userAction}.`);
+  }
+
+  // 5. MONSTER TURN (only if still present and player didn't run)
+  let monsterAttackRoll = 0;
+  let monsterDamageRoll = 0;
+  let monsterDamageNotation = "";
+  if (activeMonster && newState.nearbyEntities.find(e => e.name === activeMonster.name && e.status === 'alive') && actionIntent !== 'run') {
+    monsterAttackRoll = Math.floor(Math.random() * 20) + 1 + activeMonster.attackBonus;
+    monsterDamageNotation = activeMonster.damageDice;
+    const playerAc = currentState.ac + newState.tempAcBonus;
+    if (monsterAttackRoll >= playerAc) {
+      monsterDamageRoll = rollDice(monsterDamageNotation);
+      newState.hp = Math.max(0, currentState.hp - monsterDamageRoll);
+      summaryParts.push(`${activeMonster.name} hits you for ${monsterDamageRoll} damage (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
+    } else {
+      summaryParts.push(`${activeMonster.name} misses you (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
+    }
+  }
+
+  // 6. CLEANUP COMBAT FLAGS
+  newState.tempAcBonus = 0;
+  const anyAlive = newState.nearbyEntities.some(e => e.status === 'alive');
+  newState.isCombatActive = anyAlive && newState.hp > 0;
+  newState.nearbyEntities = [...newState.nearbyEntities];
+
+  // 7. STORY ACT BOUNDS
+  const maxAct = Math.max(...Object.keys(STORY_ACTS).map(Number));
+  newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
+
+  // 8. SUMMARY & ROLLS
+  newState.lastActionSummary = summaryParts.join(' ');
+  newState.lastRolls = {
+    playerAttack: playerAttackRoll,
+    playerDamage: playerDamageRoll,
+    monsterAttack: monsterAttackRoll,
+    monsterDamage: monsterDamageRoll,
+  };
+
+  // 9. UPDATE ROOM + IMAGE REGISTRIES
   const { desc: finalDesc, registry: textReg } = await resolveRoomDescription(newState);
-  
+  newState.roomRegistry = textReg;
+
+  const { url, registry: imgReg } = resolveSceneImage(newState);
   newState.currentImage = url;
   newState.sceneRegistry = imgReg;
-  newState.roomRegistry = textReg;
 
   return { newState, roomDesc: finalDesc };
 }

@@ -11,6 +11,8 @@
 - Hardened Supabase persistence: upserts now check and surface errors during create, turn processing, and reset flows (`app/actions.ts`).
 - Persisted resolved dice rolls (player/monster attack and damage) into game state for auditing or future UI (`app/actions.ts`, `lib/game-schema.ts`).
 - Clamped story act to defined acts, and fed the narrator the current act, room description, and inventory to reduce hallucinations and keep plot/location anchored (`app/actions.ts`).
+- Made turn resolution fully deterministic in JS (attack/defend/run logic, HP/AC updates, and combat summaries) so narrator, sidebar, and saves stay in sync (`app/actions.ts`).
+- Refreshed sidebar synchronization by re-cloning nearby entities on updates so threat lists re-render reliably (`app/actions.ts`).
 
 ## Future Plans
 - Add automated tests for dice parsing and state hydration to catch regressions.

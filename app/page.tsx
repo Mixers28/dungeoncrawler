@@ -175,13 +175,34 @@ async function handleStart() {
       {/* MOBILE HEADER (Visible only on small screens) */}
       <div className="md:hidden absolute top-0 left-0 right-0 h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 z-10">
         <span className="font-bold text-amber-500">Dungeon Portal</span>
-        <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-300">
-          <Menu size={24} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRestart}
+            disabled={isLoading}
+            className="text-xs bg-amber-700 text-slate-900 font-bold px-3 py-1 rounded disabled:opacity-50"
+          >
+            New Run
+          </button>
+          <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-300">
+            <Menu size={24} />
+          </button>
+        </div>
       </div>
 
       {/* LEFT: Chat Area (Padded top for mobile header) */}
       <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-4 pt-16 md:pt-4 relative h-full">
+        {/* Desktop top bar */}
+        <div className="hidden md:flex items-center justify-between mb-2 text-sm text-slate-400">
+          <span className="font-semibold text-amber-500">Dungeon Portal</span>
+          <button
+            onClick={handleRestart}
+            disabled={isLoading}
+            className="bg-amber-700 hover:bg-amber-600 text-slate-900 font-semibold px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? "Resetting..." : "New Run"}
+          </button>
+        </div>
+
         <div className="flex-1 overflow-y-auto space-y-6 p-4 scrollbar-thin scrollbar-thumb-slate-700 pb-32">
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
