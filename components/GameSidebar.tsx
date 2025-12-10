@@ -66,6 +66,17 @@ export function GameSidebar({ state }: { state: GameState }) {
             </div>
         </div>
 
+        {/* CHARACTER INFO */}
+        <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 space-y-1">
+          <div className="flex justify-between text-xs text-slate-400 uppercase tracking-widest">
+            <span>Class</span>
+            <span>Level {state.level}</span>
+          </div>
+          <div className="text-sm text-amber-300 font-semibold">{state.character?.class || 'Adventurer'}</div>
+          <div className="text-xs text-slate-500">{state.character?.background || 'Wanderer'}</div>
+          <div className="text-xs text-slate-400">XP: {state.xp} / {state.xpToNext}</div>
+        </div>
+
         {/* LOCATION TRAIL / MINI-MAP */}
         <div className="space-y-2">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">

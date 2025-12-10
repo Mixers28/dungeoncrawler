@@ -25,6 +25,7 @@
 - Added a simple loot heuristic to let the player retrieve the Iron Key when actions target the shiny object; adds to inventory, updates summary, and makes rats flee (`app/actions.ts`).
 - Added location history tracking and a path mini-map in the sidebar to keep navigation and narrator in sync (`app/actions.ts`, `components/GameSidebar.tsx`, `lib/game-schema.ts`).
 - Added level/XP tracking with basic XP thresholds and level-up HP bumps; starter mobs restricted to easy foes; XP awarded on kills (`app/actions.ts`, `lib/game-schema.ts`).
+- Added quick-start class selection (Fighter/Rogue/Cleric/Wizard), storing archetype bonuses/items in state and showing class/XP in sidebar (`app/page.tsx`, `app/actions.ts`, `app/characters.ts`, `components/GameSidebar.tsx`, `lib/game-schema.ts`).
 
 ## Future Plans
 - Add automated tests for dice parsing and state hydration to catch regressions.

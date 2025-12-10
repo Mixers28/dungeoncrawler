@@ -7,6 +7,7 @@ import { Skull, ArrowRight, BookOpen, Menu, X } from 'lucide-react'; // Added Me
 import { GameState } from '../lib/game-schema';
 import { GameSidebar } from '../components/GameSidebar';
 import { createNewGame, processTurn, resetGame } from './actions';
+import { ARCHETYPES, ArchetypeKey } from './characters';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
@@ -31,6 +32,8 @@ export default function Home() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<ArchetypeKey | null>('fighter');
+  const [error, setError] = useState<string | null>(null);
   
   // UI STATES
   const [showIntro, setShowIntro] = useState(false);
@@ -47,7 +50,12 @@ export default function Home() {
 async function handleStart() {
     setIsLoading(true);
     try {
-      const initialState = await createNewGame();
+      if (!selectedClass) {
+        setError("Select a class to begin.");
+        setIsLoading(false);
+        return;
+      }
+      const initialState = await createNewGame(selectedClass as ArchetypeKey);
       setGameState(initialState);
       
       // LOGIC FIX: Restore the Chat History from the Database
@@ -125,15 +133,43 @@ async function handleStart() {
   // 1. LOADING SCREEN
   if (!gameState) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-100">
-        <button 
-          onClick={handleStart} 
-          disabled={isLoading}
-          className="bg-amber-600 hover:bg-amber-700 text-2xl font-bold py-4 px-8 rounded transition-all disabled:opacity-50 shadow-lg shadow-amber-900/20 flex items-center gap-3"
-        >
-          <BookOpen size={24} />
-          {isLoading ? "Loading World..." : "Enter the Realm"}
-        </button>
+      <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-100 p-6">
+        <div className="w-full max-w-4xl space-y-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+            <h1 className="text-3xl font-black text-amber-500 flex items-center gap-3 mb-4">
+              <BookOpen size={28} />
+              Choose Your Path
+            </h1>
+            <p className="text-slate-400 mb-4">Pick a quick-start archetype to begin.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.entries(ARCHETYPES).map(([key, data]) => (
+                <button
+                  key={key}
+                  onClick={() => { setSelectedClass(key as ArchetypeKey); setError(null); }}
+                  className={`text-left p-4 rounded border transition-all ${selectedClass === key ? 'border-amber-500 bg-amber-900/20' : 'border-slate-800 bg-slate-900 hover:border-amber-700'}`}
+                  disabled={isLoading}
+                >
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-amber-400">{data.label}</h2>
+                    <span className="text-xs text-slate-500">{data.background}</span>
+                  </div>
+                  <p className="text-sm text-slate-300 mt-2">HP +{data.hpBonus}, AC +{data.acBonus}</p>
+                  <p className="text-xs text-slate-400 mt-1">Starts with {data.startingWeapon}{data.startingArmor ? ` and ${data.startingArmor}` : ''}</p>
+                </button>
+              ))}
+            </div>
+            {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
+            <div className="flex justify-end mt-6">
+              <button 
+                onClick={handleStart} 
+                disabled={isLoading}
+                className="bg-amber-600 hover:bg-amber-700 text-slate-900 text-lg font-bold py-3 px-6 rounded transition-all disabled:opacity-50 shadow-lg shadow-amber-900/20 flex items-center gap-3"
+              >
+                {isLoading ? "Loading..." : "Enter the Realm"}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

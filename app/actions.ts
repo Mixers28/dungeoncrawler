@@ -9,6 +9,7 @@ import path from 'path';
 import { createClient } from '../utils/supabase/server';
 import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS, KEY_ITEMS } from '../lib/rules';
 import { buildRulesReferenceSnippet } from '../lib/refs';
+import { ARCHETYPES } from './characters';
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -96,6 +97,23 @@ const gameStateSchema = z.object({
   level: z.coerce.number().int().default(1),
   xp: z.coerce.number().int().default(0),
   xpToNext: z.coerce.number().int().default(300),
+  character: z.object({
+    name: z.string().default('Adventurer'),
+    class: z.string().default('Fighter'),
+    background: z.string().default('Wanderer'),
+    acBonus: z.coerce.number().int().default(0),
+    hpBonus: z.coerce.number().int().default(0),
+    startingWeapon: z.string().default('Rusty Dagger'),
+    startingArmor: z.string().optional(),
+  }).default({
+    name: 'Adventurer',
+    class: 'Fighter',
+    background: 'Wanderer',
+    acBonus: 0,
+    hpBonus: 0,
+    startingWeapon: 'Rusty Dagger',
+    startingArmor: undefined,
+  }),
   location: z.string(),
   inventory: z.array(itemSchema).default([]), 
   quests: z.array(questSchema).default([]),
@@ -377,7 +395,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
 }
 
 // --- EXPORT 1: CREATE NEW GAME ---
-export async function createNewGame(): Promise<GameState> {
+export async function createNewGame(archetypeKey?: keyof typeof ARCHETYPES): Promise<GameState> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("You must be logged in.");
@@ -391,11 +409,30 @@ export async function createNewGame(): Promise<GameState> {
   }
 
   const start = getRandomScenario(0);
+  const archetype = archetypeKey && ARCHETYPES[archetypeKey] ? ARCHETYPES[archetypeKey] : ARCHETYPES.fighter;
+
+  const startingWeapon = archetype.startingWeapon || 'Rusty Dagger';
+  const startingArmor = archetype.startingArmor;
+  const baseAc = 10 + (archetype.acBonus || 0);
+  const baseHp = 20 + (archetype.hpBonus || 0);
+
   const initialState: GameState = {
-    hp: 20, maxHp: 20, ac: 10, tempAcBonus: 0, gold: 0,
+    hp: baseHp, maxHp: baseHp, ac: baseAc, tempAcBonus: 0, gold: 0,
     level: 1, xp: 0, xpToNext: XP_THRESHOLDS[1],
+    character: {
+      name: 'Adventurer',
+      class: archetype.label,
+      background: archetype.background,
+      acBonus: archetype.acBonus,
+      hpBonus: archetype.hpBonus,
+      startingWeapon,
+      startingArmor: startingArmor || undefined,
+    },
     location: "The Iron Gate", 
-    inventory: [{ id: '1', name: 'Rusty Dagger', type: 'weapon', quantity: 1 }],
+    inventory: [
+      { id: '1', name: startingWeapon, type: 'weapon', quantity: 1 },
+      ...(startingArmor ? [{ id: 'armor-1', name: startingArmor, type: 'armor', quantity: 1 }] : []),
+    ],
     quests: [{ id: '1', title: 'The Awakening', status: 'active', description: 'Find the Iron Key.' }],
     // Populating with STATS from getScenario
     nearbyEntities: [{ 
@@ -507,33 +544,6 @@ export async function resetGame() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
-  
-  // Re-use createNewGame logic essentially
-  const start = getRandomScenario(0);
-  const freshState: GameState = {
-    hp: 20, maxHp: 20, ac: 10, tempAcBonus: 0, gold: 0,
-    level: 1, xp: 0, xpToNext: XP_THRESHOLDS[1],
-    location: "The Iron Gate",
-    inventory: [{ id: '1', name: 'Rusty Dagger', type: 'weapon', quantity: 1 }],
-    quests: [{ id: '1', title: 'The Awakening', status: 'active', description: 'Find the Iron Key.' }],
-    nearbyEntities: [{ 
-        name: start.mob, status: 'alive', description: start.desc, 
-        hp: start.hp, maxHp: start.maxHp, ac: start.ac,
-        attackBonus: start.atk, damageDice: start.dmg 
-    }],
-    lastActionSummary: "You wake up at the Iron Gate.",
-    worldSeed: Math.floor(Math.random() * 999999),
-    narrativeHistory: [],
-    sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentImage: "",
-    locationHistory: ["The Iron Gate"],
-    isCombatActive: false
-  };
 
-  const { url, registry } = resolveSceneImage(freshState);
-  freshState.currentImage = url;
-  freshState.sceneRegistry = registry;
-
-  const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: freshState }, { onConflict: 'user_id' });
-  if (saveError) throw new Error(`Failed to reset game: ${saveError.message}`);
-  return freshState;
+  return createNewGame();
 }
