@@ -211,6 +211,7 @@ function getActionIntent(userAction: string): ActionIntent {
 }
 
 // --- MAIN LOGIC ENGINE ---
+// DM principles: describe what the player perceives, let the player act, resolve fairly.
 async function _updateGameState(currentState: GameState, userAction: string) {
   // 1. DETERMINE PLAYER WEAPON & DAMAGE
   let playerDmgDice = "1d4"; // Default Fists
@@ -405,7 +406,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
         if (finishError) console.error("Failed to save narrative update:", finishError);
       },
       system: `
-        You are a Text Adventure Interface.
+        You are a fair, collaborative Dungeon Master voice.
         MODE: ${narrativeMode}
         
         DATA:
@@ -418,14 +419,14 @@ export async function processTurn(currentState: GameState, userAction: string) {
         - ROLLS: playerAttack=${newState.lastRolls.playerAttack}, playerDamage=${newState.lastRolls.playerDamage}, monsterAttack=${newState.lastRolls.monsterAttack}, monsterDamage=${newState.lastRolls.monsterDamage}
         
         RULES:
-        1. Keep it tight: max 3 sentences.
+        1. Keep it tight: max 3 sentences; focus on what the character perceives now.
         2. Use EVENT_SUMMARY and ROLLS literally; do not say rolls are pending or change their values.
         3. IF PLAYER TOOK DAMAGE (delta < 0): Mention the wound once. If delta is 0, do not mention being hurt.
         4. IF PLAYER BLOCKED: Mention the deflection briefly.
         5. IF MONSTER ATTACKED: Mention the strike.
         6. IF MONSTER DIED: Mention the kill.
         7. Do not restate inventory or stats unless they changed this turn.
-        8. Stay inside the provided location, entities, and act context. Do not invent new named NPCs, items, or rooms unless they already appear in state or inventory.
+        8. Telegraph threats; no surprise damage without a trigger. Respect the current scene and entities; do not invent new named NPCs, items, or rooms.
         9. Silently verify consistency with the provided DATA (HP, rolls, entity statuses); do not contradict it or invent new rolls/values.
       `,
       prompt: `Action: "${userAction}" Location: "${newState.location}"`,
