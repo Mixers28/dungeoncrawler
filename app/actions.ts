@@ -151,12 +151,6 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
   }
   const state = parsed.data;
 
-  // One-time purge of cached/generated artifacts to clear legacy hallucinated content
-  state.roomRegistry = {};
-  state.sceneRegistry = {};
-  state.currentImage = "";
-  state.narrativeHistory = [];
-
   // Rebuild derived assets when missing
   const { url, registry: sceneRegistry } = await resolveSceneImage(state);
   state.currentImage = url;
@@ -336,7 +330,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   newState.nearbyEntities = [...newState.nearbyEntities];
 
   // 6a. LOOTING / KEY RECOVERY (simple heuristic for the Iron Key at the gate)
-  const wantsKey = /(key|glint|shiny|metal|object|take|grab|pick|retrieve)/i.test(userAction);
+  const wantsKey = /(key|glint|shiny|metal|object|take|grab|pick|retrieve)/i.test(userAction) && newState.location.toLowerCase().includes('gate');
   const hasIronKey = newState.inventory.some(i => i.name === 'Iron Key');
   if (wantsKey && !hasIronKey) {
     newState.inventory = [
@@ -364,16 +358,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   const maxAct = Math.max(...Object.keys(STORY_ACTS).map(Number));
   newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
 
-  // 8. SUMMARY & ROLLS
-  newState.lastActionSummary = summaryParts.join(' ').trim() || "Nothing of note happens.";
-  newState.lastRolls = {
-    playerAttack: playerAttackRoll,
-    playerDamage: playerDamageRoll,
-    monsterAttack: monsterAttackRoll,
-    monsterDamage: monsterDamageRoll,
-  };
-
-  // 8a. XP & LEVEL
+  // 8. XP & LEVEL
   const monsterNow = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
   const monsterKilled = monsterWasAlive && monsterNow && monsterNow.status === 'dead';
   if (monsterKilled) {
@@ -400,8 +385,21 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     newState.gold += goldFind;
     const trophyName = `${deadCorpse.name} Remnant`;
     newState.inventory = [...newState.inventory, { id: `loot-${Date.now().toString(36)}`, name: trophyName, type: 'misc', quantity: 1 }];
+    // Mark corpse as looted
+    newState.nearbyEntities = newState.nearbyEntities.map(e =>
+      e === deadCorpse ? { ...e, name: `${e.name} (looted)` } : e
+    );
     summaryParts.push(`You loot the ${deadCorpse.name}, gaining ${goldFind} gold and a ${trophyName}.`);
   }
+
+  // 9. SUMMARY & ROLLS
+  newState.lastActionSummary = summaryParts.join(' ').trim() || "Nothing of note happens.";
+  newState.lastRolls = {
+    playerAttack: playerAttackRoll,
+    playerDamage: playerDamageRoll,
+    monsterAttack: monsterAttackRoll,
+    monsterDamage: monsterDamageRoll,
+  };
 
   // 9. UPDATE ROOM + IMAGE REGISTRIES
   const { desc: finalDesc, registry: textReg } = await resolveRoomDescription(newState);
@@ -521,36 +519,15 @@ export async function processTurn(currentState: GameState, userAction: string) {
     model: groq(MODEL_NARRATOR),
     temperature: 0,
     system: `
-        You are a fair, collaborative Dungeon Master voice. Follow DM-rules.md essentials: facilitate fun, be fair/flexible, keep pacing tight, spotlight each player, telegraph threats, and respect limits. Use PHB gear/skills/conditions; do not invent new gear stats or actions beyond the references provided.
-        MODE: ${narrativeMode}
-        
-        DATA:
-        - PLAYER HP: ${newState.hp} / ${newState.maxHp} (delta this turn: ${playerHpDelta})
-        - EVENT_SUMMARY: "${newState.lastActionSummary}"
-        - ENTITY STATUS: "${visibleEntities}"
-        - ALIVE THREATS: "${aliveThreats}"
-        - COMBAT_ACTIVE: ${newState.isCombatActive}
-        - TOOK_DAMAGE_THIS_TURN: ${tookDamageThisTurn}
-        - LOCATION: "${newState.location}" -> "${locationDescription}"
-        - STORY ACT: "${actData.name}" Goal: "${actData.goal}" Clue: "${actData.clue}"
-        - INVENTORY: ${newState.inventory.map(i => `${i.name} x${i.quantity}`).join(', ') || "Empty"}
-        - ROLLS: playerAttack=${newState.lastRolls.playerAttack}, playerDamage=${newState.lastRolls.playerDamage}, monsterAttack=${newState.lastRolls.monsterAttack}, monsterDamage=${newState.lastRolls.monsterDamage}
-        - RULES REFERENCE: ${rulesSnippet}
-        
-        RULES:
-        1. Keep it tight: 1-2 sentences max and under 40 words total; focus on what the character perceives now.
-        2. Treat EVENT_SUMMARY as authoritative and already resolved. Do not say rolls are pending or future-tense outcomes.
-        3. IF PLAYER TOOK DAMAGE (delta < 0 or TOOK_DAMAGE_THIS_TURN=true): Mention the wound once. If delta is 0 or TOOK_DAMAGE_THIS_TURN=false, do not mention being hurt.
-        4. IF PLAYER BLOCKED: Mention the deflection briefly.
-        5. IF MONSTER ATTACKED: Mention the strike.
-        6. IF MONSTER DIED: Mention the kill.
-        7. Do not restate inventory or stats unless they changed this turn.
-        8. Telegraph threats; no surprise damage without a trigger. Respect the current scene and entities; do not invent new named NPCs, items, or rooms.
-        9. If ALIVE THREATS is "None" or isCombatActive=false, do not describe monster attacks.
-        10. Use LOCATION description verbatim as the scene; do not invent taverns, NPCs, quests, or exits not in LOCATION/ENTITY STATUS.
-        11. Silently verify consistency with the provided DATA (HP, rolls, entity statuses); do not contradict it or invent new rolls/values.
-      `,
-    prompt: `Action: "${userAction}" Location: "${newState.location}"`,
+You are THE NARRATOR for a dark, minimalist dungeon-crawl called "Dungeon Portal".
+Never change game state; only describe what the Accountant resolved.
+Use: EVENT_SUMMARY, LOCATION name/description, ENTITY STATUS, RULES_REFERENCE. If not listed, treat as unknown.
+HARD BANS: Do NOT invent NPCs, rooms, shops, taverns/inns, exits/doors, items/spells/mechanics, or any numbers (HP, damage, distances, gold, DCs, rolls).
+World: "The Iron Gate" is an exterior gate in cold stone, not an inn/tavern/bar.
+Respect MODE but stay concise: ROOM_INTRO/INSPECTION/COMBAT/GENERAL = same brevity.
+Style: gritty, grounded dark fantasy; 1–2 sentences under 40 words; no questions.
+`,
+    prompt: `ACTION: "${userAction}" | EVENT_SUMMARY: "${newState.lastActionSummary}" | LOCATION: "${newState.location}" DESC: "${locationDescription}" | ENTITY STATUS: "${visibleEntities}" | ALIVE THREATS: "${aliveThreats}" | COMBAT_ACTIVE: ${newState.isCombatActive} | TOOK_DAMAGE_THIS_TURN: ${tookDamageThisTurn} | RULES: ${rulesSnippet}`,
   });
 
   const updatedHistory = [...newState.narrativeHistory, narration].slice(-3);
