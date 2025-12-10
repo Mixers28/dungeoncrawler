@@ -543,7 +543,8 @@ export async function processTurn(currentState: GameState, userAction: string) {
         7. Do not restate inventory or stats unless they changed this turn.
         8. Telegraph threats; no surprise damage without a trigger. Respect the current scene and entities; do not invent new named NPCs, items, or rooms.
         9. If ALIVE THREATS is "None" or isCombatActive=false, do not describe monster attacks.
-        10. Silently verify consistency with the provided DATA (HP, rolls, entity statuses); do not contradict it or invent new rolls/values.
+        10. Use LOCATION description verbatim as the scene; do not invent taverns, NPCs, quests, or exits not in LOCATION/ENTITY STATUS.
+        11. Silently verify consistency with the provided DATA (HP, rolls, entity statuses); do not contradict it or invent new rolls/values.
       `,
     prompt: `Action: "${userAction}" Location: "${newState.location}"`,
   });
