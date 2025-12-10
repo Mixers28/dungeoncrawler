@@ -356,7 +356,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
 
   // 8. SUMMARY & ROLLS
-  newState.lastActionSummary = summaryParts.join(' ');
+  newState.lastActionSummary = summaryParts.join(' ').trim() || "Nothing of note happens.";
   newState.lastRolls = {
     playerAttack: playerAttackRoll,
     playerDamage: playerDamageRoll,
@@ -523,7 +523,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
         
         RULES:
         1. Keep it tight: max 3 sentences; focus on what the character perceives now.
-        2. Use EVENT_SUMMARY and ROLLS literally; do not say rolls are pending or change their values.
+        2. Treat EVENT_SUMMARY as authoritative and already resolved. Do not say rolls are pending or future-tense outcomes.
         3. IF PLAYER TOOK DAMAGE (delta < 0): Mention the wound once. If delta is 0, do not mention being hurt.
         4. IF PLAYER BLOCKED: Mention the deflection briefly.
         5. IF MONSTER ATTACKED: Mention the strike.
