@@ -19,6 +19,6 @@ GROQ_API_KEY=...
 3) Run dev: `npm run dev`
 
 ## Notes
-- PHB/DMG references: see `public/D&D 5e - Players Handbook.pdf` and `DM-rules.md`. Curated snippets in `data/5e/*`.
+- PHB/DMG references: see Curated snippets in `data/5e/*`.
 - Scene cache: images saved under `public/scene-cache` per scene key with small variant pool.
 - Saved games table requires unique constraint on `user_id`.
