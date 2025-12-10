@@ -1,0 +1,18 @@
+[
+  { "name": "Padded", "category": "Light", "baseAC": 11, "maxDex": "full", "stealthDisadvantage": true, "weight_lb": 8 },
+  { "name": "Leather", "category": "Light", "baseAC": 11, "maxDex": "full", "stealthDisadvantage": false, "weight_lb": 10 },
+  { "name": "Studded Leather", "category": "Light", "baseAC": 12, "maxDex": "full", "stealthDisadvantage": false, "weight_lb": 13 },
+
+  { "name": "Hide", "category": "Medium", "baseAC": 12, "maxDex": 2, "stealthDisadvantage": false, "weight_lb": 12 },
+  { "name": "Chain Shirt", "category": "Medium", "baseAC": 13, "maxDex": 2, "stealthDisadvantage": false, "weight_lb": 20 },
+  { "name": "Scale Mail", "category": "Medium", "baseAC": 14, "maxDex": 2, "stealthDisadvantage": true, "weight_lb": 45 },
+  { "name": "Breastplate", "category": "Medium", "baseAC": 14, "maxDex": 2, "stealthDisadvantage": false, "weight_lb": 20 },
+  { "name": "Half Plate", "category": "Medium", "baseAC": 15, "maxDex": 2, "stealthDisadvantage": true, "weight_lb": 40 },
+
+  { "name": "Ring Mail", "category": "Heavy", "baseAC": 14, "maxDex": 0, "stealthDisadvantage": true, "weight_lb": 40 },
+  { "name": "Chain Mail", "category": "Heavy", "baseAC": 16, "maxDex": 0, "stealthDisadvantage": true, "weight_lb": 55, "strengthRequirement": 13 },
+  { "name": "Splint", "category": "Heavy", "baseAC": 17, "maxDex": 0, "stealthDisadvantage": true, "weight_lb": 60, "strengthRequirement": 15 },
+  { "name": "Plate", "category": "Heavy", "baseAC": 18, "maxDex": 0, "stealthDisadvantage": true, "weight_lb": 65, "strengthRequirement": 15 },
+
+  { "name": "Shield", "category": "Shield", "baseAC": 2, "maxDex": "n/a", "stealthDisadvantage": false, "weight_lb": 6 }
+]
