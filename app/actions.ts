@@ -333,9 +333,9 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   newState.nearbyEntities = [...newState.nearbyEntities];
 
   // 6a. LOOTING / KEY RECOVERY (simple heuristic for the Iron Key at the gate)
-  const wantsLoot = /(key|glint|shiny|metal|object|take|grab|pick|retrieve)/i.test(userAction);
+  const wantsKey = /(key|glint|shiny|metal|object|take|grab|pick|retrieve)/i.test(userAction);
   const hasIronKey = newState.inventory.some(i => i.name === 'Iron Key');
-  if (wantsLoot && !hasIronKey) {
+  if (wantsKey && !hasIronKey) {
     newState.inventory = [
       ...newState.inventory,
       { id: `key-${Date.now().toString(36)}`, name: 'Iron Key', type: 'key', quantity: 1 }
