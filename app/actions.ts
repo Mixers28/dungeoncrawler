@@ -346,6 +346,8 @@ export async function processTurn(currentState: GameState, userAction: string) {
     .map(e => `${e.name} (${e.status}, HP:${e.hp}/${e.maxHp})`)
     .join(', ') || "None";
 
+  const playerHpDelta = newState.hp - currentState.hp;
+
   newState.narrativeHistory = currentState.narrativeHistory || [];
   const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
   if (saveError) throw new Error(`Failed to save turn: ${saveError.message}`);
@@ -370,8 +372,8 @@ export async function processTurn(currentState: GameState, userAction: string) {
         MODE: ${narrativeMode}
         
         DATA:
-        - PLAYER HP: ${newState.hp} / ${newState.maxHp}
-        - EVENT: "${newState.lastActionSummary}"
+        - PLAYER HP: ${newState.hp} / ${newState.maxHp} (delta this turn: ${playerHpDelta})
+        - EVENT_SUMMARY: "${newState.lastActionSummary}"
         - ENTITY STATUS: "${visibleEntities}"
         - LOCATION: "${newState.location}" -> "${locationDescription}"
         - STORY ACT: "${actData.name}" Goal: "${actData.goal}" Clue: "${actData.clue}"
@@ -380,13 +382,14 @@ export async function processTurn(currentState: GameState, userAction: string) {
         
         RULES:
         1. Keep it tight: max 3 sentences.
-        2. IF PLAYER TOOK DAMAGE: Mention the wound briefly.
-        3. IF PLAYER BLOCKED: Mention the deflection briefly.
-        4. IF MONSTER ATTACKED: Mention the strike.
-        5. IF MONSTER DIED: Mention the kill.
-        6. Do not restate inventory or stats unless they changed this turn.
-        7. Stay inside the provided location, entities, and act context. Do not invent new named NPCs, items, or rooms unless they already appear in state or inventory.
-        8. Silently verify consistency with the provided DATA (HP, rolls, entity statuses); do not contradict it or invent new rolls/values.
+        2. Use EVENT_SUMMARY and ROLLS literally; do not say rolls are pending or change their values.
+        3. IF PLAYER TOOK DAMAGE (delta < 0): Mention the wound once. If delta is 0, do not mention being hurt.
+        4. IF PLAYER BLOCKED: Mention the deflection briefly.
+        5. IF MONSTER ATTACKED: Mention the strike.
+        6. IF MONSTER DIED: Mention the kill.
+        7. Do not restate inventory or stats unless they changed this turn.
+        8. Stay inside the provided location, entities, and act context. Do not invent new named NPCs, items, or rooms unless they already appear in state or inventory.
+        9. Silently verify consistency with the provided DATA (HP, rolls, entity statuses); do not contradict it or invent new rolls/values.
       `,
       prompt: `Action: "${userAction}" Location: "${newState.location}"`,
     });
