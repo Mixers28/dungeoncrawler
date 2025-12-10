@@ -55,7 +55,7 @@ async function handleStart() {
         setIsLoading(false);
         return;
       }
-      const initialState = await createNewGame(selectedClass as ArchetypeKey);
+      const initialState = await createNewGame({ archetypeKey: selectedClass as ArchetypeKey, forceNew: true });
       setGameState(initialState);
       
       // LOGIC FIX: Restore the Chat History from the Database
@@ -87,7 +87,13 @@ async function handleStart() {
     setIsLoading(true);
     setMessages([]);
     try {
-      const freshState = await resetGame();
+      // Try to reuse current character class or selectedClass; default to fighter
+      const preferredClass: ArchetypeKey =
+        (gameState?.character?.class?.toLowerCase() as ArchetypeKey) ||
+        (selectedClass as ArchetypeKey) ||
+        'fighter';
+      setSelectedClass(preferredClass);
+      const freshState = await resetGame(preferredClass);
       setGameState(freshState);
       setShowIntro(true);
       setIntroStep(0);

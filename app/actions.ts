@@ -395,13 +395,18 @@ async function _updateGameState(currentState: GameState, userAction: string) {
 }
 
 // --- EXPORT 1: CREATE NEW GAME ---
-export async function createNewGame(archetypeKey?: keyof typeof ARCHETYPES): Promise<GameState> {
+type CreateOptions = { archetypeKey?: keyof typeof ARCHETYPES; forceNew?: boolean };
+
+export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("You must be logged in.");
 
+  const archetypeKey = opts?.archetypeKey;
+  const forceNew = opts?.forceNew ?? false;
+
   const { data: existingSave } = await supabase.from('saved_games').select('game_state').eq('user_id', user.id).single();
-  if (existingSave?.game_state) {
+  if (existingSave?.game_state && !forceNew) {
     const hydrated = await hydrateState(existingSave.game_state);
     const { error: updateError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: hydrated }, { onConflict: 'user_id' });
     if (updateError) console.error("Failed to update existing save:", updateError);
@@ -540,10 +545,10 @@ export async function processTurn(currentState: GameState, userAction: string) {
 }
 
 // --- EXPORT 3: RESET ---
-export async function resetGame() {
+export async function resetGame(archetypeKey?: keyof typeof ARCHETYPES) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  return createNewGame();
+  return createNewGame({ forceNew: true, archetypeKey });
 }
