@@ -1,12 +1,12 @@
 'use server';
 
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateObject, generateText, streamText } from 'ai';
+import { generateObject, generateText } from 'ai';
 import { z } from 'zod';
 import fs from 'fs/promises';
 import path from 'path';
 import { createClient } from '../utils/supabase/server';
-import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS, KEY_ITEMS } from '../lib/rules';
+import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../lib/rules';
 import { buildRulesReferenceSnippet } from '../lib/refs';
 import { ARCHETYPES } from './characters';
 
@@ -503,7 +503,6 @@ export async function processTurn(currentState: GameState, userAction: string) {
 
   const playerHpDelta = newState.hp - currentState.hp;
 
-  newState.narrativeHistory = currentState.narrativeHistory || [];
   const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
   if (saveError) throw new Error(`Failed to save turn: ${saveError.message}`);
 
@@ -526,6 +525,8 @@ export async function processTurn(currentState: GameState, userAction: string) {
         - EVENT_SUMMARY: "${newState.lastActionSummary}"
         - ENTITY STATUS: "${visibleEntities}"
         - ALIVE THREATS: "${aliveThreats}"
+        - COMBAT_ACTIVE: ${newState.isCombatActive}
+        - TOOK_DAMAGE_THIS_TURN: ${tookDamageThisTurn}
         - LOCATION: "${newState.location}" -> "${locationDescription}"
         - STORY ACT: "${actData.name}" Goal: "${actData.goal}" Clue: "${actData.clue}"
         - INVENTORY: ${newState.inventory.map(i => `${i.name} x${i.quantity}`).join(', ') || "Empty"}
@@ -535,7 +536,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
         RULES:
         1. Keep it tight: max 3 sentences; focus on what the character perceives now.
         2. Treat EVENT_SUMMARY as authoritative and already resolved. Do not say rolls are pending or future-tense outcomes.
-        3. IF PLAYER TOOK DAMAGE (delta < 0): Mention the wound once. If delta is 0 or tookDamageThisTurn=false, do not mention being hurt.
+        3. IF PLAYER TOOK DAMAGE (delta < 0 or TOOK_DAMAGE_THIS_TURN=true): Mention the wound once. If delta is 0 or TOOK_DAMAGE_THIS_TURN=false, do not mention being hurt.
         4. IF PLAYER BLOCKED: Mention the deflection briefly.
         5. IF MONSTER ATTACKED: Mention the strike.
         6. IF MONSTER DIED: Mention the kill.
