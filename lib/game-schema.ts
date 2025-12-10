@@ -36,6 +36,9 @@ export const gameStateSchema = z.object({
   ac: z.coerce.number().int(), // Base AC
   tempAcBonus: z.coerce.number().int().default(0), // For Defensive Stance
   gold: z.coerce.number().int(),
+  level: z.coerce.number().int().default(1),
+  xp: z.coerce.number().int().default(0),
+  xpToNext: z.coerce.number().int().default(300),
   location: z.string(),
   inventory: z.array(itemSchema).default([]), 
   quests: z.array(questSchema).default([]),

@@ -51,8 +51,9 @@ function rollDice(notation: string): number {
 }
 
 function getRandomScenario(act: number) {
-  const allMobs = Object.keys(MONSTER_MANUAL);
-  const mobName = allMobs[Math.floor(Math.random() * allMobs.length)];
+  const easyMobs = ["Giant Rat", "Skeleton", "Green Slime"];
+  const actMobs = act === 0 ? easyMobs : Object.keys(MONSTER_MANUAL);
+  const mobName = actMobs[Math.floor(Math.random() * actMobs.length)];
   const stats = MONSTER_MANUAL[mobName];
   const LOCATIONS = ["Damp Hallway", "Collapsed Tunnel", "Forgotten Shrine", "Mess Hall", "Torture Chamber"];
   const loc = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
@@ -92,6 +93,9 @@ const gameStateSchema = z.object({
   ac: z.coerce.number().int(),
   tempAcBonus: z.coerce.number().int().default(0),
   gold: z.coerce.number().int(),
+  level: z.coerce.number().int().default(1),
+  xp: z.coerce.number().int().default(0),
+  xpToNext: z.coerce.number().int().default(300),
   location: z.string(),
   inventory: z.array(itemSchema).default([]), 
   quests: z.array(questSchema).default([]),
@@ -120,6 +124,8 @@ const gameStateSchema = z.object({
 
 type GameState = z.infer<typeof gameStateSchema>;
 type ActionIntent = 'attack' | 'defend' | 'run' | 'other';
+
+const XP_THRESHOLDS = [0, 300, 900, 2700, 6500, 14000, 23000];
 
 async function hydrateState(rawState: unknown): Promise<GameState> {
   const parsed = gameStateSchema.safeParse(rawState);
@@ -250,6 +256,8 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   let playerDamageRoll = 0;
   const summaryParts: string[] = [];
 
+  const monsterWasAlive = activeMonster?.status === 'alive';
+
   if (actionIntent === 'attack' && activeMonster) {
     playerAttackRoll = Math.floor(Math.random() * 20) + 1; // no bonus for now
     if (playerAttackRoll >= activeMonster.ac) {
@@ -338,6 +346,25 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     monsterDamage: monsterDamageRoll,
   };
 
+  // 8a. XP & LEVEL
+  const monsterNow = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
+  const monsterKilled = monsterWasAlive && monsterNow && monsterNow.status === 'dead';
+  if (monsterKilled) {
+    const xpAward = MONSTER_MANUAL[activeMonster!.name]?.hp ? Math.max(25, MONSTER_MANUAL[activeMonster!.name].hp * 5) : 50;
+    newState.xp += xpAward;
+    summaryParts.push(`You gain ${xpAward} XP.`);
+    let leveled = false;
+    while (newState.level < XP_THRESHOLDS.length && newState.xp >= XP_THRESHOLDS[newState.level]) {
+      newState.level += 1;
+      newState.xpToNext = XP_THRESHOLDS[newState.level] ?? newState.xpToNext;
+      // Simple HP bump per level
+      newState.maxHp += 2;
+      newState.hp = Math.max(newState.hp, newState.maxHp);
+      leveled = true;
+    }
+    if (leveled) summaryParts.push(`You reach level ${newState.level}.`);
+  }
+
   // 9. UPDATE ROOM + IMAGE REGISTRIES
   const { desc: finalDesc, registry: textReg } = await resolveRoomDescription(newState);
   newState.roomRegistry = textReg;
@@ -366,6 +393,7 @@ export async function createNewGame(): Promise<GameState> {
   const start = getRandomScenario(0);
   const initialState: GameState = {
     hp: 20, maxHp: 20, ac: 10, tempAcBonus: 0, gold: 0,
+    level: 1, xp: 0, xpToNext: XP_THRESHOLDS[1],
     location: "The Iron Gate", 
     inventory: [{ id: '1', name: 'Rusty Dagger', type: 'weapon', quantity: 1 }],
     quests: [{ id: '1', title: 'The Awakening', status: 'active', description: 'Find the Iron Key.' }],
@@ -484,6 +512,7 @@ export async function resetGame() {
   const start = getRandomScenario(0);
   const freshState: GameState = {
     hp: 20, maxHp: 20, ac: 10, tempAcBonus: 0, gold: 0,
+    level: 1, xp: 0, xpToNext: XP_THRESHOLDS[1],
     location: "The Iron Gate",
     inventory: [{ id: '1', name: 'Rusty Dagger', type: 'weapon', quantity: 1 }],
     quests: [{ id: '1', title: 'The Awakening', status: 'active', description: 'Find the Iron Key.' }],
