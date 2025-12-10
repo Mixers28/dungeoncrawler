@@ -1,8 +1,7 @@
 'use server';
 
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateObject, streamText } from 'ai';
-import { createStreamableValue } from 'ai/rsc';
+import { generateObject, generateText, streamText } from 'ai';
 import { z } from 'zod';
 import fs from 'fs/promises';
 import path from 'path';
@@ -512,21 +511,13 @@ export async function processTurn(currentState: GameState, userAction: string) {
   const locationDescription = newState.roomRegistry[newState.location] || roomDesc || "An undefined space.";
   const rulesSnippet = buildRulesReferenceSnippet();
 
-  const stream = createStreamableValue('');
   const aliveThreats = newState.nearbyEntities.filter(e => e.status === 'alive').map(e => `${e.name} HP:${e.hp}/${e.maxHp}`).join(', ') || "None";
   const tookDamageThisTurn = playerHpDelta < 0;
-  
-  (async () => {
-    const { textStream } = await streamText({
-      model: groq(MODEL_NARRATOR), 
-      temperature: 0.6,
-      onFinish: async ({ text }) => {
-        const updatedHistory = [...newState.narrativeHistory, text].slice(-3); 
-        newState.narrativeHistory = updatedHistory;
-        const { error: finishError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
-        if (finishError) console.error("Failed to save narrative update:", finishError);
-      },
-      system: `
+
+  const { text: narration } = await generateText({
+    model: groq(MODEL_NARRATOR),
+    temperature: 0.6,
+    system: `
         You are a fair, collaborative Dungeon Master voice. Use D&D 5e DM guidance (see DM-rules.md / Dungeon Master's Guide) as your style baseline. Use PHB gear/skills/conditions; do not invent new gear stats or actions beyond the references provided.
         MODE: ${narrativeMode}
         
@@ -553,16 +544,15 @@ export async function processTurn(currentState: GameState, userAction: string) {
         9. If ALIVE THREATS is "None" or isCombatActive=false, do not describe monster attacks.
         10. Silently verify consistency with the provided DATA (HP, rolls, entity statuses); do not contradict it or invent new rolls/values.
       `,
-      prompt: `Action: "${userAction}" Location: "${newState.location}"`,
-    });
+    prompt: `Action: "${userAction}" Location: "${newState.location}"`,
+  });
 
-    for await (const delta of textStream) {
-      stream.update(delta);
-    }
-    stream.done();
-  })();
+  const updatedHistory = [...newState.narrativeHistory, narration].slice(-3);
+  newState.narrativeHistory = updatedHistory;
+  const { error: finishError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
+  if (finishError) console.error("Failed to save narrative update:", finishError);
 
-  return { newState, narrativeStream: stream.value };
+  return { newState, narrativeStream: narration };
 }
 
 // --- EXPORT 3: RESET ---

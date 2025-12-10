@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { readStreamableValue } from 'ai/rsc';
 import { useRouter } from 'next/navigation';
 import { Skull, ArrowRight, BookOpen, Menu, X } from 'lucide-react'; // Added Menu, X
 import { GameState } from '../lib/game-schema';
@@ -117,17 +116,7 @@ async function handleStart() {
     try {
       const { newState, narrativeStream } = await processTurn(gameState, userAction);
       setGameState(newState);
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-      
-      let fullContent = '';
-      for await (const delta of readStreamableValue(narrativeStream)) {
-        fullContent += delta;
-        setMessages(prev => {
-          const newMsg = [...prev];
-          newMsg[newMsg.length - 1].content = fullContent;
-          return newMsg;
-        });
-      }
+      setMessages(prev => [...prev, { role: 'assistant', content: narrativeStream }]);
     } catch (error) {
       console.error("Turn Error:", error);
       router.push('/login');
