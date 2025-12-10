@@ -376,12 +376,14 @@ export async function processTurn(currentState: GameState, userAction: string) {
         - INVENTORY: ${newState.inventory.map(i => `${i.name} x${i.quantity}`).join(', ') || "Empty"}
         
         RULES:
-        1. IF PLAYER TOOK DAMAGE: Describe the pain/wound vividly.
-        2. IF PLAYER BLOCKED: Describe the defensive stance deflection.
-        3. IF MONSTER ATTACKED: Make sure to mention the monster striking back.
-        4. IF MONSTER DIED: Describe the kill.
-        5. Keep it fast-paced.
-        6. Stay inside the provided location, entities, and act context. Do not invent new named NPCs, items, or rooms unless they already appear in state or inventory.
+        1. Keep it tight: max 3 sentences.
+        2. IF PLAYER TOOK DAMAGE: Mention the wound briefly.
+        3. IF PLAYER BLOCKED: Mention the deflection briefly.
+        4. IF MONSTER ATTACKED: Mention the strike.
+        5. IF MONSTER DIED: Mention the kill.
+        6. Do not restate inventory or stats unless they changed this turn.
+        7. Stay inside the provided location, entities, and act context. Do not invent new named NPCs, items, or rooms unless they already appear in state or inventory.
+        8. Silently verify consistency with the provided DATA; do not mention the verification.
       `,
       prompt: `Action: "${userAction}" Location: "${newState.location}"`,
     });
