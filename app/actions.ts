@@ -298,6 +298,24 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   newState.isCombatActive = (anyAlive && (newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend')) && newState.hp > 0;
   newState.nearbyEntities = [...newState.nearbyEntities];
 
+  // 6a. LOOTING / KEY RECOVERY (simple heuristic for the Iron Key at the gate)
+  const wantsLoot = /(key|glint|shiny|metal|object|take|grab|pick|retrieve)/i.test(userAction);
+  const hasIronKey = newState.inventory.some(i => i.name === 'Iron Key');
+  if (wantsLoot && !hasIronKey) {
+    newState.inventory = [
+      ...newState.inventory,
+      { id: `key-${Date.now().toString(36)}`, name: 'Iron Key', type: 'key', quantity: 1 }
+    ];
+    summaryParts.push("You recover the Iron Key from the debris.");
+    // Once the key is taken, nearby rats lose interest
+    newState.nearbyEntities = newState.nearbyEntities.map(ent =>
+      ent.name.toLowerCase().includes('rat')
+        ? { ...ent, status: ent.status === 'alive' ? 'fleeing' : ent.status }
+        : ent
+    );
+    newState.isCombatActive = newState.nearbyEntities.some(e => e.status === 'alive' && e.hp > 0) && newState.hp > 0;
+  }
+
   // 7. STORY ACT BOUNDS
   const maxAct = Math.max(...Object.keys(STORY_ACTS).map(Number));
   newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
