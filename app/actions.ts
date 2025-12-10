@@ -136,6 +136,7 @@ const gameStateSchema = z.object({
     monsterDamage: 0,
   }),
   locationHistory: z.array(z.string()).default([]),
+  inventoryChangeLog: z.array(z.string()).default([]),
   isCombatActive: z.boolean().default(false),
 });
 
@@ -260,6 +261,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     tempAcBonus: 0,
     narrativeHistory: [...(currentState.narrativeHistory || [])],
     locationHistory: [...(currentState.locationHistory || [])],
+    inventoryChangeLog: [...(currentState.inventoryChangeLog || [])],
   };
 
   // 3. ACTIVE MONSTER CONTEXT
@@ -337,6 +339,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
       ...newState.inventory,
       { id: `key-${Date.now().toString(36)}`, name: 'Iron Key', type: 'key', quantity: 1 }
     ];
+    newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Gained Iron Key at ${newState.location}`].slice(-10);
     summaryParts.push("You recover the Iron Key from the debris.");
     // Once the key is taken, nearby rats lose interest
     newState.nearbyEntities = newState.nearbyEntities.map(ent =>
@@ -389,6 +392,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     newState.nearbyEntities = newState.nearbyEntities.map(e =>
       e === deadCorpse ? { ...e, name: `${e.name} (looted)` } : e
     );
+    newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Looted ${deadCorpse.name}: +${goldFind} gold, +${trophyName}`].slice(-10);
     summaryParts.push(`You loot the ${deadCorpse.name}, gaining ${goldFind} gold and a ${trophyName}.`);
   }
 
@@ -470,6 +474,7 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
     narrativeHistory: [],
     sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentImage: "",
     locationHistory: ["The Iron Gate"],
+    inventoryChangeLog: [],
     isCombatActive: false // Start neutral; combat begins on hostile actions
   };
 
