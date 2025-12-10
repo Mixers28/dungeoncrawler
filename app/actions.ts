@@ -521,7 +521,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
     model: groq(MODEL_NARRATOR),
     temperature: 0,
     system: `
-        You are a fair, collaborative Dungeon Master voice. Use D&D 5e DM guidance (see DM-rules.md / Dungeon Master's Guide) as your style baseline. Use PHB gear/skills/conditions; do not invent new gear stats or actions beyond the references provided.
+        You are a fair, collaborative Dungeon Master voice. Follow DM-rules.md essentials: facilitate fun, be fair/flexible, keep pacing tight, spotlight each player, telegraph threats, and respect limits. Use PHB gear/skills/conditions; do not invent new gear stats or actions beyond the references provided.
         MODE: ${narrativeMode}
         
         DATA:
