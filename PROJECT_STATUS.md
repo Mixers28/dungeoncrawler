@@ -14,6 +14,7 @@
 - Made turn resolution fully deterministic in JS (attack/defend/run logic, HP/AC updates, and combat summaries) so narrator, sidebar, and saves stay in sync (`app/actions.ts`).
 - Refreshed sidebar synchronization by re-cloning nearby entities on updates so threat lists re-render reliably (`app/actions.ts`).
 - Tightened narrator output: capped at 3 sentences, only mentions stats/inventory when changed, and enforces consistency with provided state (`app/actions.ts`).
+- Included last roll values in narrator context and instructed it to never contradict HP/roll/entity data (`app/actions.ts`).
 
 ## Future Plans
 - Add automated tests for dice parsing and state hydration to catch regressions.

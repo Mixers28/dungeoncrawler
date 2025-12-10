@@ -374,6 +374,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
         - LOCATION: "${newState.location}" -> "${locationDescription}"
         - STORY ACT: "${actData.name}" Goal: "${actData.goal}" Clue: "${actData.clue}"
         - INVENTORY: ${newState.inventory.map(i => `${i.name} x${i.quantity}`).join(', ') || "Empty"}
+        - ROLLS: playerAttack=${newState.lastRolls.playerAttack}, playerDamage=${newState.lastRolls.playerDamage}, monsterAttack=${newState.lastRolls.monsterAttack}, monsterDamage=${newState.lastRolls.monsterDamage}
         
         RULES:
         1. Keep it tight: max 3 sentences.
@@ -383,7 +384,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
         5. IF MONSTER DIED: Mention the kill.
         6. Do not restate inventory or stats unless they changed this turn.
         7. Stay inside the provided location, entities, and act context. Do not invent new named NPCs, items, or rooms unless they already appear in state or inventory.
-        8. Silently verify consistency with the provided DATA; do not mention the verification.
+        8. Silently verify consistency with the provided DATA (HP, rolls, entity statuses); do not contradict it or invent new rolls/values.
       `,
       prompt: `Action: "${userAction}" Location: "${newState.location}"`,
     });
