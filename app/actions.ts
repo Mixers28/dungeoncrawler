@@ -297,6 +297,10 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     newState.nearbyEntities = [];
     newState.isCombatActive = false;
     summaryParts.push("You flee the encounter.");
+  } else if (actionIntent === 'other' && newState.nearbyEntities.length === 0) {
+    summaryParts.push("You act, but there is no immediate threat here.");
+  } else if (actionIntent === 'attack' && !activeMonster) {
+    summaryParts.push("You swing, but no foe stands before you.");
   } else {
     summaryParts.push(`You ${userAction}.`);
   }
@@ -318,6 +322,8 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     } else {
       summaryParts.push(`${activeMonster.name} misses you (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
     }
+  } else if (!monsterStillAlive && actionIntent === 'attack') {
+    summaryParts.push("There is nothing left to attack.");
   }
 
   // 6. CLEANUP COMBAT FLAGS
@@ -381,6 +387,17 @@ async function _updateGameState(currentState: GameState, userAction: string) {
       leveled = true;
     }
     if (leveled) summaryParts.push(`You reach level ${newState.level}.`);
+  }
+
+  // 8b. LOOT CORPSES (simple generic loot)
+  const wantsLoot = /(loot|search|rummage|pick over|salvage)/i.test(userAction);
+  const deadCorpse = newState.nearbyEntities.find(e => e.status === 'dead' && !e.name.toLowerCase().includes('looted'));
+  if (wantsLoot && deadCorpse) {
+    const goldFind = Math.max(1, Math.floor(Math.random() * 6));
+    newState.gold += goldFind;
+    const trophyName = `${deadCorpse.name} Remnant`;
+    newState.inventory = [...newState.inventory, { id: `loot-${Date.now().toString(36)}`, name: trophyName, type: 'misc', quantity: 1 }];
+    summaryParts.push(`You loot the ${deadCorpse.name}, gaining ${goldFind} gold and a ${trophyName}.`);
   }
 
   // 9. UPDATE ROOM + IMAGE REGISTRIES
@@ -496,6 +513,8 @@ export async function processTurn(currentState: GameState, userAction: string) {
   const rulesSnippet = buildRulesReferenceSnippet();
 
   const stream = createStreamableValue('');
+  const aliveThreats = newState.nearbyEntities.filter(e => e.status === 'alive').map(e => `${e.name} HP:${e.hp}/${e.maxHp}`).join(', ') || "None";
+  const tookDamageThisTurn = playerHpDelta < 0;
   
   (async () => {
     const { textStream } = await streamText({
@@ -515,6 +534,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
         - PLAYER HP: ${newState.hp} / ${newState.maxHp} (delta this turn: ${playerHpDelta})
         - EVENT_SUMMARY: "${newState.lastActionSummary}"
         - ENTITY STATUS: "${visibleEntities}"
+        - ALIVE THREATS: "${aliveThreats}"
         - LOCATION: "${newState.location}" -> "${locationDescription}"
         - STORY ACT: "${actData.name}" Goal: "${actData.goal}" Clue: "${actData.clue}"
         - INVENTORY: ${newState.inventory.map(i => `${i.name} x${i.quantity}`).join(', ') || "Empty"}
@@ -524,13 +544,14 @@ export async function processTurn(currentState: GameState, userAction: string) {
         RULES:
         1. Keep it tight: max 3 sentences; focus on what the character perceives now.
         2. Treat EVENT_SUMMARY as authoritative and already resolved. Do not say rolls are pending or future-tense outcomes.
-        3. IF PLAYER TOOK DAMAGE (delta < 0): Mention the wound once. If delta is 0, do not mention being hurt.
+        3. IF PLAYER TOOK DAMAGE (delta < 0): Mention the wound once. If delta is 0 or tookDamageThisTurn=false, do not mention being hurt.
         4. IF PLAYER BLOCKED: Mention the deflection briefly.
         5. IF MONSTER ATTACKED: Mention the strike.
         6. IF MONSTER DIED: Mention the kill.
         7. Do not restate inventory or stats unless they changed this turn.
         8. Telegraph threats; no surprise damage without a trigger. Respect the current scene and entities; do not invent new named NPCs, items, or rooms.
-        9. Silently verify consistency with the provided DATA (HP, rolls, entity statuses); do not contradict it or invent new rolls/values.
+        9. If ALIVE THREATS is "None" or isCombatActive=false, do not describe monster attacks.
+        10. Silently verify consistency with the provided DATA (HP, rolls, entity statuses); do not contradict it or invent new rolls/values.
       `,
       prompt: `Action: "${userAction}" Location: "${newState.location}"`,
     });
