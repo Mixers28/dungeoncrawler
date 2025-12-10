@@ -5,6 +5,7 @@ import basicActionData from '../../data/5e/basic_actions.json';
 import conditionData from '../../data/5e/conditions.json';
 import skillData from '../../data/5e/skills.json';
 import weaponData from '../../data/5e/weapons.json';
+import wizardSpellData from '../../data/5e/spells-wizard.json';
 
 const abilityScoreSchema = z.object({
   name: z.string(),
@@ -45,12 +46,25 @@ const conditionSchema = z.object({
   summary: z.string(),
 });
 
+const spellSchema = z.object({
+  name: z.string(),
+  level: z.string(),
+  school: z.string(),
+  castingTime: z.string(),
+  range: z.string(),
+  duration: z.string(),
+  components: z.string(),
+  source: z.string(),
+  url: z.string(),
+});
+
 type AbilityScoreDef = z.infer<typeof abilityScoreSchema>;
 type SkillDef = z.infer<typeof skillSchema>;
 type BasicActionDef = z.infer<typeof basicActionSchema>;
 type WeaponDef = z.infer<typeof weaponSchema>;
 type ArmorDef = z.infer<typeof armorSchema>;
 type ConditionDef = z.infer<typeof conditionSchema>;
+type SpellDef = z.infer<typeof spellSchema>;
 
 function parseData<T>(label: string, schema: z.ZodSchema<T>, raw: unknown[]): T[] {
   const parsed = schema.array().safeParse(raw);
@@ -89,6 +103,9 @@ export const armorByName = indexByName(armor);
 export const conditions: ConditionDef[] = parseData('conditions', conditionSchema, conditionData);
 export const conditionsByName = indexByName(conditions);
 
+export const wizardSpells: SpellDef[] = parseData('wizard spells', spellSchema, wizardSpellData);
+export const wizardSpellsByName = indexByName(wizardSpells);
+
 export type {
   AbilityScoreDef,
   SkillDef,
@@ -96,4 +113,5 @@ export type {
   WeaponDef,
   ArmorDef,
   ConditionDef,
+  SpellDef,
 };
