@@ -20,7 +20,7 @@ GROQ_API_KEY=...
 4) Run dev: `npm run dev` (visit http://localhost:3000)
 
 ## Content References
-- PHB/DMG sources: `public/D&D 5e - Players Handbook.pdf`, `DM-rules.md`.
+- PHB/DMG sources: `docs/D&D 5e - Players Handbook.pdf`, `docs/Dungeon Master's Guide.pdf`, and `DM-rules.md`.
 - Curated snippets: `data/5e/*` (abilities, skills, actions, conditions, weapons, armor).
 - Image cache: `public/scene-cache` per scene key with 3 variants.
 

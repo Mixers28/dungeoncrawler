@@ -27,6 +27,7 @@
 - Added level/XP tracking with basic XP thresholds and level-up HP bumps; starter mobs restricted to easy foes; XP awarded on kills (`app/actions.ts`, `lib/game-schema.ts`).
 - Added quick-start class selection (Fighter/Rogue/Cleric/Wizard), storing archetype bonuses/items in state and showing class/XP in sidebar (`app/page.tsx`, `app/actions.ts`, `app/characters.ts`, `components/GameSidebar.tsx`, `lib/game-schema.ts`).
 - Hardened narration/state sync: EVENT_SUMMARY is authoritative, no pending/future rolls, wounds only called out on HP loss, and empty summaries are prevented (`app/actions.ts`).
+- Updated references: PHB/DMG PDFs moved to `docs/`, README adjusted accordingly (`Project_README.md`).
 
 ## Future Plans
 - Add automated tests for dice parsing and state hydration to catch regressions.
