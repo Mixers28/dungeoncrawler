@@ -3,12 +3,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skull, ArrowRight, BookOpen, Menu, X } from 'lucide-react'; // Added Menu, X
-import { GameState } from '../lib/game-schema';
+import type { GameState, LogEntry, NarrationMode } from '../lib/game-schema';
 import { GameSidebar } from '../components/GameSidebar';
 import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 
-type Message = { role: 'user' | 'assistant'; content: string };
+type UserMessage = { role: 'user'; content: string };
+type AssistantMessage = { role: 'assistant'; summary: string; flavor?: string; mode?: NarrationMode; createdAt?: string };
+type Message = UserMessage | AssistantMessage;
 
 // --- PROLOGUE CONTENT (Local Static Assets) ---
 const PROLOGUE_STEPS = [
@@ -58,11 +60,21 @@ async function handleStart() {
       setGameState(initialState);
       
       // LOGIC FIX: Restore the Chat History from the Database
-      if (initialState.narrativeHistory && initialState.narrativeHistory.length > 0) {
-        // Map the saved string history back into chat bubbles
-        const restoredHistory = initialState.narrativeHistory.map(entry => ({
-          role: 'assistant' as const,
-          content: entry
+      const restoredLog: Message[] = (initialState.log || []).map((entry: LogEntry) => ({
+        role: 'assistant',
+        summary: entry.summary,
+        flavor: entry.flavor,
+        mode: entry.mode,
+        createdAt: entry.createdAt,
+      }));
+
+      if (restoredLog.length > 0) {
+        setMessages(restoredLog);
+      } else if (initialState.narrativeHistory && initialState.narrativeHistory.length > 0) {
+        // Fallback: map previous narrativeHistory strings into summary-only messages
+        const restoredHistory: Message[] = initialState.narrativeHistory.map(entry => ({
+          role: 'assistant',
+          summary: entry
         }));
         setMessages(restoredHistory);
       } else {
@@ -71,7 +83,7 @@ async function handleStart() {
           setShowIntro(true);
           setIntroStep(0);
         } else {
-          setMessages([{ role: 'assistant', content: initialState.lastActionSummary || "The adventure continues..." }]);
+          setMessages([{ role: 'assistant', summary: initialState.lastActionSummary || "The adventure continues..." }]);
         }
       }
 
@@ -114,9 +126,18 @@ async function handleStart() {
     setMessages(prev => [...prev, { role: 'user', content: userAction }]);
 
     try {
-      const { newState, narrativeStream } = await processTurn(gameState, userAction);
+      const { newState, logEntry } = await processTurn(gameState, userAction);
       setGameState(newState);
-      setMessages(prev => [...prev, { role: 'assistant', content: narrativeStream }]);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          summary: logEntry.summary,
+          flavor: logEntry.flavor,
+          mode: logEntry.mode,
+          createdAt: logEntry.createdAt,
+        }
+      ]);
     } catch (error) {
       console.error("Turn Error:", error);
       router.push('/login');
@@ -235,17 +256,34 @@ async function handleStart() {
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-6 p-4 scrollbar-thin scrollbar-thumb-slate-700 pb-32">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] p-4 rounded-lg leading-relaxed ${
-                m.role === 'user' 
-                  ? 'bg-amber-900/40 border border-amber-800 text-amber-100 rounded-tr-none' 
-                  : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700 shadow-lg'
-              }`}>
-                {m.content}
+          {messages.map((m, i) => {
+            if (m.role === 'user') {
+              return (
+                <div key={i} className="flex justify-end">
+                  <div className="max-w-[85%] p-4 rounded-lg leading-relaxed bg-amber-900/40 border border-amber-800 text-amber-100 rounded-tr-none whitespace-pre-wrap">
+                    {m.content}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={i} className="flex justify-start">
+                <div className="max-w-[85%] p-4 rounded-lg leading-relaxed bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700 shadow-lg space-y-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-amber-400 font-semibold mb-1">Facts</div>
+                    <div className="whitespace-pre-wrap text-slate-100">{m.summary}</div>
+                  </div>
+                  {m.flavor && (
+                    <div className="border-t border-slate-700 pt-3">
+                      <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Flavor</div>
+                      <div className="text-slate-200 italic">{m.flavor}</div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {isLoading && <div className="text-slate-500 text-sm animate-pulse pl-4">The DM is thinking...</div>}
           <div ref={messagesEndRef} />
         </div>

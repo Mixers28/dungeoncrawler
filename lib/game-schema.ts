@@ -29,6 +29,15 @@ export const entitySchema = z.object({
   damageDice: z.string().default("1d4"),
 });
 
+export const narrationModeEnum = z.enum(['GENERAL_INTERACTION', 'ROOM_INTRO', 'INSPECTION', 'COMBAT_FOCUS']);
+export const logEntrySchema = z.object({
+  id: z.string().default(() => `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`),
+  mode: narrationModeEnum,
+  summary: z.string(),
+  flavor: z.string().optional(),
+  createdAt: z.string().default(() => new Date().toISOString()),
+});
+
 // 4. MASTER STATE
 export const gameStateSchema = z.object({
   hp: z.coerce.number().int(),
@@ -83,6 +92,10 @@ export const gameStateSchema = z.object({
   
   // NEW: COMBAT TRACKING
   isCombatActive: z.boolean().default(false),
+  skills: z.array(z.string()).default([]),
+  log: z.array(logEntrySchema).default([]),
 });
 
 export type GameState = z.infer<typeof gameStateSchema>;
+export type LogEntry = z.infer<typeof logEntrySchema>;
+export type NarrationMode = z.infer<typeof narrationModeEnum>;

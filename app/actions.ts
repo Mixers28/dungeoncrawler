@@ -7,15 +7,16 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createClient } from '../utils/supabase/server';
 import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../lib/rules';
-import { buildRulesReferenceSnippet } from '../lib/refs';
 import { ARCHETYPES } from './characters';
+import { getClassReference } from '../lib/5e/classes';
+import { weaponsByName } from '../lib/5e/reference';
+import { parseActionIntent, ParsedIntent } from '../lib/5e/intents';
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const MODEL_LOGIC = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const MODEL_NARRATOR = 'llama-3.3-70b-versatile'; 
 
 // --- HELPERS ---
@@ -87,6 +88,14 @@ const entitySchema = z.object({
   attackBonus: z.coerce.number().int().default(2), 
   damageDice: z.string().default("1d4"),
 });
+const narrationModeEnum = z.enum(["GENERAL_INTERACTION", "ROOM_INTRO", "INSPECTION", "COMBAT_FOCUS"]);
+const logEntrySchema = z.object({
+  id: z.string().default(() => `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`),
+  mode: narrationModeEnum,
+  summary: z.string(),
+  flavor: z.string().optional(),
+  createdAt: z.string().default(() => new Date().toISOString()),
+});
 const gameStateSchema = z.object({
   hp: z.coerce.number().int(),
   maxHp: z.coerce.number().int(),
@@ -138,8 +147,12 @@ const gameStateSchema = z.object({
   locationHistory: z.array(z.string()).default([]),
   inventoryChangeLog: z.array(z.string()).default([]),
   isCombatActive: z.boolean().default(false),
+  skills: z.array(z.string()).default([]),
+  log: z.array(logEntrySchema).default([]),
 });
 
+type NarrationMode = z.infer<typeof narrationModeEnum>;
+export type LogEntry = z.infer<typeof logEntrySchema>;
 type GameState = z.infer<typeof gameStateSchema>;
 type ActionIntent = 'attack' | 'defend' | 'run' | 'other';
 
@@ -151,6 +164,26 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
     throw new Error("Saved game is incompatible with the current version.");
   }
   const state = parsed.data;
+
+  // Backfill: ensure skills array exists based on class if missing/empty
+  if (!state.skills || state.skills.length === 0) {
+    const classKey = (state.character?.class || 'fighter').toLowerCase();
+    state.skills = getClassReference(classKey).skills;
+  }
+
+  // Backfill: migrate old narrativeHistory into log as summary-only entries
+  if ((!state.log || state.log.length === 0) && state.narrativeHistory && state.narrativeHistory.length > 0) {
+    const migrated = state.narrativeHistory.map((entry, idx) => ({
+      id: `log-migrated-${idx}-${Date.now().toString(36)}`,
+      mode: "GENERAL_INTERACTION" as const,
+      summary: entry,
+      flavor: undefined,
+      createdAt: new Date().toISOString(),
+    }));
+    state.log = migrated.slice(-10);
+  } else {
+    state.log = state.log || [];
+  }
 
   // Rebuild derived assets when missing
   const { url, registry: sceneRegistry } = await resolveSceneImage(state);
@@ -228,27 +261,148 @@ async function resolveRoomDescription(state: GameState): Promise<{ desc: string,
   return { desc, registry: newRegistry };
 }
 
-function getActionIntent(userAction: string): ActionIntent {
-  const action = userAction.toLowerCase();
-  if (/(attack|hit|strike|stab|slash|shoot|swing|bash)/.test(action)) return 'attack';
-  if (/(defend|block|dodge|parry|guard|brace)/.test(action)) return 'defend';
-  if (/(run|flee|escape|retreat)/.test(action)) return 'run';
-  return 'other';
+type NarrationMode = "GENERAL_INTERACTION" | "ROOM_INTRO" | "INSPECTION" | "COMBAT_FOCUS";
+
+function summarizeInventory(inventory: GameState["inventory"]): { summary: string; items: string[] } {
+  if (!inventory || inventory.length === 0) {
+    return { summary: "Unarmed; nothing notable carried.", items: [] };
+  }
+
+  const primaryWeapon = inventory.find(i => i.type === 'weapon')?.name;
+  const armor = inventory.find(i => i.type === 'armor')?.name;
+  const extras = inventory
+    .filter(i => i.type !== 'weapon' && i.type !== 'armor')
+    .slice(0, 1)
+    .map(i => i.name);
+
+  const names = [primaryWeapon, armor, ...extras].filter(Boolean) as string[];
+  const summary = names.length > 0 ? names.join(' and ') : "Basic gear only.";
+  return { summary, items: names };
+}
+
+function buildAccountantFacts(params: {
+  newState: GameState;
+  previousState: GameState;
+  roomDesc: string;
+  engineFacts: string[];
+}) {
+  const { newState, previousState, roomDesc, engineFacts } = params;
+  const facts: string[] = [];
+
+  const trimmedFacts = engineFacts.map(f => f.trim()).filter(Boolean);
+  facts.push(...trimmedFacts);
+
+  facts.push(`Location: ${newState.location}. ${roomDesc}`);
+
+  const hpDelta = newState.hp - previousState.hp;
+  const hpDeltaNote = hpDelta === 0 ? "" : hpDelta > 0 ? ` (healed ${hpDelta})` : ` (lost ${Math.abs(hpDelta)})`;
+  facts.push(`You are at ${newState.hp}/${newState.maxHp} HP${hpDeltaNote}, AC ${newState.ac}.`);
+
+  const threats = newState.nearbyEntities.map(e =>
+    `${e.name} ${e.status}${e.status !== 'dead' ? ` (${e.hp}/${e.maxHp} HP)` : ''}`
+  ).join('; ');
+  if (threats) facts.push(`Nearby: ${threats}.`);
+
+  const { summary: inventorySummary, items: allowedItems } = summarizeInventory(newState.inventory);
+
+  return {
+    facts,
+    eventSummary: facts.join(' '),
+    inventorySummary,
+    allowedItems,
+  };
+}
+
+function isFlavorSafe(flavor: string): boolean {
+  const trimmed = flavor.trim();
+  if (!trimmed) return false;
+  if (trimmed.length > 240) return false;
+  if (/\d/.test(trimmed)) return false; // no new numbers from the Narrator
+  const lower = trimmed.toLowerCase();
+  const banned = ['hp', 'hit points', 'ac', 'armor class', 'xp', 'experience', 'damage', 'roll', 'dc', 'gold', 'coin', 'gp'];
+  if (banned.some(token => lower.includes(token))) return false;
+  const sentenceCount = trimmed.split(/[.!?]/).filter(Boolean).length;
+  if (sentenceCount > 1) return false;
+  return true;
+}
+
+async function generateFlavorLine(args: {
+  eventSummary: string;
+  locationDescription: string;
+  inventorySummary: string;
+  mode: NarrationMode;
+}): Promise<string | null> {
+  try {
+    const { text } = await generateText({
+      model: groq(MODEL_NARRATOR),
+      temperature: 0.5,
+    maxTokens: 80,
+    system: `
+You are THE NARRATOR for a dark, minimalist dungeon-crawl called "Dungeon Portal".
+You only add mood. Do not add or modify facts. Do not invent NPCs, rooms, exits, items, spells, mechanics, numbers, or loot.
+Do not list inventory items, skills, abilities, or stats; the player already sees them. Never mention numbers (HP, damage, AC, DC, gold, dice). Write a single sentence under 30 words. If unsure, return an empty string.
+`,
+    prompt: `
+MODE: ${args.mode}
+EVENT_SUMMARY: ${args.eventSummary}
+LOCATION_DESCRIPTION: ${args.locationDescription}
+INVENTORY_SUMMARY: ${args.inventorySummary}
+`,
+    });
+    const flavor = text.trim();
+    if (!flavor) return null;
+    if (!isFlavorSafe(flavor)) return null;
+    return flavor;
+  } catch (err) {
+    console.error("Narrator generation failed:", err);
+    return null;
+  }
+}
+
+function getWeaponDamageDice(name: string | undefined): string {
+  if (!name) return "1d4";
+  const weapon = weaponsByName[name.toLowerCase()];
+  if (weapon?.damage) {
+    const diceMatch = weapon.damage.match(/\d+d\d+/i);
+    if (diceMatch) return diceMatch[0];
+    const flatMatch = weapon.damage.match(/\d+/);
+    if (flatMatch) return flatMatch[0];
+  }
+  return WEAPON_TABLE[name] || "1d4";
+}
+
+function isWeaponAllowedForClass(weaponName: string | undefined, classKey: string): boolean {
+  if (!weaponName) return false;
+  const ref = getClassReference(classKey);
+  return ref.allowedWeapons.map(w => w.toLowerCase()).includes(weaponName.toLowerCase());
 }
 
 // --- MAIN LOGIC ENGINE ---
 // DM principles: describe what the player perceives, let the player act, resolve fairly.
 async function _updateGameState(currentState: GameState, userAction: string) {
   // 1. DETERMINE PLAYER WEAPON & DAMAGE
-  let playerDmgDice = "1d4"; // Default Fists
-  let weaponName = "Fists";
-  const weapon = currentState.inventory.find(i => i.type === 'weapon');
-  if (weapon) {
-    weaponName = weapon.name;
-    playerDmgDice = WEAPON_TABLE[weapon.name] || "1d4";
-  }
+  const parsedIntent: ParsedIntent = parseActionIntent(userAction);
+  const actionIntent: ActionIntent =
+    parsedIntent.type === 'attack'
+      ? 'attack'
+      : parsedIntent.type === 'defend'
+      ? 'defend'
+      : parsedIntent.type === 'run'
+      ? 'run'
+      : 'other';
 
-  const actionIntent = getActionIntent(userAction);
+  const classKey = (currentState.character?.class || 'fighter').toLowerCase();
+  const preferredWeaponName = parsedIntent.type === 'attack' && parsedIntent.weaponName
+    ? parsedIntent.weaponName
+    : currentState.inventory.find(i => i.type === 'weapon')?.name;
+
+  let weaponName = preferredWeaponName || "Fists";
+  let playerDmgDice = getWeaponDamageDice(weaponName);
+  const weaponAllowed = isWeaponAllowedForClass(weaponName, classKey);
+  if (!weaponAllowed && weaponName !== "Fists") {
+    playerDmgDice = "1d4";
+    weaponName = "Fists";
+  }
 
   // 2. PREP STATE
   const newState: GameState = {
@@ -262,6 +416,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     narrativeHistory: [...(currentState.narrativeHistory || [])],
     locationHistory: [...(currentState.locationHistory || [])],
     inventoryChangeLog: [...(currentState.inventoryChangeLog || [])],
+    log: [...(currentState.log || [])],
   };
 
   // 3. ACTIVE MONSTER CONTEXT
@@ -275,7 +430,10 @@ async function _updateGameState(currentState: GameState, userAction: string) {
 
   const monsterWasAlive = activeMonster?.status === 'alive';
 
-  if (actionIntent === 'attack' && activeMonster) {
+  if (parsedIntent.type === 'castAbility') {
+    const abilityName = parsedIntent.abilityName;
+    summaryParts.push(`You attempt to use ${abilityName}, but no learned abilities are available yet.`);
+  } else if (actionIntent === 'attack' && activeMonster) {
     playerAttackRoll = Math.floor(Math.random() * 20) + 1; // no bonus for now
     if (playerAttackRoll >= activeMonster.ac) {
       playerDamageRoll = rollDice(playerDmgDice);
@@ -285,7 +443,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
           ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
           : entity
       );
-      summaryParts.push(`You hit ${activeMonster.name} for ${playerDamageRoll} damage (roll ${playerAttackRoll} vs AC ${activeMonster.ac}).`);
+      summaryParts.push(`You hit ${activeMonster.name} with ${weaponName} for ${playerDamageRoll} damage (roll ${playerAttackRoll} vs AC ${activeMonster.ac}).`);
     } else {
       summaryParts.push(`You miss ${activeMonster.name} (roll ${playerAttackRoll} vs AC ${activeMonster.ac}).`);
     }
@@ -296,6 +454,11 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     newState.nearbyEntities = [];
     newState.isCombatActive = false;
     summaryParts.push("You flee the encounter.");
+  } else if (parsedIntent.type === 'checkSheet') {
+    const skills = newState.skills?.length ? newState.skills.join(', ') : 'None';
+    const primaryWeapon = newState.inventory.find(i => i.type === 'weapon')?.name || 'None';
+    const armor = newState.inventory.find(i => i.type === 'armor')?.name || 'None';
+    summaryParts.push(`Skills: ${skills}. Equipped weapon: ${primaryWeapon}. Armor: ${armor}.`);
   } else if (actionIntent === 'other' && newState.nearbyEntities.length === 0) {
     summaryParts.push("You act, but there is no immediate threat here.");
   } else if (actionIntent === 'attack' && !activeMonster) {
@@ -413,7 +576,16 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   newState.currentImage = url;
   newState.sceneRegistry = imgReg;
 
-  return { newState, roomDesc: finalDesc };
+  const isNewLocation = newState.location !== currentState.location;
+  const isLooking = userAction.toLowerCase().includes('look') || userAction.toLowerCase().includes('search');
+  const isCombat = newState.isCombatActive;
+  
+  let narrationMode: NarrationMode = "GENERAL_INTERACTION";
+  if (isNewLocation) narrationMode = "ROOM_INTRO";
+  else if (isLooking) narrationMode = "INSPECTION";
+  else if (isCombat) narrationMode = "COMBAT_FOCUS";
+
+  return { newState, roomDesc: finalDesc, accountantFacts: [...summaryParts], eventSummary: newState.lastActionSummary, narrationMode };
 }
 
 // --- EXPORT 1: CREATE NEW GAME ---
@@ -437,6 +609,7 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
 
   const start = getRandomScenario(0);
   const archetype = archetypeKey && ARCHETYPES[archetypeKey] ? ARCHETYPES[archetypeKey] : ARCHETYPES.fighter;
+  const classRef = getClassReference(archetypeKey || 'fighter');
 
   const startingWeapon = archetype.startingWeapon || 'Rusty Dagger';
   const startingArmor = archetype.startingArmor;
@@ -460,6 +633,7 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
       { id: '1', name: startingWeapon, type: 'weapon', quantity: 1 },
       ...(startingArmor ? [{ id: 'armor-1', name: startingArmor, type: 'armor', quantity: 1 }] : []),
     ],
+    skills: classRef.skills,
     quests: [{ id: '1', title: 'The Awakening', status: 'active', description: 'Find the Iron Key.' }],
     // Populating with STATS from getScenario
     nearbyEntities: [{ 
@@ -472,6 +646,7 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
     lastActionSummary: "The gates are locked. A monster guards the path.",
     worldSeed: Math.floor(Math.random() * 999999),
     narrativeHistory: [],
+    log: [],
     sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentImage: "",
     locationHistory: ["The Iron Gate"],
     inventoryChangeLog: [],
@@ -488,60 +663,46 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
 }
 
 // --- EXPORT 2: PROCESS TURN ---
-export async function processTurn(currentState: GameState, userAction: string) {
+export async function processTurn(currentState: GameState, userAction: string): Promise<{ newState: GameState; logEntry: LogEntry }> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const { newState, roomDesc } = await _updateGameState(currentState, userAction);
-  
-  const isNewLocation = newState.location !== currentState.location;
-  const isLooking = userAction.toLowerCase().includes('look') || userAction.toLowerCase().includes('search');
-  const isCombat = newState.isCombatActive;
-  
-  let narrativeMode = "GENERAL_INTERACTION";
-  if (isNewLocation) narrativeMode = "ROOM_INTRO";
-  else if (isLooking) narrativeMode = "INSPECTION";
-  else if (isCombat) narrativeMode = "COMBAT_FOCUS";
+  const { newState, roomDesc, accountantFacts: engineFacts, eventSummary, narrationMode } = await _updateGameState(currentState, userAction);
 
-  const visibleEntities = newState.nearbyEntities
-    .map(e => `${e.name} (${e.status}, HP:${e.hp}/${e.maxHp})`)
-    .join(', ') || "None";
+  const locationDescription = newState.roomRegistry[newState.location] || roomDesc || "An undefined space.";
+  const { facts, eventSummary: accountantSummary, inventorySummary } = buildAccountantFacts({
+    newState,
+    previousState: currentState,
+    roomDesc: locationDescription,
+    engineFacts,
+  });
 
-  const playerHpDelta = newState.hp - currentState.hp;
+  const flavorLine = await generateFlavorLine({
+    eventSummary: accountantSummary,
+    locationDescription,
+    inventorySummary,
+    mode: narrationMode,
+  });
+
+  const factBlock = facts.join('\n');
+  const combinedNarrative = flavorLine ? `${factBlock}\n\n${flavorLine}` : factBlock;
+
+  const logEntry: LogEntry = {
+    summary: factBlock || eventSummary,
+    flavor: flavorLine || undefined,
+    mode: narrationMode,
+    createdAt: new Date().toISOString(),
+    id: `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+  };
+
+  newState.log = [...(newState.log || []), logEntry].slice(-50);
+  newState.narrativeHistory = [...newState.narrativeHistory, combinedNarrative].slice(-3);
 
   const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
   if (saveError) throw new Error(`Failed to save turn: ${saveError.message}`);
 
-  const actData = STORY_ACTS[newState.storyAct] || STORY_ACTS[0];
-  const locationDescription = newState.roomRegistry[newState.location] || roomDesc || "An undefined space.";
-  const rulesSnippet = buildRulesReferenceSnippet();
-
-  const aliveThreats = newState.nearbyEntities.filter(e => e.status === 'alive').map(e => `${e.name} HP:${e.hp}/${e.maxHp}`).join(', ') || "None";
-  const tookDamageThisTurn = playerHpDelta < 0;
-
-  const { text: narration } = await generateText({
-    model: groq(MODEL_NARRATOR),
-    temperature: 0,
-    system: `
-You are THE NARRATOR for a dark, minimalist dungeon-crawl called "Dungeon Portal".
-Never change game state; only describe what the Accountant resolved.
-Use: EVENT_SUMMARY, LOCATION name/description, ENTITY STATUS, RULES_REFERENCE. If not listed, treat as unknown.
-INVENTORY: ${newState.inventory.map(i => `${i.name} x${i.quantity}`).join(', ') || "Empty"} (only reference items on this list; do NOT mention items/proficiencies not present).
-HARD BANS: Do NOT invent NPCs, rooms, shops, taverns/inns, exits/doors, items/spells/mechanics, or any numbers (HP, damage, distances, gold, DCs, rolls).
-World: "The Iron Gate" is an exterior gate in cold stone, not an inn/tavern/bar.
-Respect MODE but stay concise: ROOM_INTRO/INSPECTION/COMBAT/GENERAL = same brevity.
-Style: gritty, grounded dark fantasy; 1–2 sentences under 40 words; no questions; only mention items from INVENTORY.
-`,
-    prompt: `ACTION: "${userAction}" | EVENT_SUMMARY: "${newState.lastActionSummary}" | LOCATION: "${newState.location}" DESC: "${locationDescription}" | ENTITY STATUS: "${visibleEntities}" | ALIVE THREATS: "${aliveThreats}" | COMBAT_ACTIVE: ${newState.isCombatActive} | TOOK_DAMAGE_THIS_TURN: ${tookDamageThisTurn} | RULES: ${rulesSnippet}`,
-  });
-
-  const updatedHistory = [...newState.narrativeHistory, narration].slice(-3);
-  newState.narrativeHistory = updatedHistory;
-  const { error: finishError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
-  if (finishError) console.error("Failed to save narrative update:", finishError);
-
-  return { newState, narrativeStream: narration };
+  return { newState, logEntry };
 }
 
 // --- EXPORT 3: RESET ---
