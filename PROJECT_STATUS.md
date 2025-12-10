@@ -29,6 +29,7 @@
 - Hardened narration/state sync: EVENT_SUMMARY is authoritative, no pending/future rolls, wounds only called out on HP loss, and empty summaries are prevented (`app/actions.ts`).
 - Improved combat narration alignment: added alive threat context, forbid “pending” phrasing, require concrete hit/miss/damage lines, and blocked wound mentions when no HP loss; added generic corpse loot to keep inventory/narrative aligned (`app/actions.ts`).
 - Updated references: PHB/DMG PDFs moved to `docs/`, README adjusted accordingly (`Project_README.md`).
+- Room descriptions are now deterministic (no model generation) and narrator is clamped to provided location text to avoid scene hallucinations (`app/actions.ts`).
 
 ## Future Plans
 - Add automated tests for dice parsing and state hydration to catch regressions.

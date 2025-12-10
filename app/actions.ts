@@ -1,7 +1,7 @@
 'use server';
 
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateObject, generateText } from 'ai';
+import { generateText } from 'ai';
 import { z } from 'zod';
 import fs from 'fs/promises';
 import path from 'path';
@@ -219,14 +219,12 @@ async function resolveRoomDescription(state: GameState): Promise<{ desc: string,
   if (state.roomRegistry && state.roomRegistry[state.location]) {
     return { desc: state.roomRegistry[state.location], registry: state.roomRegistry };
   }
-  const { object: roomData } = await generateObject({
-    model: groq(MODEL_LOGIC),
-    schema: z.object({ description: z.string() }),
-    system: `Describe room: "${state.location}". MEDIEVAL FANTASY. Max 15 words. Concrete details.`,
-    prompt: `Generate description.`,
-  });
-  const newRegistry = { ...state.roomRegistry, [state.location]: roomData.description };
-  return { desc: roomData.description, registry: newRegistry };
+  const aliveThreats = state.nearbyEntities.filter(e => e.status === 'alive').map(e => e.name);
+  const desc = aliveThreats.length > 0
+    ? `${state.location} with ${aliveThreats.join(', ')} nearby.`
+    : `${state.location} is quiet.`;
+  const newRegistry = { ...state.roomRegistry, [state.location]: desc };
+  return { desc, registry: newRegistry };
 }
 
 function getActionIntent(userAction: string): ActionIntent {
