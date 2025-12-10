@@ -10,6 +10,7 @@ export function GameSidebar({ state }: { state: GameState }) {
 
   // Use the image URL provided by the backend library
   const imageUrl = state.currentImage || "";
+  const locationTrail = state.locationHistory?.slice(-6) || [];
 
   return (
     <div className="h-full bg-slate-950 border-l border-slate-800 flex flex-col text-slate-200 overflow-hidden font-sans">
@@ -63,6 +64,30 @@ export function GameSidebar({ state }: { state: GameState }) {
                 style={{ width: `${hpPercent}%` }}
             />
             </div>
+        </div>
+
+        {/* LOCATION TRAIL / MINI-MAP */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
+            Path
+          </h3>
+          {locationTrail.length === 0 ? (
+            <p className="text-xs text-slate-600 italic">No path recorded.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {locationTrail.map((loc, idx) => {
+                const isCurrent = idx === locationTrail.length - 1;
+                return (
+                  <div
+                    key={`${loc}-${idx}`}
+                    className={`px-2 py-1 rounded border text-xs ${isCurrent ? 'bg-amber-900/40 border-amber-700 text-amber-100' : 'bg-slate-900 border-slate-800 text-slate-300'}`}
+                  >
+                    {isCurrent ? 'Here: ' : ''}{loc}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* INVENTORY */}

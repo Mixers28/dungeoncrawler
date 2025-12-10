@@ -47,6 +47,7 @@ export const gameStateSchema = z.object({
   roomRegistry: z.record(z.string()).default({}), 
   storyAct: z.coerce.number().int().default(0),
   currentImage: z.string().optional(),
+  locationHistory: z.array(z.string()).default([]),
   lastRolls: z.object({
     playerAttack: z.coerce.number().int().default(0),
     playerDamage: z.coerce.number().int().default(0),

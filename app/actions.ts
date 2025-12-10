@@ -114,6 +114,7 @@ const gameStateSchema = z.object({
     monsterAttack: 0,
     monsterDamage: 0,
   }),
+  locationHistory: z.array(z.string()).default([]),
   isCombatActive: z.boolean().default(false),
 });
 
@@ -237,6 +238,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     sceneRegistry: { ...currentState.sceneRegistry },
     tempAcBonus: 0,
     narrativeHistory: [...(currentState.narrativeHistory || [])],
+    locationHistory: [...(currentState.locationHistory || [])],
   };
 
   // 3. ACTIVE MONSTER CONTEXT
@@ -316,6 +318,13 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     newState.isCombatActive = newState.nearbyEntities.some(e => e.status === 'alive' && e.hp > 0) && newState.hp > 0;
   }
 
+  // 6b. TRACK LOCATION HISTORY
+  if (newState.location !== currentState.location) {
+    const history = newState.locationHistory || [];
+    const updatedHistory = [...history, newState.location].slice(-10);
+    newState.locationHistory = updatedHistory;
+  }
+
   // 7. STORY ACT BOUNDS
   const maxAct = Math.max(...Object.keys(STORY_ACTS).map(Number));
   newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
@@ -372,6 +381,7 @@ export async function createNewGame(): Promise<GameState> {
     worldSeed: Math.floor(Math.random() * 999999),
     narrativeHistory: [],
     sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentImage: "",
+    locationHistory: ["The Iron Gate"],
     isCombatActive: false // Start neutral; combat begins on hostile actions
   };
 
@@ -486,6 +496,7 @@ export async function resetGame() {
     worldSeed: Math.floor(Math.random() * 999999),
     narrativeHistory: [],
     sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentImage: "",
+    locationHistory: ["The Iron Gate"],
     isCombatActive: false
   };
 
