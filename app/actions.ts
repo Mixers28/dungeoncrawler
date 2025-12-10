@@ -4,6 +4,8 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { generateObject, streamText } from 'ai';
 import { createStreamableValue } from 'ai/rsc';
 import { z } from 'zod';
+import fs from 'fs/promises';
+import path from 'path';
 import { createClient } from '../utils/supabase/server';
 import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS, KEY_ITEMS } from '../lib/rules';
 
@@ -125,7 +127,7 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
   const state = parsed.data;
 
   // Rebuild derived assets when missing
-  const { url, registry: sceneRegistry } = resolveSceneImage(state);
+  const { url, registry: sceneRegistry } = await resolveSceneImage(state);
   state.currentImage = url;
   state.sceneRegistry = sceneRegistry;
 
@@ -136,7 +138,39 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
 }
 
 // --- RESOLVERS ---
-function resolveSceneImage(state: GameState): { url: string; registry: Record<string, string> } {
+async function ensureCacheDir() {
+  const cacheDir = path.join(process.cwd(), 'public', 'scene-cache');
+  try {
+    await fs.mkdir(cacheDir, { recursive: true });
+  } catch (err) {
+    console.error("Failed to ensure cache dir", err);
+  }
+  return cacheDir;
+}
+
+async function cacheSceneImage(remoteUrl: string, fileName: string): Promise<string | null> {
+  try {
+    const cacheDir = await ensureCacheDir();
+    const filePath = path.join(cacheDir, fileName);
+    // If already cached, just return
+    try {
+      await fs.access(filePath);
+      return `/scene-cache/${fileName}`;
+    } catch {
+      // proceed to fetch
+    }
+    const res = await fetch(remoteUrl);
+    if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+    const arrayBuffer = await res.arrayBuffer();
+    await fs.writeFile(filePath, Buffer.from(arrayBuffer));
+    return `/scene-cache/${fileName}`;
+  } catch (err) {
+    console.error("Image cache fetch failed, using remote URL", err);
+    return null;
+  }
+}
+
+async function resolveSceneImage(state: GameState): Promise<{ url: string; registry: Record<string, string> }> {
   const activeThreat = state.nearbyEntities.find(e => e.status !== 'dead' && e.status !== 'object');
   const sceneKey = activeThreat ? `${state.location}|${activeThreat.name}` : state.location;
   if (state.sceneRegistry && state.sceneRegistry[sceneKey]) {
@@ -147,8 +181,11 @@ function resolveSceneImage(state: GameState): { url: string; registry: Record<st
   const subjectHash = visualPrompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const stableSeed = subjectHash + (state.worldSeed || 0); 
   const encodedPrompt = encodeURIComponent(visualPrompt + " fantasy oil painting style dark gritty 8k");
-  const newUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=300&nologo=true&seed=${stableSeed}`;
-  return { url: newUrl, registry: { ...state.sceneRegistry, [sceneKey]: newUrl } };
+  const remoteUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=300&nologo=true&seed=${stableSeed}`;
+  const fileName = `${sceneKey.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${stableSeed}.jpg`;
+  const cachedPath = await cacheSceneImage(remoteUrl, fileName);
+  const finalUrl = cachedPath || remoteUrl;
+  return { url: finalUrl, registry: { ...state.sceneRegistry, [sceneKey]: finalUrl } };
 }
 
 async function resolveRoomDescription(state: GameState): Promise<{ desc: string, registry: Record<string, string> }> {
@@ -274,7 +311,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   const { desc: finalDesc, registry: textReg } = await resolveRoomDescription(newState);
   newState.roomRegistry = textReg;
 
-  const { url, registry: imgReg } = resolveSceneImage(newState);
+  const { url, registry: imgReg } = await resolveSceneImage(newState);
   newState.currentImage = url;
   newState.sceneRegistry = imgReg;
 
@@ -316,7 +353,7 @@ export async function createNewGame(): Promise<GameState> {
     isCombatActive: false // Start neutral; combat begins on hostile actions
   };
 
-  const { url, registry } = resolveSceneImage(initialState);
+  const { url, registry } = await resolveSceneImage(initialState);
   initialState.currentImage = url;
   initialState.sceneRegistry = registry;
 
