@@ -17,11 +17,33 @@ const MODEL_NARRATOR = 'llama-3.3-70b-versatile';
 
 // --- HELPERS ---
 function rollDice(notation: string): number {
-  const [count, sides] = notation.split('d').map(Number);
+  // Supports expressions like "1d6+2" or "1d4+1d6"
+  const tokens = notation.replace(/\s+/g, '').match(/[+-]?[^+-]+/g) || [];
+  if (tokens.length === 0) throw new Error(`Invalid dice expression: "${notation}"`);
+
   let total = 0;
-  for (let i = 0; i < count; i++) {
-    total += Math.floor(Math.random() * sides) + 1;
+
+  for (const token of tokens) {
+    const sign = token.startsWith('-') ? -1 : 1;
+    const body = token.replace(/^[-+]/, '');
+
+    if (body.includes('d')) {
+      const [countStr, facesStr] = body.split('d');
+      const count = countStr ? Number(countStr) : 1;
+      const faces = Number(facesStr);
+      if (!Number.isFinite(count) || !Number.isFinite(faces) || count <= 0 || faces <= 0) {
+        throw new Error(`Invalid dice term: "${token}"`);
+      }
+      for (let i = 0; i < count; i++) {
+        total += sign * (Math.floor(Math.random() * faces) + 1);
+      }
+    } else {
+      const flat = Number(body);
+      if (!Number.isFinite(flat)) throw new Error(`Invalid modifier: "${token}"`);
+      total += sign * flat;
+    }
   }
+
   return total;
 }
 
@@ -78,10 +100,39 @@ const gameStateSchema = z.object({
   roomRegistry: z.record(z.string()).default({}), 
   sceneRegistry: z.record(z.string()).default({}), 
   currentImage: z.string().optional(),
+  lastRolls: z.object({
+    playerAttack: z.coerce.number().int().default(0),
+    playerDamage: z.coerce.number().int().default(0),
+    monsterAttack: z.coerce.number().int().default(0),
+    monsterDamage: z.coerce.number().int().default(0),
+  }).default({
+    playerAttack: 0,
+    playerDamage: 0,
+    monsterAttack: 0,
+    monsterDamage: 0,
+  }),
   isCombatActive: z.boolean().default(false),
 });
 
 type GameState = z.infer<typeof gameStateSchema>;
+
+async function hydrateState(rawState: unknown): Promise<GameState> {
+  const parsed = gameStateSchema.safeParse(rawState);
+  if (!parsed.success) {
+    throw new Error("Saved game is incompatible with the current version.");
+  }
+  const state = parsed.data;
+
+  // Rebuild derived assets when missing
+  const { url, registry: sceneRegistry } = resolveSceneImage(state);
+  state.currentImage = url;
+  state.sceneRegistry = sceneRegistry;
+
+  const { registry: roomRegistry } = await resolveRoomDescription(state);
+  state.roomRegistry = roomRegistry;
+
+  return state;
+}
 
 // --- RESOLVERS ---
 function resolveSceneImage(state: GameState): { url: string; registry: Record<string, string> } {
@@ -130,10 +181,12 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   const activeMonster = currentState.nearbyEntities.find(e => e.status === 'alive');
   let monsterAttackRoll = 0;
   let monsterDmgRoll = 0;
+  let monsterDamageNotation = "";
   
   if (activeMonster) {
     monsterAttackRoll = Math.floor(Math.random() * 20) + 1 + activeMonster.attackBonus;
-    monsterDmgRoll = rollDice(activeMonster.damageDice);
+    monsterDamageNotation = activeMonster.damageDice;
+    monsterDmgRoll = rollDice(monsterDamageNotation);
   }
 
   const d20 = Math.floor(Math.random() * 20) + 1; // Player Hit Roll
@@ -157,7 +210,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
       - Player Attack Roll: ${d20}
       - Monster: ${activeMonster ? activeMonster.name : "None"}
       - Monster Attack Roll: ${monsterAttackRoll} (vs Player AC ${currentState.ac})
-      - Monster Damage Roll: ${monsterDmgRoll}
+      - Monster Damage Roll: ${monsterDmgRoll} (from ${monsterDamageNotation || "n/a"})
       
       COMBAT RULES (STRICT):
       1. DETECT INTENT: 
@@ -190,6 +243,14 @@ async function _updateGameState(currentState: GameState, userAction: string) {
 
   // Reset temp AC bonus after turn calculation
   newState.tempAcBonus = 0;
+  const maxAct = Math.max(...Object.keys(STORY_ACTS).map(Number));
+  newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
+  newState.lastRolls = {
+    playerAttack: d20,
+    playerDamage: playerDmgRoll,
+    monsterAttack: monsterAttackRoll,
+    monsterDamage: monsterDmgRoll,
+  };
 
   const { url, registry: imgReg } = resolveSceneImage(newState);
   const { desc: finalDesc, registry: textReg } = await resolveRoomDescription(newState);
@@ -208,7 +269,12 @@ export async function createNewGame(): Promise<GameState> {
   if (!user) throw new Error("You must be logged in.");
 
   const { data: existingSave } = await supabase.from('saved_games').select('game_state').eq('user_id', user.id).single();
-  if (existingSave) return existingSave.game_state as unknown as GameState;
+  if (existingSave?.game_state) {
+    const hydrated = await hydrateState(existingSave.game_state);
+    const { error: updateError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: hydrated }, { onConflict: 'user_id' });
+    if (updateError) console.error("Failed to update existing save:", updateError);
+    return hydrated;
+  }
 
   const start = getRandomScenario(0);
   const initialState: GameState = {
@@ -235,7 +301,8 @@ export async function createNewGame(): Promise<GameState> {
   initialState.currentImage = url;
   initialState.sceneRegistry = registry;
 
-  await supabase.from('saved_games').upsert({ user_id: user.id, game_state: initialState }, { onConflict: 'user_id' });
+  const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: initialState }, { onConflict: 'user_id' });
+  if (saveError) throw new Error(`Failed to save new game: ${saveError.message}`);
   return initialState;
 }
 
@@ -261,7 +328,11 @@ export async function processTurn(currentState: GameState, userAction: string) {
     .join(', ') || "None";
 
   newState.narrativeHistory = currentState.narrativeHistory || [];
-  await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
+  const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
+  if (saveError) throw new Error(`Failed to save turn: ${saveError.message}`);
+
+  const actData = STORY_ACTS[newState.storyAct] || STORY_ACTS[0];
+  const locationDescription = newState.roomRegistry[newState.location] || roomDesc || "An undefined space.";
 
   const stream = createStreamableValue('');
   
@@ -272,7 +343,8 @@ export async function processTurn(currentState: GameState, userAction: string) {
       onFinish: async ({ text }) => {
         const updatedHistory = [...newState.narrativeHistory, text].slice(-3); 
         newState.narrativeHistory = updatedHistory;
-        await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
+        const { error: finishError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
+        if (finishError) console.error("Failed to save narrative update:", finishError);
       },
       system: `
         You are a Text Adventure Interface.
@@ -282,6 +354,9 @@ export async function processTurn(currentState: GameState, userAction: string) {
         - PLAYER HP: ${newState.hp} / ${newState.maxHp}
         - EVENT: "${newState.lastActionSummary}"
         - ENTITY STATUS: "${visibleEntities}"
+        - LOCATION: "${newState.location}" -> "${locationDescription}"
+        - STORY ACT: "${actData.name}" Goal: "${actData.goal}" Clue: "${actData.clue}"
+        - INVENTORY: ${newState.inventory.map(i => `${i.name} x${i.quantity}`).join(', ') || "Empty"}
         
         RULES:
         1. IF PLAYER TOOK DAMAGE: Describe the pain/wound vividly.
@@ -289,6 +364,7 @@ export async function processTurn(currentState: GameState, userAction: string) {
         3. IF MONSTER ATTACKED: Make sure to mention the monster striking back.
         4. IF MONSTER DIED: Describe the kill.
         5. Keep it fast-paced.
+        6. Stay inside the provided location, entities, and act context. Do not invent new named NPCs, items, or rooms unless they already appear in state or inventory.
       `,
       prompt: `Action: "${userAction}" Location: "${newState.location}"`,
     });
@@ -331,6 +407,7 @@ export async function resetGame() {
   freshState.currentImage = url;
   freshState.sceneRegistry = registry;
 
-  await supabase.from('saved_games').upsert({ user_id: user.id, game_state: freshState }, { onConflict: 'user_id' });
+  const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: freshState }, { onConflict: 'user_id' });
+  if (saveError) throw new Error(`Failed to reset game: ${saveError.message}`);
   return freshState;
 }

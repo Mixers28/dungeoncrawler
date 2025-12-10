@@ -47,6 +47,17 @@ export const gameStateSchema = z.object({
   roomRegistry: z.record(z.string()).default({}), 
   storyAct: z.coerce.number().int().default(0),
   currentImage: z.string().optional(),
+  lastRolls: z.object({
+    playerAttack: z.coerce.number().int().default(0),
+    playerDamage: z.coerce.number().int().default(0),
+    monsterAttack: z.coerce.number().int().default(0),
+    monsterDamage: z.coerce.number().int().default(0),
+  }).default({
+    playerAttack: 0,
+    playerDamage: 0,
+    monsterAttack: 0,
+    monsterDamage: 0,
+  }),
   
   // NEW: COMBAT TRACKING
   isCombatActive: z.boolean().default(false),
