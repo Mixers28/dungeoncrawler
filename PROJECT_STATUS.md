@@ -21,6 +21,7 @@
 - Narrator prompt updated to mirror DM principles: concise (≤3 sentences), telegraph threats, no surprise damage without triggers, and must use provided rolls/HP/entity data faithfully (`app/actions.ts`).
 - Added 5e reference snippets (abilities, conditions, basic actions) and fed them to the narrator for grounded descriptions (`data/5e/*`, `lib/refs.ts`, `app/actions.ts`).
 - Expanded 5e references with skills-to-abilities, weapon table, armor table, and fuller conditions for future rule grounding (`data/5e/*`, `lib/refs.ts`).
+- Scene cache now keeps a small variant pool per scene (3 variants) and reuses by scene key; variant chosen deterministically per run, avoiding re-generation while allowing variety (`app/actions.ts`).
 
 ## Future Plans
 - Add automated tests for dice parsing and state hydration to catch regressions.

@@ -172,6 +172,7 @@ async function cacheSceneImage(remoteUrl: string, fileName: string): Promise<str
 }
 
 async function resolveSceneImage(state: GameState): Promise<{ url: string; registry: Record<string, string> }> {
+  const VARIANT_POOL = 3;
   const activeThreat = state.nearbyEntities.find(e => e.status !== 'dead' && e.status !== 'object');
   const sceneKey = activeThreat ? `${state.location}|${activeThreat.name}` : state.location;
   if (state.sceneRegistry && state.sceneRegistry[sceneKey]) {
@@ -180,10 +181,11 @@ async function resolveSceneImage(state: GameState): Promise<{ url: string; regis
   let visualPrompt = state.location;
   if (activeThreat) visualPrompt = `A terrifying ${activeThreat.name} inside ${state.location}`;
   const subjectHash = visualPrompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const stableSeed = subjectHash + (state.worldSeed || 0); 
+  const variantIndex = Math.abs((state.worldSeed || 0) % VARIANT_POOL);
+  const stableSeed = subjectHash + variantIndex * 9973; // variant-specific but stable across runs
   const encodedPrompt = encodeURIComponent(visualPrompt + " fantasy oil painting style dark gritty 8k");
   const remoteUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=300&nologo=true&seed=${stableSeed}`;
-  const fileName = `${sceneKey.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${stableSeed}.jpg`;
+  const fileName = `${sceneKey.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_v${variantIndex}.jpg`;
   const cachedPath = await cacheSceneImage(remoteUrl, fileName);
   const finalUrl = cachedPath || remoteUrl;
   return { url: finalUrl, registry: { ...state.sceneRegistry, [sceneKey]: finalUrl } };
