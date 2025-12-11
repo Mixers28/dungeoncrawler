@@ -755,7 +755,6 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   const isNewLocation = newState.location !== currentState.location;
   const isLooking = userAction.toLowerCase().includes('look') || userAction.toLowerCase().includes('search');
   const isCombat = newState.isCombatActive;
-  const wantsLoot = /(loot|rummage|pick over|salvage)/i.test(userAction);
   const wantsInvestigate = /(investigate|inspect|examine)/i.test(userAction);
   const isSheet = parsedIntent.type === 'checkSheet';
   
