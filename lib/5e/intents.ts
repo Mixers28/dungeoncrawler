@@ -42,10 +42,10 @@ function isCheckSheet(text: string): { section?: 'skills' | 'abilities' | 'inven
 }
 
 export function parseActionIntent(raw: string): ParsedIntent {
-  return parseActionIntentWithKnown(raw, []);
+  return parseActionIntentWithKnown(raw, [], []);
 }
 
-export function parseActionIntentWithKnown(raw: string, knownSpells: string[]): ParsedIntent {
+export function parseActionIntentWithKnown(raw: string, knownSpells: string[], availableSpellNames: string[] = []): ParsedIntent {
   const text = raw.trim();
 
   const sheetSection = isCheckSheet(text);
@@ -78,6 +78,10 @@ export function parseActionIntentWithKnown(raw: string, knownSpells: string[]): 
     const knownMatch = knownSpells.find(s => s.toLowerCase() === lowerCandidate || lowerCandidate.includes(s.toLowerCase()));
     if (knownMatch) {
       return { type: 'castAbility', abilityName: knownMatch, target: findTarget(text) };
+    }
+    const availMatch = availableSpellNames.find(name => lowerCandidate === name.toLowerCase() || lowerCandidate.includes(name.toLowerCase()));
+    if (availMatch) {
+      return { type: 'castAbility', abilityName: availMatch, target: findTarget(text) };
     }
     const abilityKey = abilityNames.find(name => lowerCandidate.includes(name));
     if (abilityKey) {

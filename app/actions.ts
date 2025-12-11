@@ -417,7 +417,11 @@ function isWeaponAllowedForClass(weaponName: string | undefined, classKey: strin
 // DM principles: describe what the player perceives, let the player act, resolve fairly.
 async function _updateGameState(currentState: GameState, userAction: string) {
   // 1. DETERMINE PLAYER WEAPON & DAMAGE
-  const parsedIntent: ParsedIntent = parseActionIntentWithKnown(userAction, currentState.knownSpells || []);
+  const parsedIntent: ParsedIntent = parseActionIntentWithKnown(
+    userAction,
+    currentState.knownSpells || [],
+    Object.keys(wizardSpellsByName)
+  );
   const actionIntent: ActionIntent =
     parsedIntent.type === 'attack'
       ? 'attack'
