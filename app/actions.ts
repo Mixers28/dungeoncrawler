@@ -185,9 +185,10 @@ function buildInventoryFromEquipment(equipment: string[]): Array<z.infer<typeof 
   });
 }
 
-function applySceneEntry(sceneId: string, baseState: GameState, summaryParts: string[]): { state: GameState; roomDesc: string } {
+function applySceneEntry(sceneId: string, baseState: GameState, summaryParts: string[], opts?: { recordHistory?: boolean }): { state: GameState; roomDesc: string } {
   const scene = getSceneById(sceneId);
   const nextState = { ...baseState };
+  const recordHistory = opts?.recordHistory ?? true;
   let roomDesc = baseState.roomRegistry?.[scene?.location || baseState.location] || baseState.location;
 
   if (scene) {
@@ -214,6 +215,11 @@ function applySceneEntry(sceneId: string, baseState: GameState, summaryParts: st
     } else {
       nextState.nearbyEntities = [];
     }
+  }
+
+  if (recordHistory) {
+    const trail = nextState.locationHistory || [];
+    nextState.locationHistory = [...trail, nextState.location].slice(-10);
   }
 
   return { state: nextState, roomDesc };
@@ -943,7 +949,6 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
   const entrySummary: string[] = [];
   const { state: seededState } = applySceneEntry(baseState.storySceneId, baseState, entrySummary);
   seededState.lastActionSummary = entrySummary.join(' ').trim() || baseState.lastActionSummary;
-  seededState.locationHistory = [seededState.location];
 
   const { url, registry } = await resolveSceneImage(seededState);
   seededState.currentImage = url;
