@@ -323,7 +323,7 @@ async function handleStart() {
       {/* RIGHT: Sidebar (Responsive) */}
       {/* 1. DESKTOP: Always visible on right */}
       <div className="w-[350px] hidden md:block h-full border-l border-slate-800">
-        <GameSidebar state={gameState} />
+        <GameSidebar state={gameState} onInsertCommand={(cmd) => setInput(cmd)} />
       </div>
 
       {/* 2. MOBILE: Slide-over Drawer */}
@@ -337,7 +337,7 @@ async function handleStart() {
             <button onClick={() => setIsSidebarOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-900 p-2 rounded-full text-slate-300 border border-slate-700">
               <X size={20} />
             </button>
-            <GameSidebar state={gameState} />
+            <GameSidebar state={gameState} onInsertCommand={(cmd) => setInput(cmd)} />
           </div>
         </div>
       )}

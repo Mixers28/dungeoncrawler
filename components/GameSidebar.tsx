@@ -4,12 +4,17 @@ import { useState } from 'react';
 import { GameState } from '../lib/game-schema';
 import { Shield, Sword, MapPin, Coins, Scroll, Skull, ImageOff, Heart } from 'lucide-react';
 
-export function GameSidebar({ state }: { state: GameState }) {
+export function GameSidebar({ state, onInsertCommand }: { state: GameState; onInsertCommand?: (cmd: string) => void }) {
   const hpPercent = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
   const [imageError, setImageError] = useState(false);
   const handleSpellClick = (name: string) => {
+    const cmd = `cast ${name.toLowerCase()}`;
+    if (onInsertCommand) {
+      onInsertCommand(cmd);
+      return;
+    }
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(`cast ${name.toLowerCase()}`);
+      navigator.clipboard.writeText(cmd);
     }
   };
   const [showSpellbook, setShowSpellbook] = useState(true);
