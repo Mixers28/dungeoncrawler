@@ -29,7 +29,16 @@ export const entitySchema = z.object({
   damageDice: z.string().default("1d4"),
 });
 
-export const narrationModeEnum = z.enum(['GENERAL_INTERACTION', 'ROOM_INTRO', 'INSPECTION', 'COMBAT_FOCUS']);
+export const narrationModeEnum = z.enum([
+  'GENERAL_INTERACTION',
+  'ROOM_INTRO',
+  'INSPECTION',
+  'COMBAT_FOCUS',
+  'SEARCH',
+  'INVESTIGATE',
+  'LOOT',
+  'SHEET',
+]);
 export const logEntrySchema = z.object({
   id: z.string().default(() => `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`),
   mode: narrationModeEnum,

@@ -88,7 +88,16 @@ const entitySchema = z.object({
   attackBonus: z.coerce.number().int().default(2), 
   damageDice: z.string().default("1d4"),
 });
-const narrationModeEnum = z.enum(["GENERAL_INTERACTION", "ROOM_INTRO", "INSPECTION", "COMBAT_FOCUS"]);
+const narrationModeEnum = z.enum([
+  "GENERAL_INTERACTION",
+  "ROOM_INTRO",
+  "INSPECTION",
+  "COMBAT_FOCUS",
+  "SEARCH",
+  "INVESTIGATE",
+  "LOOT",
+  "SHEET",
+]);
 const logEntrySchema = z.object({
   id: z.string().default(() => `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`),
   mode: narrationModeEnum,
@@ -297,7 +306,23 @@ async function resolveRoomDescription(state: GameState): Promise<{ desc: string,
   return { desc, registry: newRegistry };
 }
 
-type NarrationMode = "GENERAL_INTERACTION" | "ROOM_INTRO" | "INSPECTION" | "COMBAT_FOCUS";
+type NarrationMode = "GENERAL_INTERACTION" | "ROOM_INTRO" | "INSPECTION" | "COMBAT_FOCUS" | "SEARCH" | "INVESTIGATE" | "LOOT" | "SHEET";
+
+function shouldUseNarrator(mode: NarrationMode): boolean {
+  switch (mode) {
+    case "SEARCH":
+    case "INVESTIGATE":
+    case "LOOT":
+    case "ROOM_INTRO":
+    case "GENERAL_INTERACTION":
+    case "COMBAT_FOCUS":
+      return true;
+    case "SHEET":
+    case "INSPECTION":
+    default:
+      return false;
+  }
+}
 
 function summarizeInventory(inventory: GameState["inventory"]): { summary: string; items: string[] } {
   if (!inventory || inventory.length === 0) {
@@ -372,11 +397,27 @@ async function generateFlavorLine(args: {
     const { text } = await generateText({
       model: groq(MODEL_NARRATOR),
       temperature: 0.5,
-    maxTokens: 80,
-    system: `
+      maxTokens: 80,
+      system: `
 You are THE NARRATOR for a dark, minimalist dungeon-crawl called "Dungeon Portal".
-You only add mood. Do not add or modify facts. Do not invent NPCs, rooms, exits, items, spells, mechanics, numbers, or loot.
-Do not list inventory items, skills, abilities, or stats; the player already sees them. Never mention numbers (HP, damage, AC, DC, gold, dice). Write a single sentence under 30 words. If unsure, return an empty string.
+You only add mood beneath a factual log. You never change game state.
+
+ROLE:
+- INPUT: MODE + EVENT_SUMMARY + LOCATION_DESCRIPTION (+ optional INVENTORY_SUMMARY)
+- OUTPUT: ONE sentence (~30 words) of atmosphere; do NOT repeat the facts.
+
+HARD RULES:
+- No new items, gold, weapons, armor, loot, NPCs, shops, exits, abilities, spells, skills.
+- No numbers (HP, damage, AC, DC, gold, distances, dice).
+- For SEARCH/LOOT: describe smell, dust, blood, weight/texture; never add extra loot.
+- For INVESTIGATE: hint mood/age/wear of existing objects; no secret doors or puzzles.
+- For COMBAT_FOCUS: describe danger and motion, not mechanics.
+- For ROOM_INTRO/GENERAL: lean on environment and tone.
+- "The Iron Gate" is an exterior iron gate in cold stone; never a tavern/inn/bar.
+
+STYLE:
+- Gritty, grounded dark fantasy; one or two sharp details.
+- One sentence max; no questions.
 `,
     prompt: `
 MODE: ${args.mode}
@@ -714,10 +755,16 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   const isNewLocation = newState.location !== currentState.location;
   const isLooking = userAction.toLowerCase().includes('look') || userAction.toLowerCase().includes('search');
   const isCombat = newState.isCombatActive;
+  const wantsLoot = /(loot|search|rummage|pick over|salvage)/i.test(userAction);
+  const wantsInvestigate = /(investigate|inspect|examine)/i.test(userAction);
+  const isSheet = parsedIntent.type === 'checkSheet';
   
   let narrationMode: NarrationMode = "GENERAL_INTERACTION";
   if (isNewLocation) narrationMode = "ROOM_INTRO";
-  else if (isLooking) narrationMode = "INSPECTION";
+  else if (isSheet) narrationMode = "SHEET";
+  else if (wantsLoot) narrationMode = "LOOT";
+  else if (wantsInvestigate) narrationMode = "INVESTIGATE";
+  else if (isLooking) narrationMode = "SEARCH";
   else if (isCombat) narrationMode = "COMBAT_FOCUS";
 
   return { newState, roomDesc: finalDesc, accountantFacts: [...summaryParts], eventSummary: newState.lastActionSummary, narrationMode };
@@ -849,12 +896,14 @@ export async function processTurn(currentState: GameState, userAction: string): 
     engineFacts,
   });
 
-  const flavorLine = await generateFlavorLine({
-    eventSummary: accountantSummary,
-    locationDescription,
-    inventorySummary,
-    mode: narrationMode,
-  });
+  const flavorLine = shouldUseNarrator(narrationMode)
+    ? await generateFlavorLine({
+        eventSummary: accountantSummary,
+        locationDescription,
+        inventorySummary,
+        mode: narrationMode,
+      })
+    : null;
 
   const factBlock = facts.join('\n');
   const combinedNarrative = flavorLine ? `${factBlock}\n\n${flavorLine}` : factBlock;
