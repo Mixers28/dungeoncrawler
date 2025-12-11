@@ -35,6 +35,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ArchetypeKey | null>('fighter');
   const [error, setError] = useState<string | null>(null);
+  const [lastSlots, setLastSlots] = useState<string>('');
   
   // UI STATES
   const [showIntro, setShowIntro] = useState(false);
@@ -47,6 +48,15 @@ export default function Home() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (gameState?.spellSlots) {
+      const slotText = Object.entries(gameState.spellSlots)
+        .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
+        .join(' · ');
+      setLastSlots(slotText);
+    }
+  }, [gameState]);
 
 async function handleStart() {
     setIsLoading(true);
@@ -128,6 +138,12 @@ async function handleStart() {
     try {
       const { newState, logEntry } = await processTurn(gameState, userAction);
       setGameState(newState);
+      if (newState?.spellSlots) {
+        const slotText = Object.entries(newState.spellSlots)
+          .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
+          .join(' · ');
+        setLastSlots(slotText);
+      }
       setMessages(prev => [
         ...prev,
         {
@@ -312,8 +328,18 @@ async function handleStart() {
                 disabled={isLoading}
                 autoFocus
               />
+              {lastSlots && <div className="hidden md:flex items-center text-xs text-slate-400 px-2">{lastSlots}</div>}
               <button type="submit" disabled={isLoading || !input.trim()} className="bg-amber-600 hover:bg-amber-700 text-slate-900 font-bold px-8 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 ACT
+              </button>
+              <button
+                type="button"
+                onClick={() => setInput('')}
+                disabled={isLoading}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Clear input"
+              >
+                ✕
               </button>
             </form>
           )}
