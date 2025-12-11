@@ -895,7 +895,18 @@ export async function processTurn(currentState: GameState, userAction: string): 
     engineFacts,
   });
 
-  const flavorLine = shouldUseNarrator(narrationMode)
+  let factBlock = facts.join('\n');
+  let skipFlavor = false;
+
+  if (["SEARCH", "ROOM_INTRO", "INVESTIGATE"].includes(narrationMode)) {
+    const lastSummary = newState.log?.slice(-1)[0]?.summary;
+    if (lastSummary && lastSummary === factBlock) {
+      factBlock = "You scan the area again; nothing seems to have changed.";
+      skipFlavor = true;
+    }
+  }
+
+  const flavorLine = shouldUseNarrator(narrationMode) && !skipFlavor
     ? await generateFlavorLine({
         eventSummary: accountantSummary,
         locationDescription,
@@ -904,7 +915,6 @@ export async function processTurn(currentState: GameState, userAction: string): 
       })
     : null;
 
-  const factBlock = facts.join('\n');
   const combinedNarrative = flavorLine ? `${factBlock}\n\n${flavorLine}` : factBlock;
 
   const logEntry: LogEntry = {
