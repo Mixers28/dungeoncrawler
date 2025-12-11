@@ -973,7 +973,7 @@ export async function processTurn(currentState: GameState, userAction: string): 
     previousState: currentState,
     roomDesc: locationDescription,
     engineFacts,
-    includeLocation: newState.location !== currentState.location || parsedIntent.type === 'look',
+    includeLocation: newState.location !== currentState.location || narrationMode === "SEARCH" || narrationMode === "ROOM_INTRO",
   });
 
   let factBlock = facts.join('\n');
