@@ -720,7 +720,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   }
 
   // 8b. LOOT CORPSES (simple generic loot)
-  const wantsLoot = /(loot|search|rummage|pick over|salvage)/i.test(userAction);
+  const wantsLoot = /(loot|rummage|pick over|salvage)/i.test(userAction);
   const deadCorpse = newState.nearbyEntities.find(e => e.status === 'dead' && !e.name.toLowerCase().includes('looted'));
   if (wantsLoot && deadCorpse) {
     const goldFind = Math.max(1, Math.floor(Math.random() * 6));
@@ -755,7 +755,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   const isNewLocation = newState.location !== currentState.location;
   const isLooking = userAction.toLowerCase().includes('look') || userAction.toLowerCase().includes('search');
   const isCombat = newState.isCombatActive;
-  const wantsLoot = /(loot|search|rummage|pick over|salvage)/i.test(userAction);
+  const wantsLoot = /(loot|rummage|pick over|salvage)/i.test(userAction);
   const wantsInvestigate = /(investigate|inspect|examine)/i.test(userAction);
   const isSheet = parsedIntent.type === 'checkSheet';
   
