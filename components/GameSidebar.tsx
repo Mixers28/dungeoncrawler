@@ -163,6 +163,26 @@ export function GameSidebar({ state, onInsertCommand }: { state: GameState; onIn
           </div>
         )}
 
+        {/* WEAPONS QUICK INSERT */}
+        {state.inventory && state.inventory.some(i => i.type === 'weapon') && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
+              Weapons
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {state.inventory.filter(i => i.type === 'weapon').map((item, idx) => (
+                <button
+                  key={`${item.name}-${idx}`}
+                  className="px-2 py-1 rounded border border-slate-800 bg-slate-900/60 text-xs text-slate-200 hover:border-amber-600 hover:text-amber-200 transition-colors"
+                  onClick={() => onInsertCommand?.(`attack with ${item.name.toLowerCase()}`)}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* SPELLBOOK (only if spells exist) */}
         {state.knownSpells && state.knownSpells.length > 0 && (
           <div className="space-y-3">
