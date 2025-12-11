@@ -9,7 +9,7 @@ import { createClient } from '../utils/supabase/server';
 import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../lib/rules';
 import { ARCHETYPES } from './characters';
 import { getClassReference } from '../lib/5e/classes';
-import { weaponsByName } from '../lib/5e/reference';
+import { armorByName, starterCharacters, weaponsByName } from '../lib/5e/reference';
 import { parseActionIntent, ParsedIntent } from '../lib/5e/intents';
 
 const groq = createOpenAI({
@@ -148,6 +148,12 @@ const gameStateSchema = z.object({
   inventoryChangeLog: z.array(z.string()).default([]),
   isCombatActive: z.boolean().default(false),
   skills: z.array(z.string()).default([]),
+  knownSpells: z.array(z.string()).default([]),
+  preparedSpells: z.array(z.string()).default([]),
+  spellSlots: z.record(z.object({ max: z.number(), current: z.number() })).default({}),
+  spellcastingAbility: z.string().default('int'),
+  spellAttackBonus: z.number().default(0),
+  spellSaveDc: z.number().default(0),
   log: z.array(logEntrySchema).default([]),
 });
 
@@ -157,6 +163,21 @@ type GameState = z.infer<typeof gameStateSchema>;
 type ActionIntent = 'attack' | 'defend' | 'run' | 'other';
 
 const XP_THRESHOLDS = [0, 300, 900, 2700, 6500, 14000, 23000];
+
+function buildInventoryFromEquipment(equipment: string[]): Array<z.infer<typeof itemSchema>> {
+  return equipment.map((name, idx) => {
+    const lower = name.toLowerCase();
+    const isWeapon = !!weaponsByName[lower];
+    const isArmor = !!armorByName[lower];
+    const type: 'weapon' | 'armor' | 'misc' = isWeapon ? 'weapon' : isArmor ? 'armor' : 'misc';
+    return {
+      id: `eq-${idx}-${Date.now().toString(36)}`,
+      name,
+      type,
+      quantity: 1,
+    };
+  });
+}
 
 async function hydrateState(rawState: unknown): Promise<GameState> {
   const parsed = gameStateSchema.safeParse(rawState);
@@ -170,6 +191,14 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
     const classKey = (state.character?.class || 'fighter').toLowerCase();
     state.skills = getClassReference(classKey).skills;
   }
+
+  // Backfill: ensure spell fields exist
+  state.knownSpells = state.knownSpells || [];
+  state.preparedSpells = state.preparedSpells || [];
+  state.spellSlots = state.spellSlots || {};
+  state.spellcastingAbility = state.spellcastingAbility || 'int';
+  state.spellAttackBonus = state.spellAttackBonus || 0;
+  state.spellSaveDc = state.spellSaveDc || 0;
 
   // Backfill: migrate old narrativeHistory into log as summary-only entries
   if ((!state.log || state.log.length === 0) && state.narrativeHistory && state.narrativeHistory.length > 0) {
@@ -433,6 +462,12 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   if (parsedIntent.type === 'castAbility') {
     const abilityName = parsedIntent.abilityName;
     summaryParts.push(`You attempt to use ${abilityName}, but no learned abilities are available yet.`);
+  } else if (parsedIntent.type === 'look') {
+    const threats = newState.nearbyEntities.filter(e => e.status === 'alive');
+    const threatText = threats.length > 0
+      ? `You spot ${threats.map(e => `${e.name} (${e.hp}/${e.maxHp} HP)`).join(', ')}.`
+      : "No immediate threats.";
+    summaryParts.push(`You look around ${newState.location}. ${threatText}`);
   } else if (actionIntent === 'attack' && activeMonster) {
     playerAttackRoll = Math.floor(Math.random() * 20) + 1; // no bonus for now
     if (playerAttackRoll >= activeMonster.ac) {
@@ -615,9 +650,42 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
   const startingArmor = archetype.startingArmor;
   const baseAc = 10 + (archetype.acBonus || 0);
   const baseHp = 20 + (archetype.hpBonus || 0);
+  const isWizard = (archetypeKey || 'fighter') === 'wizard';
+
+  let initialHp = baseHp;
+  let initialAc = baseAc;
+  let skills = classRef.skills;
+  let inventory: GameState["inventory"] = [
+    { id: '1', name: startingWeapon, type: 'weapon', quantity: 1 },
+    ...(startingArmor ? [{ id: 'armor-1', name: startingArmor, type: 'armor', quantity: 1 }] : []),
+  ];
+  let knownSpells: string[] = [];
+  let preparedSpells: string[] = [];
+  let spellSlots: Record<string, { max: number; current: number }> = {};
+  let spellcastingAbility = 'int';
+  let spellAttackBonus = 0;
+  let spellSaveDc = 0;
+
+  if (isWizard) {
+    const starter = starterCharacters.find(c => c.class.toLowerCase() === 'wizard') || starterCharacters[0];
+    if (starter) {
+      initialHp = starter.max_hp;
+      initialAc = 10 + Math.floor(((starter.abilities.dex || 10) - 10) / 2);
+      skills = starter.skills;
+      inventory = buildInventoryFromEquipment(starter.equipment);
+      knownSpells = [...starter.spells.cantrips_known, ...starter.spells.spellbook];
+      preparedSpells = starter.spells.prepared;
+      spellSlots = Object.fromEntries(
+        Object.entries(starter.casting.slots).map(([lvl, data]) => [lvl, { max: data.max, current: data.current }])
+      );
+      spellcastingAbility = starter.casting.spellcasting_ability || 'int';
+      spellAttackBonus = starter.casting.spell_attack_bonus || 0;
+      spellSaveDc = starter.casting.spell_save_dc || 0;
+    }
+  }
 
   const initialState: GameState = {
-    hp: baseHp, maxHp: baseHp, ac: baseAc, tempAcBonus: 0, gold: 0,
+    hp: initialHp, maxHp: initialHp, ac: initialAc, tempAcBonus: 0, gold: 0,
     level: 1, xp: 0, xpToNext: XP_THRESHOLDS[1],
     character: {
       name: 'Adventurer',
@@ -629,11 +697,14 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
       startingArmor: startingArmor || undefined,
     },
     location: "The Iron Gate", 
-    inventory: [
-      { id: '1', name: startingWeapon, type: 'weapon', quantity: 1 },
-      ...(startingArmor ? [{ id: 'armor-1', name: startingArmor, type: 'armor', quantity: 1 }] : []),
-    ],
-    skills: classRef.skills,
+    inventory,
+    skills,
+    knownSpells,
+    preparedSpells,
+    spellSlots,
+    spellcastingAbility,
+    spellAttackBonus,
+    spellSaveDc,
     quests: [{ id: '1', title: 'The Awakening', status: 'active', description: 'Find the Iron Key.' }],
     // Populating with STATS from getScenario
     nearbyEntities: [{ 

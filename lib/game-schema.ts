@@ -93,6 +93,12 @@ export const gameStateSchema = z.object({
   // NEW: COMBAT TRACKING
   isCombatActive: z.boolean().default(false),
   skills: z.array(z.string()).default([]),
+  knownSpells: z.array(z.string()).default([]),
+  preparedSpells: z.array(z.string()).default([]),
+  spellSlots: z.record(z.object({ max: z.number(), current: z.number() })).default({}),
+  spellcastingAbility: z.string().default('int'),
+  spellAttackBonus: z.number().default(0),
+  spellSaveDc: z.number().default(0),
   log: z.array(logEntrySchema).default([]),
 });
 
