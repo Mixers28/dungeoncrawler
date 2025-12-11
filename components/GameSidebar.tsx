@@ -7,6 +7,13 @@ import { Shield, Sword, MapPin, Coins, Scroll, Skull, ImageOff, Heart } from 'lu
 export function GameSidebar({ state }: { state: GameState }) {
   const hpPercent = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
   const [imageError, setImageError] = useState(false);
+  const handleSpellClick = (name: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(`cast ${name.toLowerCase()}`);
+    }
+  };
+  const [showSpellbook, setShowSpellbook] = useState(true);
+  const [showBackpack, setShowBackpack] = useState(true);
 
   // Use the image URL provided by the backend library
   const imageUrl = state.currentImage || "";
@@ -103,24 +110,84 @@ export function GameSidebar({ state }: { state: GameState }) {
 
         {/* INVENTORY */}
         <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
-                Backpack
-            </h3>
-            {state.inventory.length === 0 && <p className="text-xs text-slate-600 italic">Empty...</p>}
-            <div className="space-y-2">
-            {state.inventory.map((item, i) => (
-                <div key={i} className="flex items-center gap-3 p-2 bg-slate-900/50 rounded hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
-                <div className="p-2 bg-slate-950 rounded text-amber-700/80">
-                    {item.type === 'weapon' ? <Sword size={16} /> : <Scroll size={16} />}
+            <button
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2 hover:text-amber-400 transition-colors"
+              onClick={() => setShowBackpack(!showBackpack)}
+            >
+              <span>Backpack</span>
+              <span className="text-[10px] font-mono text-slate-400">{showBackpack ? 'Hide' : 'Show'}</span>
+            </button>
+            {showBackpack && (
+              <>
+                {state.inventory.length === 0 && <p className="text-xs text-slate-600 italic">Empty...</p>}
+                <div className="space-y-2">
+                  {state.inventory.map((item, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2 bg-slate-900/50 rounded hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
+                      <div className="p-2 bg-slate-950 rounded text-amber-700/80">
+                        {item.type === 'weapon' ? <Sword size={16} /> : <Scroll size={16} />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-300">{item.name}</p>
+                        {item.effect && <p className="text-[10px] text-slate-500">{item.effect}</p>}
+                      </div>
+                      <span className="text-xs font-mono text-slate-500">x{item.quantity}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-300">{item.name}</p>
-                    {item.effect && <p className="text-[10px] text-slate-500">{item.effect}</p>}
+              </>
+            )}
+        </div>
+
+        {/* SPELLBOOK */}
+        <div className="space-y-3">
+          <button
+            className="w-full flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2 hover:text-amber-400 transition-colors"
+            onClick={() => setShowSpellbook(!showSpellbook)}
+          >
+            <span>Spellbook</span>
+            <span className="text-[10px] font-mono text-slate-400">{showSpellbook ? 'Hide' : 'Show'}</span>
+          </button>
+          {showSpellbook && (
+            <>
+              {(!state.knownSpells || state.knownSpells.length === 0) && (
+                <p className="text-xs text-slate-600 italic">No spells learned.</p>
+              )}
+              <div className="space-y-2">
+                {state.knownSpells?.map((spell, i) => {
+                  const prepared = state.preparedSpells?.some(s => s.toLowerCase() === spell.toLowerCase());
+                  return (
+                    <button
+                      key={`${spell}-${i}`}
+                      className="w-full flex items-center justify-between gap-2 p-2 bg-slate-900/50 rounded border border-transparent hover:border-amber-700 hover:bg-slate-800 text-left transition-colors"
+                      onClick={() => handleSpellClick(spell)}
+                      title="Click to copy a cast command"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Scroll size={16} className="text-amber-500" />
+                        <span className="text-sm text-slate-200">{spell}</span>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${prepared ? 'bg-amber-900/50 text-amber-200 border border-amber-700' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                        {prepared ? 'Prepared' : 'Known'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {state.spellSlots && Object.keys(state.spellSlots).length > 0 && (
+                <div className="text-[11px] text-slate-400">
+                  <div className="uppercase tracking-widest text-slate-500 mb-1">Slots</div>
+                  <div className="space-y-1">
+                    {Object.entries(state.spellSlots).map(([lvl, data]) => (
+                      <div key={lvl} className="flex items-center justify-between">
+                        <span>{lvl.replace('_', ' ')}</span>
+                        <span className="font-mono text-slate-200">{data.current}/{data.max}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <span className="text-xs font-mono text-slate-500">x{item.quantity}</span>
-                </div>
-            ))}
-            </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* NEARBY ENTITIES (With HP Bars) */}
