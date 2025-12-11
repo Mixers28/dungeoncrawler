@@ -99,6 +99,12 @@ export const gameStateSchema = z.object({
   spellcastingAbility: z.string().default('int'),
   spellAttackBonus: z.number().default(0),
   spellSaveDc: z.number().default(0),
+  activeEffects: z.array(z.object({
+    name: z.string(),
+    type: z.enum(['ac_bonus', 'buff', 'debuff']).default('buff'),
+    value: z.number().optional(),
+    expiresAtTurn: z.number().optional(),
+  })).default([]),
   log: z.array(logEntrySchema).default([]),
 });
 

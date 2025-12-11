@@ -154,6 +154,12 @@ const gameStateSchema = z.object({
   spellcastingAbility: z.string().default('int'),
   spellAttackBonus: z.number().default(0),
   spellSaveDc: z.number().default(0),
+  activeEffects: z.array(z.object({
+    name: z.string(),
+    type: z.enum(['ac_bonus', 'buff', 'debuff']).default('buff'),
+    value: z.number().optional(),
+    expiresAtTurn: z.number().optional(),
+  })).default([]),
   log: z.array(logEntrySchema).default([]),
 });
 
@@ -199,6 +205,7 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
   state.spellcastingAbility = state.spellcastingAbility || 'int';
   state.spellAttackBonus = state.spellAttackBonus || 0;
   state.spellSaveDc = state.spellSaveDc || 0;
+  state.activeEffects = state.activeEffects || [];
 
   // Backfill: migrate old narrativeHistory into log as summary-only entries
   if ((!state.log || state.log.length === 0) && state.narrativeHistory && state.narrativeHistory.length > 0) {
@@ -531,9 +538,12 @@ async function _updateGameState(currentState: GameState, userAction: string) {
         summaryParts.push(`You cast Ray of Frost at ${targetName}, dealing ${dmg} cold damage.`);
       } else if (spell.name.toLowerCase() === 'shield') {
         newState.tempAcBonus = Math.max(newState.tempAcBonus, 5);
+        newState.activeEffects = [...(newState.activeEffects || []), { name: 'Shield', type: 'ac_bonus', value: 5, expiresAtTurn: newState.level + 1 }];
         summaryParts.push(`You raise Shield, gaining +5 AC until the start of your next turn.`);
       } else if (spell.name.toLowerCase() === 'mage armor') {
-        newState.ac = Math.max(newState.ac, 13 + Math.floor(((newState.character?.acBonus || 0) + (newState.spellcastingAbility === 'int' ? 0 : 0))));
+        const dexBonus = Math.floor(((newState.character?.acBonus || 0) + (newState.spellcastingAbility === 'int' ? 0 : 0)));
+        newState.ac = Math.max(newState.ac, 13 + dexBonus);
+        newState.activeEffects = [...(newState.activeEffects || []), { name: 'Mage Armor', type: 'ac_bonus', value: 13 + dexBonus, expiresAtTurn: undefined }];
         summaryParts.push(`You ward yourself with Mage Armor, hardening your defenses.`);
       } else if (spell.name.toLowerCase() === 'detect magic') {
         summaryParts.push(`You attune your senses; lingering magic hums in the air.`);
@@ -574,7 +584,12 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     const skills = newState.skills?.length ? newState.skills.join(', ') : 'None';
     const primaryWeapon = newState.inventory.find(i => i.type === 'weapon')?.name || 'None';
     const armor = newState.inventory.find(i => i.type === 'armor')?.name || 'None';
-    summaryParts.push(`Skills: ${skills}. Equipped weapon: ${primaryWeapon}. Armor: ${armor}.`);
+    const known = newState.knownSpells?.length ? newState.knownSpells.join(', ') : 'None';
+    const prepared = newState.preparedSpells?.length ? newState.preparedSpells.join(', ') : 'None';
+    const slotText = Object.entries(newState.spellSlots || {})
+      .map(([lvl, data]) => `${lvl.replace('_', ' ')}: ${data.current}/${data.max}`)
+      .join('; ');
+    summaryParts.push(`Skills: ${skills}. Equipped weapon: ${primaryWeapon}. Armor: ${armor}. Spells known: ${known}. Spells prepared: ${prepared}. Slots: ${slotText || 'None'}.`);
   } else if (actionIntent === 'other' && newState.nearbyEntities.length === 0) {
     summaryParts.push("You act, but there is no immediate threat here.");
   } else if (actionIntent === 'attack' && !activeMonster) {
