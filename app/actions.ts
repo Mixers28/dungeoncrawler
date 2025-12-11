@@ -11,6 +11,7 @@ import { ARCHETYPES } from './characters';
 import { getClassReference } from '../lib/5e/classes';
 import { armorByName, starterCharacters, weaponsByName, wizardSpellsByName } from '../lib/5e/reference';
 import { parseActionIntentWithKnown, ParsedIntent } from '../lib/5e/intents';
+import { getSceneById, pickSceneVariant } from '../lib/story';
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -49,18 +50,6 @@ function rollDice(notation: string): number {
   }
 
   return total;
-}
-
-function getRandomScenario(act: number) {
-  const easyMobs = ["Giant Rat", "Skeleton", "Green Slime"];
-  const actMobs = act === 0 ? easyMobs : Object.keys(MONSTER_MANUAL);
-  const mobName = actMobs[Math.floor(Math.random() * actMobs.length)];
-  const stats = MONSTER_MANUAL[mobName];
-  const LOCATIONS = ["Damp Hallway", "Collapsed Tunnel", "Forgotten Shrine", "Mess Hall", "Torture Chamber"];
-  const loc = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
-  
-  // Return stats so we can populate the new schema fields
-  return { loc, mob: mobName, desc: stats.desc, hp: stats.hp, maxHp: stats.hp, ac: stats.ac, atk: stats.attackBonus, dmg: stats.damage };
 }
 
 // --- SCHEMAS (Use Import or Redefine) ---
@@ -169,6 +158,8 @@ const gameStateSchema = z.object({
     value: z.number().optional(),
     expiresAtTurn: z.number().optional(),
   })).default([]),
+  storySceneId: z.string().default('iron_gate_v1'),
+  storyFlags: z.array(z.string()).default([]),
   log: z.array(logEntrySchema).default([]),
 });
 
@@ -194,6 +185,40 @@ function buildInventoryFromEquipment(equipment: string[]): Array<z.infer<typeof 
   });
 }
 
+function applySceneEntry(sceneId: string, baseState: GameState, summaryParts: string[]): { state: GameState; roomDesc: string } {
+  const scene = getSceneById(sceneId);
+  const nextState = { ...baseState };
+  let roomDesc = baseState.roomRegistry?.[scene?.location || baseState.location] || baseState.location;
+
+  if (scene) {
+    nextState.storySceneId = scene.id;
+    nextState.location = scene.location;
+    if (scene.description) {
+      roomDesc = scene.description;
+      nextState.roomRegistry = { ...(nextState.roomRegistry || {}), [scene.location]: scene.description };
+    }
+    if (scene.onEnter?.log) {
+      summaryParts.push(scene.onEnter.log);
+    }
+    if (scene.onEnter?.spawn) {
+      nextState.nearbyEntities = scene.onEnter.spawn.map(sp => ({
+        name: sp.name,
+        status: 'alive',
+        description: sp.name,
+        hp: sp.hp,
+        maxHp: sp.maxHp || sp.hp,
+        ac: sp.ac,
+        attackBonus: sp.attackBonus,
+        damageDice: sp.damageDice,
+      }));
+    } else {
+      nextState.nearbyEntities = [];
+    }
+  }
+
+  return { state: nextState, roomDesc };
+}
+
 async function hydrateState(rawState: unknown): Promise<GameState> {
   const parsed = gameStateSchema.safeParse(rawState);
   if (!parsed.success) {
@@ -215,6 +240,8 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
   state.spellAttackBonus = state.spellAttackBonus || 0;
   state.spellSaveDc = state.spellSaveDc || 0;
   state.activeEffects = state.activeEffects || [];
+  state.storySceneId = state.storySceneId || 'iron_gate_v1';
+  state.storyFlags = state.storyFlags || [];
 
   // Backfill: migrate old narrativeHistory into log as summary-only entries
   if ((!state.log || state.log.length === 0) && state.narrativeHistory && state.narrativeHistory.length > 0) {
@@ -500,6 +527,34 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     log: [...(currentState.log || [])],
   };
 
+  const currentScene = getSceneById(currentState.storySceneId);
+
+  // 2a. Scene exit transitions before other actions
+  const sceneExit = currentScene?.exits?.find(ex => ex.verb.some(v => userAction.toLowerCase().includes(v)));
+  if (sceneExit) {
+    const aliveThreat = newState.nearbyEntities.some(e => e.status === 'alive');
+    if (aliveThreat) {
+      newState.lastActionSummary = "You cannot leave while threats remain.";
+      return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: ["You cannot leave while threats remain."], eventSummary: newState.lastActionSummary, narrationMode: "GENERAL_INTERACTION" };
+    }
+    if (sceneExit.consumeItem) {
+      const hasItem = newState.inventory.some(i => i.name.toLowerCase() === sceneExit.consumeItem!.toLowerCase());
+      if (!hasItem) {
+        newState.lastActionSummary = `You need ${sceneExit.consumeItem} to proceed.`;
+        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: [newState.lastActionSummary], eventSummary: newState.lastActionSummary, narrationMode: "GENERAL_INTERACTION" };
+      }
+      newState.inventory = newState.inventory.filter(i => i.name.toLowerCase() !== sceneExit.consumeItem!.toLowerCase());
+    }
+    const target = getSceneById(sceneExit.targetSceneId);
+    if (target) {
+      const summaryParts: string[] = [];
+      if (sceneExit.log) summaryParts.push(sceneExit.log);
+      const { state: transitioned, roomDesc } = applySceneEntry(target.id, newState, summaryParts);
+      transitioned.lastActionSummary = summaryParts.join(' ').trim() || `You move to ${target.location}.`;
+      return { newState: transitioned, roomDesc, accountantFacts: summaryParts, eventSummary: transitioned.lastActionSummary, narrationMode: "ROOM_INTRO" };
+    }
+  }
+
   // 3. ACTIVE MONSTER CONTEXT
   const activeMonsterIndex = newState.nearbyEntities.findIndex(e => e.status === 'alive');
   const activeMonster = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
@@ -707,17 +762,33 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     const xpAward = MONSTER_MANUAL[activeMonster!.name]?.hp ? Math.max(25, MONSTER_MANUAL[activeMonster!.name].hp * 5) : 50;
     newState.xp += xpAward;
     summaryParts.push(`You gain ${xpAward} XP.`);
-    let leveled = false;
-    while (newState.level < XP_THRESHOLDS.length && newState.xp >= XP_THRESHOLDS[newState.level]) {
-      newState.level += 1;
-      newState.xpToNext = XP_THRESHOLDS[newState.level] ?? newState.xpToNext;
-      // Simple HP bump per level
-      newState.maxHp += 2;
-      newState.hp = Math.max(newState.hp, newState.maxHp);
-      leveled = true;
-    }
-    if (leveled) summaryParts.push(`You reach level ${newState.level}.`);
   }
+
+  // Scene completion rewards
+  const sceneForReward = getSceneById(newState.storySceneId);
+  const sceneCleared = !newState.nearbyEntities.some(e => e.status === 'alive');
+  if (sceneForReward?.onComplete?.flagsSet && sceneCleared) {
+    const newFlags = sceneForReward.onComplete.flagsSet.filter(f => !(newState.storyFlags || []).includes(f));
+    if (newFlags.length > 0) {
+      newState.storyFlags = [...(newState.storyFlags || []), ...newFlags];
+      const rewardXp = sceneForReward.onComplete.reward?.xp || 0;
+      if (rewardXp > 0) {
+        newState.xp += rewardXp;
+        summaryParts.push(`You gain ${rewardXp} XP for securing ${sceneForReward.title || sceneForReward.location}.`);
+      }
+    }
+  }
+
+  let leveled = false;
+  while (newState.level < XP_THRESHOLDS.length && newState.xp >= XP_THRESHOLDS[newState.level]) {
+    newState.level += 1;
+    newState.xpToNext = XP_THRESHOLDS[newState.level] ?? newState.xpToNext;
+    // Simple HP bump per level
+    newState.maxHp += 2;
+    newState.hp = Math.max(newState.hp, newState.maxHp);
+    leveled = true;
+  }
+  if (leveled) summaryParts.push(`You reach level ${newState.level}.`);
 
   // 8b. LOOT CORPSES (simple generic loot)
   const wantsLoot = /(loot|rummage|pick over|salvage)/i.test(userAction);
@@ -788,7 +859,6 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
     return hydrated;
   }
 
-  const start = getRandomScenario(0);
   const archetype = archetypeKey && ARCHETYPES[archetypeKey] ? ARCHETYPES[archetypeKey] : ARCHETYPES.fighter;
   const classRef = getClassReference(archetypeKey || 'fighter');
 
@@ -830,7 +900,10 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
     }
   }
 
-  const initialState: GameState = {
+  const worldSeed = Math.floor(Math.random() * 999999);
+  const gateScene = pickSceneVariant('act1_gate', worldSeed) || getSceneById('iron_gate_v1');
+
+  const baseState: GameState = {
     hp: initialHp, maxHp: initialHp, ac: initialAc, tempAcBonus: 0, gold: 0,
     level: 1, xp: 0, xpToNext: XP_THRESHOLDS[1],
     character: {
@@ -842,7 +915,7 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
       startingWeapon,
       startingArmor: startingArmor || undefined,
     },
-    location: "The Iron Gate", 
+    location: gateScene?.location || "The Iron Gate", 
     inventory,
     skills,
     knownSpells,
@@ -852,31 +925,32 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
     spellAttackBonus,
     spellSaveDc,
     quests: [{ id: '1', title: 'The Awakening', status: 'active', description: 'Find the Iron Key.' }],
-    // Populating with STATS from getScenario
-    nearbyEntities: [{ 
-        name: start.mob, 
-        status: 'alive', 
-        description: start.desc, 
-        hp: start.hp, maxHp: start.maxHp, ac: start.ac,
-        attackBonus: start.atk, damageDice: start.dmg 
-    }],
+    nearbyEntities: [],
     lastActionSummary: "The gates are locked. A monster guards the path.",
-    worldSeed: Math.floor(Math.random() * 999999),
+    worldSeed,
     narrativeHistory: [],
     log: [],
     sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentImage: "",
-    locationHistory: ["The Iron Gate"],
+    locationHistory: [],
     inventoryChangeLog: [],
-    isCombatActive: false // Start neutral; combat begins on hostile actions
+    isCombatActive: false,
+    storySceneId: gateScene?.id || 'iron_gate_v1',
+    storyFlags: [],
+    activeEffects: [],
   };
 
-  const { url, registry } = await resolveSceneImage(initialState);
-  initialState.currentImage = url;
-  initialState.sceneRegistry = registry;
+  const entrySummary: string[] = [];
+  const { state: seededState } = applySceneEntry(baseState.storySceneId, baseState, entrySummary);
+  seededState.lastActionSummary = entrySummary.join(' ').trim() || baseState.lastActionSummary;
+  seededState.locationHistory = [seededState.location];
 
-  const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: initialState }, { onConflict: 'user_id' });
+  const { url, registry } = await resolveSceneImage(seededState);
+  seededState.currentImage = url;
+  seededState.sceneRegistry = registry;
+
+  const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: seededState }, { onConflict: 'user_id' });
   if (saveError) throw new Error(`Failed to save new game: ${saveError.message}`);
-  return initialState;
+  return seededState;
 }
 
 // --- EXPORT 2: PROCESS TURN ---

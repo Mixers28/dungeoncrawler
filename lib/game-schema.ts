@@ -114,6 +114,8 @@ export const gameStateSchema = z.object({
     value: z.number().optional(),
     expiresAtTurn: z.number().optional(),
   })).default([]),
+  storySceneId: z.string().default('iron_gate_v1'),
+  storyFlags: z.array(z.string()).default([]),
   log: z.array(logEntrySchema).default([]),
 });
 
