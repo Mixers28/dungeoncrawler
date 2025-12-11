@@ -143,57 +143,56 @@ export function GameSidebar({ state, onInsertCommand }: { state: GameState; onIn
             )}
         </div>
 
-        {/* SPELLBOOK */}
-        <div className="space-y-3">
-          <button
-            className="w-full flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2 hover:text-amber-400 transition-colors"
-            onClick={() => setShowSpellbook(!showSpellbook)}
-          >
-            <span>Spellbook</span>
-            <span className="text-[10px] font-mono text-slate-400">{showSpellbook ? 'Hide' : 'Show'}</span>
-          </button>
-          {showSpellbook && (
-            <>
-              {(!state.knownSpells || state.knownSpells.length === 0) && (
-                <p className="text-xs text-slate-600 italic">No spells learned.</p>
-              )}
-              <div className="space-y-2">
-                {state.knownSpells?.map((spell, i) => {
-                  const prepared = state.preparedSpells?.some(s => s.toLowerCase() === spell.toLowerCase());
-                  return (
-                    <button
-                      key={`${spell}-${i}`}
-                      className="w-full flex items-center justify-between gap-2 p-2 bg-slate-900/50 rounded border border-transparent hover:border-amber-700 hover:bg-slate-800 text-left transition-colors"
-                      onClick={() => handleSpellClick(spell)}
-                      title="Click to copy a cast command"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Scroll size={16} className="text-amber-500" />
-                        <span className="text-sm text-slate-200">{spell}</span>
-                      </div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${prepared ? 'bg-amber-900/50 text-amber-200 border border-amber-700' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-                        {prepared ? 'Prepared' : 'Known'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {state.spellSlots && Object.keys(state.spellSlots).length > 0 && (
-                <div className="text-[11px] text-slate-400">
-                  <div className="uppercase tracking-widest text-slate-500 mb-1">Slots</div>
-                  <div className="space-y-1">
-                    {Object.entries(state.spellSlots).map(([lvl, data]) => (
-                      <div key={lvl} className="flex items-center justify-between">
-                        <span>{lvl.replace('_', ' ')}</span>
-                        <span className="font-mono text-slate-200">{data.current}/{data.max}</span>
-                      </div>
-                    ))}
-                  </div>
+        {/* SPELLBOOK (only if spells exist) */}
+        {state.knownSpells && state.knownSpells.length > 0 && (
+          <div className="space-y-3">
+            <button
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2 hover:text-amber-400 transition-colors"
+              onClick={() => setShowSpellbook(!showSpellbook)}
+            >
+              <span>Spellbook</span>
+              <span className="text-[10px] font-mono text-slate-400">{showSpellbook ? 'Hide' : 'Show'}</span>
+            </button>
+            {showSpellbook && (
+              <>
+                <div className="space-y-2">
+                  {state.knownSpells?.map((spell, i) => {
+                    const prepared = state.preparedSpells?.some(s => s.toLowerCase() === spell.toLowerCase());
+                    return (
+                      <button
+                        key={`${spell}-${i}`}
+                        className="w-full flex items-center justify-between gap-2 p-2 bg-slate-900/50 rounded border border-transparent hover:border-amber-700 hover:bg-slate-800 text-left transition-colors"
+                        onClick={() => handleSpellClick(spell)}
+                        title="Click to copy a cast command"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Scroll size={16} className="text-amber-500" />
+                          <span className="text-sm text-slate-200">{spell}</span>
+                        </div>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${prepared ? 'bg-amber-900/50 text-amber-200 border border-amber-700' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                          {prepared ? 'Prepared' : 'Known'}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
-            </>
-          )}
-        </div>
+                {state.spellSlots && Object.keys(state.spellSlots).length > 0 && (
+                  <div className="text-[11px] text-slate-400">
+                    <div className="uppercase tracking-widest text-slate-500 mb-1">Slots</div>
+                    <div className="space-y-1">
+                      {Object.entries(state.spellSlots).map(([lvl, data]) => (
+                        <div key={lvl} className="flex items-center justify-between">
+                          <span>{lvl.replace('_', ' ')}</span>
+                          <span className="font-mono text-slate-200">{data.current}/{data.max}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* NEARBY ENTITIES (With HP Bars) */}
         {state.nearbyEntities.length > 0 && (
