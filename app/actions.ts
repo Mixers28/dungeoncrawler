@@ -373,14 +373,15 @@ function buildAccountantFacts(params: {
   previousState: GameState;
   roomDesc: string;
   engineFacts: string[];
+  includeLocation?: boolean;
 }) {
-  const { newState, previousState, roomDesc, engineFacts } = params;
+  const { newState, previousState, roomDesc, engineFacts, includeLocation = true } = params;
   const facts: string[] = [];
 
   const trimmedFacts = engineFacts.map(f => f.trim()).filter(Boolean);
   facts.push(...trimmedFacts);
 
-  facts.push(`Location: ${newState.location}. ${roomDesc}`);
+  if (includeLocation) facts.push(`Location: ${newState.location}. ${roomDesc}`);
 
   const hpDelta = newState.hp - previousState.hp;
   const hpDeltaNote = hpDelta === 0 ? "" : hpDelta > 0 ? ` (healed ${hpDelta})` : ` (lost ${Math.abs(hpDelta)})`;
@@ -491,7 +492,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     Object.keys(wizardSpellsByName)
   );
   const actionIntent: ActionIntent =
-    parsedIntent.type === 'attack'
+    parsedIntent.type === 'attack' || parsedIntent.type === 'castAbility'
       ? 'attack'
       : parsedIntent.type === 'defend'
       ? 'defend'
@@ -967,6 +968,7 @@ export async function processTurn(currentState: GameState, userAction: string): 
     previousState: currentState,
     roomDesc: locationDescription,
     engineFacts,
+    includeLocation: newState.location !== currentState.location || parsedIntent.type === 'look',
   });
 
   let factBlock = facts.join('\n');
