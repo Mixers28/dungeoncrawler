@@ -578,11 +578,14 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     const spell = wizardSpellsByName[spellKey];
     const isKnown = (newState.knownSpells || []).some(s => s.toLowerCase() === spellKey);
     const isPrepared = (newState.preparedSpells || []).some(s => s.toLowerCase() === spellKey);
+    let canCast = true;
 
     if (!spell || !isKnown) {
       summaryParts.push(`You have not learned that spell.`);
+      canCast = false;
     } else if (!isPrepared && !spell.level.toLowerCase().includes('cantrip')) {
       summaryParts.push(`You have not prepared ${spell.name}.`);
+      canCast = false;
     } else {
       const isCantrip = spell.level.toLowerCase().includes('cantrip');
       const slotKey = 'level_1';
@@ -591,73 +594,76 @@ async function _updateGameState(currentState: GameState, userAction: string) {
         const slot = slots[slotKey];
         if (!slot || slot.current <= 0) {
           summaryParts.push(`You have no ${slotKey.replace('_', ' ')} spell slots left.`);
+          canCast = false;
         } else {
           slots[slotKey] = { ...slot, current: slot.current - 1 };
           newState.spellSlots = slots;
         }
       }
 
-      // Resolve a minimal set of spells
-      const targetName = parsedIntent.target || activeMonster?.name || 'the area';
-      if (spell.name.toLowerCase() === 'magic missile') {
-        const dmg = rollDice("1d4+1");
-        if (activeMonster) {
-          const updatedHp = Math.max(0, activeMonster.hp - dmg);
-          newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
-            idx === activeMonsterIndex
-              ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
-              : entity
-          );
+      if (canCast) {
+        // Resolve a minimal set of spells
+        const targetName = parsedIntent.target || activeMonster?.name || 'the area';
+        if (spell.name.toLowerCase() === 'magic missile') {
+          const dmg = rollDice("1d4+1");
+          if (activeMonster) {
+            const updatedHp = Math.max(0, activeMonster.hp - dmg);
+            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+              idx === activeMonsterIndex
+                ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+                : entity
+            );
+          }
+          summaryParts.push(`You cast Magic Missile at ${targetName}, dealing ${dmg} force damage.`);
+        } else if (spell.name.toLowerCase() === 'thunderwave') {
+          const dmg = rollDice("2d8");
+          if (activeMonster) {
+            const updatedHp = Math.max(0, activeMonster.hp - dmg);
+            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+              idx === activeMonsterIndex
+                ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+                : entity
+            );
+          }
+          summaryParts.push(`You unleash Thunderwave at ${targetName}, dealing ${dmg} thunder damage.`);
+        } else if (spell.name.toLowerCase() === 'fire bolt') {
+          const dmg = rollDice("1d10");
+          if (activeMonster) {
+            const updatedHp = Math.max(0, activeMonster.hp - dmg);
+            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+              idx === activeMonsterIndex
+                ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+                : entity
+            );
+          }
+          summaryParts.push(`You hurl a Fire Bolt at ${targetName}, dealing ${dmg} fire damage.`);
+        } else if (spell.name.toLowerCase() === 'ray of frost') {
+          const dmg = rollDice("1d8");
+          if (activeMonster) {
+            const updatedHp = Math.max(0, activeMonster.hp - dmg);
+            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+              idx === activeMonsterIndex
+                ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+                : entity
+            );
+          }
+          summaryParts.push(`You cast Ray of Frost at ${targetName}, dealing ${dmg} cold damage.`);
+        } else if (spell.name.toLowerCase() === 'shield') {
+          newState.tempAcBonus = Math.max(newState.tempAcBonus, 5);
+          newState.activeEffects = [...(newState.activeEffects || []), { name: 'Shield', type: 'ac_bonus', value: 5, expiresAtTurn: newState.level + 1 }];
+          summaryParts.push(`You raise Shield, gaining +5 AC until the start of your next turn.`);
+        } else if (spell.name.toLowerCase() === 'mage armor') {
+          const dexBonus = Math.floor(((newState.character?.acBonus || 0) + (newState.spellcastingAbility === 'int' ? 0 : 0)));
+          newState.ac = Math.max(newState.ac, 13 + dexBonus);
+          newState.activeEffects = [...(newState.activeEffects || []), { name: 'Mage Armor', type: 'ac_bonus', value: 13 + dexBonus, expiresAtTurn: undefined }];
+          summaryParts.push(`You ward yourself with Mage Armor, hardening your defenses.`);
+        } else if (spell.name.toLowerCase() === 'detect magic') {
+          summaryParts.push(`You attune your senses; lingering magic hums in the air.`);
+        } else if (spell.name.toLowerCase() === 'identify') {
+          summaryParts.push(`You focus to identify an item or effect; details surface in your mind.`);
+        } else {
+          summaryParts.push(`You cast ${spell.name}, but its effect is not modeled yet.`);
         }
-        summaryParts.push(`You cast Magic Missile at ${targetName}, dealing ${dmg} force damage.`);
-      } else if (spell.name.toLowerCase() === 'thunderwave') {
-        const dmg = rollDice("2d8");
-        if (activeMonster) {
-          const updatedHp = Math.max(0, activeMonster.hp - dmg);
-          newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
-            idx === activeMonsterIndex
-              ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
-              : entity
-          );
-        }
-        summaryParts.push(`You unleash Thunderwave at ${targetName}, dealing ${dmg} thunder damage.`);
-      } else if (spell.name.toLowerCase() === 'fire bolt') {
-        const dmg = rollDice("1d10");
-        if (activeMonster) {
-          const updatedHp = Math.max(0, activeMonster.hp - dmg);
-          newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
-            idx === activeMonsterIndex
-              ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
-              : entity
-          );
-        }
-        summaryParts.push(`You hurl a Fire Bolt at ${targetName}, dealing ${dmg} fire damage.`);
-      } else if (spell.name.toLowerCase() === 'ray of frost') {
-        const dmg = rollDice("1d8");
-        if (activeMonster) {
-          const updatedHp = Math.max(0, activeMonster.hp - dmg);
-          newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
-            idx === activeMonsterIndex
-              ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
-              : entity
-          );
-        }
-        summaryParts.push(`You cast Ray of Frost at ${targetName}, dealing ${dmg} cold damage.`);
-      } else if (spell.name.toLowerCase() === 'shield') {
-        newState.tempAcBonus = Math.max(newState.tempAcBonus, 5);
-        newState.activeEffects = [...(newState.activeEffects || []), { name: 'Shield', type: 'ac_bonus', value: 5, expiresAtTurn: newState.level + 1 }];
-        summaryParts.push(`You raise Shield, gaining +5 AC until the start of your next turn.`);
-      } else if (spell.name.toLowerCase() === 'mage armor') {
-        const dexBonus = Math.floor(((newState.character?.acBonus || 0) + (newState.spellcastingAbility === 'int' ? 0 : 0)));
-        newState.ac = Math.max(newState.ac, 13 + dexBonus);
-        newState.activeEffects = [...(newState.activeEffects || []), { name: 'Mage Armor', type: 'ac_bonus', value: 13 + dexBonus, expiresAtTurn: undefined }];
-        summaryParts.push(`You ward yourself with Mage Armor, hardening your defenses.`);
-      } else if (spell.name.toLowerCase() === 'detect magic') {
-        summaryParts.push(`You attune your senses; lingering magic hums in the air.`);
-      } else if (spell.name.toLowerCase() === 'identify') {
-        summaryParts.push(`You focus to identify an item or effect; details surface in your mind.`);
-      } else {
-        summaryParts.push(`You cast ${spell.name}, but its effect is not modeled yet.`);
       }
     }
   } else if (parsedIntent.type === 'look') {
@@ -722,7 +728,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     } else {
       summaryParts.push(`${activeMonster.name} misses you (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
     }
-  } else if (!monsterStillAlive && actionIntent === 'attack') {
+  } else if (!monsterStillAlive && actionIntent === 'attack' && parsedIntent.type !== 'castAbility') {
     summaryParts.push("There is nothing left to attack.");
   }
 
