@@ -9,8 +9,8 @@ import { createClient } from '../utils/supabase/server';
 import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../lib/rules';
 import { ARCHETYPES } from './characters';
 import { getClassReference } from '../lib/5e/classes';
-import { armorByName, starterCharacters, weaponsByName } from '../lib/5e/reference';
-import { parseActionIntent, ParsedIntent } from '../lib/5e/intents';
+import { armorByName, starterCharacters, weaponsByName, wizardSpellsByName } from '../lib/5e/reference';
+import { parseActionIntentWithKnown, ParsedIntent } from '../lib/5e/intents';
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -410,7 +410,7 @@ function isWeaponAllowedForClass(weaponName: string | undefined, classKey: strin
 // DM principles: describe what the player perceives, let the player act, resolve fairly.
 async function _updateGameState(currentState: GameState, userAction: string) {
   // 1. DETERMINE PLAYER WEAPON & DAMAGE
-  const parsedIntent: ParsedIntent = parseActionIntent(userAction);
+  const parsedIntent: ParsedIntent = parseActionIntentWithKnown(userAction, currentState.knownSpells || []);
   const actionIntent: ActionIntent =
     parsedIntent.type === 'attack'
       ? 'attack'
@@ -460,8 +460,89 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   const monsterWasAlive = activeMonster?.status === 'alive';
 
   if (parsedIntent.type === 'castAbility') {
-    const abilityName = parsedIntent.abilityName;
-    summaryParts.push(`You attempt to use ${abilityName}, but no learned abilities are available yet.`);
+    const spellKey = parsedIntent.abilityName.toLowerCase();
+    const spell = wizardSpellsByName[spellKey];
+    const isKnown = (newState.knownSpells || []).some(s => s.toLowerCase() === spellKey);
+    const isPrepared = (newState.preparedSpells || []).some(s => s.toLowerCase() === spellKey);
+
+    if (!spell || !isKnown) {
+      summaryParts.push(`You have not learned that spell.`);
+    } else if (!isPrepared && !spell.level.toLowerCase().includes('cantrip')) {
+      summaryParts.push(`You have not prepared ${spell.name}.`);
+    } else {
+      const isCantrip = spell.level.toLowerCase().includes('cantrip');
+      const slotKey = 'level_1';
+      const slots = newState.spellSlots || {};
+      if (!isCantrip) {
+        const slot = slots[slotKey];
+        if (!slot || slot.current <= 0) {
+          summaryParts.push(`You have no ${slotKey.replace('_', ' ')} spell slots left.`);
+        } else {
+          slots[slotKey] = { ...slot, current: slot.current - 1 };
+          newState.spellSlots = slots;
+        }
+      }
+
+      // Resolve a minimal set of spells
+      const targetName = parsedIntent.target || activeMonster?.name || 'the area';
+      if (spell.name.toLowerCase() === 'magic missile') {
+        const dmg = rollDice("1d4+1");
+        if (activeMonster) {
+          const updatedHp = Math.max(0, activeMonster.hp - dmg);
+          newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+            idx === activeMonsterIndex
+              ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+              : entity
+          );
+        }
+        summaryParts.push(`You cast Magic Missile at ${targetName}, dealing ${dmg} force damage.`);
+      } else if (spell.name.toLowerCase() === 'thunderwave') {
+        const dmg = rollDice("2d8");
+        if (activeMonster) {
+          const updatedHp = Math.max(0, activeMonster.hp - dmg);
+          newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+            idx === activeMonsterIndex
+              ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+              : entity
+          );
+        }
+        summaryParts.push(`You unleash Thunderwave at ${targetName}, dealing ${dmg} thunder damage.`);
+      } else if (spell.name.toLowerCase() === 'fire bolt') {
+        const dmg = rollDice("1d10");
+        if (activeMonster) {
+          const updatedHp = Math.max(0, activeMonster.hp - dmg);
+          newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+            idx === activeMonsterIndex
+              ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+              : entity
+          );
+        }
+        summaryParts.push(`You hurl a Fire Bolt at ${targetName}, dealing ${dmg} fire damage.`);
+      } else if (spell.name.toLowerCase() === 'ray of frost') {
+        const dmg = rollDice("1d8");
+        if (activeMonster) {
+          const updatedHp = Math.max(0, activeMonster.hp - dmg);
+          newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+            idx === activeMonsterIndex
+              ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+              : entity
+          );
+        }
+        summaryParts.push(`You cast Ray of Frost at ${targetName}, dealing ${dmg} cold damage.`);
+      } else if (spell.name.toLowerCase() === 'shield') {
+        newState.tempAcBonus = Math.max(newState.tempAcBonus, 5);
+        summaryParts.push(`You raise Shield, gaining +5 AC until the start of your next turn.`);
+      } else if (spell.name.toLowerCase() === 'mage armor') {
+        newState.ac = Math.max(newState.ac, 13 + Math.floor(((newState.character?.acBonus || 0) + (newState.spellcastingAbility === 'int' ? 0 : 0))));
+        summaryParts.push(`You ward yourself with Mage Armor, hardening your defenses.`);
+      } else if (spell.name.toLowerCase() === 'detect magic') {
+        summaryParts.push(`You attune your senses; lingering magic hums in the air.`);
+      } else if (spell.name.toLowerCase() === 'identify') {
+        summaryParts.push(`You focus to identify an item or effect; details surface in your mind.`);
+      } else {
+        summaryParts.push(`You cast ${spell.name}, but its effect is not modeled yet.`);
+      }
+    }
   } else if (parsedIntent.type === 'look') {
     const threats = newState.nearbyEntities.filter(e => e.status === 'alive');
     const threatText = threats.length > 0

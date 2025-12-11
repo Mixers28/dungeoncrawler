@@ -42,6 +42,10 @@ function isCheckSheet(text: string): { section?: 'skills' | 'abilities' | 'inven
 }
 
 export function parseActionIntent(raw: string): ParsedIntent {
+  return parseActionIntentWithKnown(raw, []);
+}
+
+export function parseActionIntentWithKnown(raw: string, knownSpells: string[]): ParsedIntent {
   const text = raw.trim();
 
   const sheetSection = isCheckSheet(text);
@@ -66,11 +70,16 @@ export function parseActionIntent(raw: string): ParsedIntent {
     return { type: 'move', direction };
   }
 
-  // Ability casting (placeholder until spells/abilities are wired)
+  // Ability/spell casting (prefer known spells when provided)
   const castMatch = text.match(/\b(?:cast|use|invoke|activate)\s+([a-z][a-z\s'-]{2,40})/i);
   if (castMatch) {
     const abilityCandidate = castMatch[1].trim();
-    const abilityKey = abilityNames.find(name => abilityCandidate.toLowerCase().includes(name));
+    const lowerCandidate = abilityCandidate.toLowerCase();
+    const knownMatch = knownSpells.find(s => s.toLowerCase() === lowerCandidate || lowerCandidate.includes(s.toLowerCase()));
+    if (knownMatch) {
+      return { type: 'castAbility', abilityName: knownMatch, target: findTarget(text) };
+    }
+    const abilityKey = abilityNames.find(name => lowerCandidate.includes(name));
     if (abilityKey) {
       return { type: 'castAbility', abilityName: abilityCandidate, target: findTarget(text) };
     }
