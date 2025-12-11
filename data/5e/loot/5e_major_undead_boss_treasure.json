@@ -1,0 +1,45 @@
+{
+  "coins": {
+    "cp": "5d10",
+    "sp": "6d10",
+    "gp": "8d10",
+    "pp": "2d6"
+  },
+  "items": [
+    {
+      "id": "weapon_longsword_plus1",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "armor_chain_mail_plus1",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "amulet_of_necrotic_resistance",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "wand_of_dark_bolts",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "potion_greater_healing",
+      "weight": 3,
+      "qty": "1d2"
+    },
+    {
+      "id": "scroll_revivify_or_rare",
+      "weight": 1,
+      "qty": "1"
+    },
+    {
+      "id": "gem_cluster_high_value",
+      "weight": 3,
+      "qty": "1d4"
+    }
+  ]
+}

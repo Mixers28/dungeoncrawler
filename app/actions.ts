@@ -9,16 +9,18 @@ import { createClient } from '../utils/supabase/server';
 import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../lib/rules';
 import { ARCHETYPES } from './characters';
 import { getClassReference } from '../lib/5e/classes';
-import { armorByName, starterCharacters, weaponsByName, wizardSpellsByName } from '../lib/5e/reference';
+import { armorByName, starterCharacters, weaponsByName, wizardSpellsByName, clericSpellsByName } from '../lib/5e/reference';
 import { parseActionIntentWithKnown, ParsedIntent } from '../lib/5e/intents';
 import { getSceneById, pickSceneVariant } from '../lib/story';
+import { rollLoot } from '../lib/loot';
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const MODEL_NARRATOR = 'llama-3.3-70b-versatile'; 
+// Use a smaller, faster model for flavor to avoid hitting large-model rate limits
+const MODEL_NARRATOR = 'llama-3.1-8b-instant'; 
 
 // --- HELPERS ---
 function rollDice(notation: string): number {
@@ -76,6 +78,11 @@ const entitySchema = z.object({
   ac: z.coerce.number().int().default(10),
   attackBonus: z.coerce.number().int().default(2), 
   damageDice: z.string().default("1d4"),
+  effects: z.array(z.object({
+    name: z.string(),
+    type: z.enum(['debuff', 'buff']).default('debuff'),
+    expiresAtTurn: z.number().optional(),
+  })).default([]),
 });
 const narrationModeEnum = z.enum([
   "GENERAL_INTERACTION",
@@ -160,29 +167,80 @@ const gameStateSchema = z.object({
   })).default([]),
   storySceneId: z.string().default('iron_gate_v1'),
   storyFlags: z.array(z.string()).default([]),
+  turnCounter: z.number().default(0),
   log: z.array(logEntrySchema).default([]),
 });
 
 type NarrationMode = z.infer<typeof narrationModeEnum>;
 export type LogEntry = z.infer<typeof logEntrySchema>;
 type GameState = z.infer<typeof gameStateSchema>;
+
+function expireEffects(state: GameState) {
+  const turn = state.turnCounter || 0;
+  state.activeEffects = (state.activeEffects || []).filter(e => !e.expiresAtTurn || e.expiresAtTurn > turn);
+  state.nearbyEntities = (state.nearbyEntities || []).map(ent => ({
+    ...ent,
+    effects: (ent.effects || []).filter(e => !e.expiresAtTurn || e.expiresAtTurn > turn),
+  }));
+}
+
+function getPlayerAc(state: GameState, baseAc: number): number {
+  const effectBonus = Math.max(
+    0,
+    ...(state.activeEffects || [])
+      .filter(e => e.type === 'ac_bonus' && e.value !== undefined)
+      .map(e => e.value as number)
+  );
+  return baseAc + effectBonus + (state.tempAcBonus || 0);
+}
+
+const normalizeSpellName = (name: string | undefined) =>
+  (name || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+
+const normalizeName = (name: string | undefined) =>
+  (name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 type ActionIntent = 'attack' | 'defend' | 'run' | 'other';
 
 const XP_THRESHOLDS = [0, 300, 900, 2700, 6500, 14000, 23000];
 
 function buildInventoryFromEquipment(equipment: string[]): Array<z.infer<typeof itemSchema>> {
-  return equipment.map((name, idx) => {
-    const lower = name.toLowerCase();
-    const isWeapon = !!weaponsByName[lower];
-    const isArmor = !!armorByName[lower];
+  return equipment.map((rawName, idx) => {
+    const normalizedKey = rawName.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const weaponRef = weaponsByName[normalizedKey];
+    const armorRef = armorByName[normalizedKey];
+    const isWeapon = !!weaponRef;
+    const isArmor = !!armorRef;
     const type: 'weapon' | 'armor' | 'misc' = isWeapon ? 'weapon' : isArmor ? 'armor' : 'misc';
+    const displayName = weaponRef?.name || armorRef?.name || rawName.replace(/_/g, ' ');
     return {
       id: `eq-${idx}-${Date.now().toString(36)}`,
-      name,
+      name: displayName,
       type,
       quantity: 1,
     };
   });
+}
+
+function computeBaseAcFromStarter(equipment: string[], abilities: Record<string, number>): number {
+  const dexMod = Math.floor(((abilities?.dex || 10) - 10) / 2);
+  let bestArmor = 10 + dexMod;
+  let shieldBonus = 0;
+
+  equipment.forEach(raw => {
+    const key = raw.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const armor = armorByName[key];
+    if (!armor) return;
+    if (armor.category.toLowerCase() === 'shield') {
+      shieldBonus = Math.max(shieldBonus, armor.baseAC);
+      return;
+    }
+    let dexCap = dexMod;
+    if (typeof armor.maxDex === 'number') dexCap = Math.min(dexMod, armor.maxDex);
+    else if (armor.maxDex === 'n/a') dexCap = 0;
+    bestArmor = Math.max(bestArmor, armor.baseAC + dexCap);
+  });
+
+  return bestArmor + shieldBonus;
 }
 
 function applySceneEntry(sceneId: string, baseState: GameState, summaryParts: string[], opts?: { recordHistory?: boolean }): { state: GameState; roomDesc: string } {
@@ -248,6 +306,7 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
   state.activeEffects = state.activeEffects || [];
   state.storySceneId = state.storySceneId || 'iron_gate_v1';
   state.storyFlags = state.storyFlags || [];
+  state.turnCounter = state.turnCounter || 0;
 
   // Backfill: migrate old narrativeHistory into log as summary-only entries
   if ((!state.log || state.log.length === 0) && state.narrativeHistory && state.narrativeHistory.length > 0) {
@@ -390,7 +449,14 @@ function buildAccountantFacts(params: {
   if (includeLocation) facts.push(`Location: ${newState.location}. ${roomDesc}`);
 
   const hpDelta = newState.hp - previousState.hp;
-  const hpDeltaNote = hpDelta === 0 ? "" : hpDelta > 0 ? ` (healed ${hpDelta})` : ` (lost ${Math.abs(hpDelta)})`;
+  let hpDeltaNote = "";
+  if (hpDelta > 0) {
+    hpDeltaNote = ` (healed ${hpDelta})`;
+  } else if (hpDelta < 0) {
+    const incoming = newState.lastRolls?.monsterDamage || 0;
+    const displayLoss = incoming > 0 ? incoming : Math.abs(hpDelta);
+    hpDeltaNote = ` (lost ${displayLoss})`;
+  }
   facts.push(`You are at ${newState.hp}/${newState.maxHp} HP${hpDeltaNote}, AC ${newState.ac}.`);
 
   const threats = newState.nearbyEntities.map(e =>
@@ -492,10 +558,12 @@ function isWeaponAllowedForClass(weaponName: string | undefined, classKey: strin
 // DM principles: describe what the player perceives, let the player act, resolve fairly.
 async function _updateGameState(currentState: GameState, userAction: string) {
   // 1. DETERMINE PLAYER WEAPON & DAMAGE
+  const classKey = (currentState.character?.class || 'fighter').toLowerCase();
+  const spellCatalog = classKey === 'cleric' ? clericSpellsByName : wizardSpellsByName;
   const parsedIntent: ParsedIntent = parseActionIntentWithKnown(
     userAction,
     currentState.knownSpells || [],
-    Object.keys(wizardSpellsByName)
+    Object.keys(spellCatalog)
   );
   const actionIntent: ActionIntent =
     parsedIntent.type === 'attack' || parsedIntent.type === 'castAbility'
@@ -506,7 +574,6 @@ async function _updateGameState(currentState: GameState, userAction: string) {
       ? 'run'
       : 'other';
 
-  const classKey = (currentState.character?.class || 'fighter').toLowerCase();
   const preferredWeaponName = parsedIntent.type === 'attack' && parsedIntent.weaponName
     ? parsedIntent.weaponName
     : currentState.inventory.find(i => i.type === 'weapon')?.name;
@@ -534,7 +601,14 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     log: [...(currentState.log || [])],
   };
 
-  const currentScene = getSceneById(currentState.storySceneId);
+  // Advance turn counter and clear expired effects before resolving actions
+  newState.turnCounter = (currentState.turnCounter || 0) + 1;
+  expireEffects(newState);
+
+  let currentScene = getSceneById(currentState.storySceneId);
+  if (!currentScene && newState.location.toLowerCase().includes('gate')) {
+    currentScene = getSceneById('iron_gate_v1') || pickSceneVariant('act1_gate', newState.worldSeed);
+  }
 
   // 2a. Scene exit transitions before other actions
   const sceneExit = currentScene?.exits?.find(ex => ex.verb.some(v => userAction.toLowerCase().includes(v)));
@@ -552,7 +626,10 @@ async function _updateGameState(currentState: GameState, userAction: string) {
       }
       newState.inventory = newState.inventory.filter(i => i.name.toLowerCase() !== sceneExit.consumeItem!.toLowerCase());
     }
-    const target = getSceneById(sceneExit.targetSceneId);
+    let target = getSceneById(sceneExit.targetSceneId);
+    if (!target && (currentScene?.location.toLowerCase().includes('gate') || currentScene?.id.includes('gate'))) {
+      target = pickSceneVariant('act1_courtyard', newState.worldSeed) || getSceneById('courtyard_v1');
+    }
     if (target) {
       const summaryParts: string[] = [];
       if (sceneExit.log) summaryParts.push(sceneExit.log);
@@ -573,11 +650,36 @@ async function _updateGameState(currentState: GameState, userAction: string) {
 
   const monsterWasAlive = activeMonster?.status === 'alive';
 
+  // Quick-use bandages (healing consumable)
+  const wantsBandage = /bandage/i.test(userAction);
+  const bandageIdx = newState.inventory.findIndex(i => i.name.toLowerCase().includes('bandage') && i.quantity > 0);
+  let handledBandage = false;
+  if (wantsBandage) {
+    handledBandage = true;
+    if (bandageIdx >= 0) {
+      const heal = 6;
+      newState.hp = Math.min(newState.maxHp, newState.hp + heal);
+      const item = newState.inventory[bandageIdx];
+      const remainingQty = Math.max(0, item.quantity - 1);
+      if (remainingQty <= 0) {
+        newState.inventory = newState.inventory.filter((_, idx) => idx !== bandageIdx);
+      } else {
+        newState.inventory = newState.inventory.map((it, idx) => idx === bandageIdx ? { ...it, quantity: remainingQty } : it);
+      }
+      newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used bandage (${heal} HP) at ${newState.location}`].slice(-10);
+      summaryParts.push(`You apply a bandage, recovering ${heal} HP.`);
+    } else {
+      summaryParts.push("You fumble for a bandage, but you have none left.");
+    }
+  }
+
+  if (!handledBandage) {
   if (parsedIntent.type === 'castAbility') {
     const spellKey = parsedIntent.abilityName.toLowerCase();
-    const spell = wizardSpellsByName[spellKey];
-    const isKnown = (newState.knownSpells || []).some(s => s.toLowerCase() === spellKey);
-    const isPrepared = (newState.preparedSpells || []).some(s => s.toLowerCase() === spellKey);
+    const normalizedKey = normalizeSpellName(spellKey);
+    const spell = spellCatalog[normalizedKey] || spellCatalog[spellKey];
+    const isKnown = (newState.knownSpells || []).some(s => normalizeSpellName(s) === normalizedKey);
+    const isPrepared = (newState.preparedSpells || []).some(s => normalizeSpellName(s) === normalizedKey);
     let canCast = true;
 
     if (!spell || !isKnown) {
@@ -604,7 +706,8 @@ async function _updateGameState(currentState: GameState, userAction: string) {
       if (canCast) {
         // Resolve a minimal set of spells
         const targetName = parsedIntent.target || activeMonster?.name || 'the area';
-        if (spell.name.toLowerCase() === 'magic missile') {
+        const lowerSpell = spell.name.toLowerCase();
+        if (lowerSpell === 'magic missile') {
           const dmg = rollDice("1d4+1");
           if (activeMonster) {
             const updatedHp = Math.max(0, activeMonster.hp - dmg);
@@ -615,7 +718,18 @@ async function _updateGameState(currentState: GameState, userAction: string) {
             );
           }
           summaryParts.push(`You cast Magic Missile at ${targetName}, dealing ${dmg} force damage.`);
-        } else if (spell.name.toLowerCase() === 'thunderwave') {
+        } else if (lowerSpell === 'guiding bolt') {
+          const dmg = rollDice("4d6");
+          if (activeMonster) {
+            const updatedHp = Math.max(0, activeMonster.hp - dmg);
+            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+              idx === activeMonsterIndex
+                ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+                : entity
+            );
+          }
+          summaryParts.push(`You hurl a lance of radiant light at ${targetName}, dealing ${dmg} radiant damage.`);
+        } else if (lowerSpell === 'thunderwave') {
           const dmg = rollDice("2d8");
           if (activeMonster) {
             const updatedHp = Math.max(0, activeMonster.hp - dmg);
@@ -626,7 +740,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
             );
           }
           summaryParts.push(`You unleash Thunderwave at ${targetName}, dealing ${dmg} thunder damage.`);
-        } else if (spell.name.toLowerCase() === 'fire bolt') {
+        } else if (lowerSpell === 'fire bolt') {
           const dmg = rollDice("1d10");
           if (activeMonster) {
             const updatedHp = Math.max(0, activeMonster.hp - dmg);
@@ -637,7 +751,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
             );
           }
           summaryParts.push(`You hurl a Fire Bolt at ${targetName}, dealing ${dmg} fire damage.`);
-        } else if (spell.name.toLowerCase() === 'ray of frost') {
+        } else if (lowerSpell === 'ray of frost') {
           const dmg = rollDice("1d8");
           if (activeMonster) {
             const updatedHp = Math.max(0, activeMonster.hp - dmg);
@@ -648,15 +762,84 @@ async function _updateGameState(currentState: GameState, userAction: string) {
             );
           }
           summaryParts.push(`You cast Ray of Frost at ${targetName}, dealing ${dmg} cold damage.`);
-        } else if (spell.name.toLowerCase() === 'shield') {
-          newState.tempAcBonus = Math.max(newState.tempAcBonus, 5);
-          newState.activeEffects = [...(newState.activeEffects || []), { name: 'Shield', type: 'ac_bonus', value: 5, expiresAtTurn: newState.level + 1 }];
+        } else if (lowerSpell === 'sacred flame') {
+          const dmg = rollDice("1d8");
+          if (activeMonster) {
+            const updatedHp = Math.max(0, activeMonster.hp - dmg);
+            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+              idx === activeMonsterIndex
+                ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+                : entity
+            );
+          }
+          summaryParts.push(`Radiant fire sears ${targetName}, dealing ${dmg} radiant damage.`);
+        } else if (lowerSpell === 'word of radiance') {
+          const dmg = rollDice("1d6");
+          if (activeMonster) {
+            const updatedHp = Math.max(0, activeMonster.hp - dmg);
+            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+              idx === activeMonsterIndex
+                ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+                : entity
+            );
+          }
+          summaryParts.push(`You utter a searing word; ${targetName} takes ${dmg} radiant damage.`);
+        } else if (lowerSpell === 'toll the dead') {
+          const dmg = rollDice("1d12");
+          if (activeMonster) {
+            const updatedHp = Math.max(0, activeMonster.hp - dmg);
+            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+              idx === activeMonsterIndex
+                ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
+                : entity
+            );
+          }
+          summaryParts.push(`A mournful toll rings out; ${targetName} suffers ${dmg} necrotic damage.`);
+        } else if (lowerSpell === 'shield') {
+          newState.activeEffects = [
+            ...(newState.activeEffects || []),
+            { name: 'Shield', type: 'ac_bonus', value: 5, expiresAtTurn: (newState.turnCounter || 0) + 1 }
+          ];
           summaryParts.push(`You raise Shield, gaining +5 AC until the start of your next turn.`);
-        } else if (spell.name.toLowerCase() === 'mage armor') {
-          const dexBonus = Math.floor(((newState.character?.acBonus || 0) + (newState.spellcastingAbility === 'int' ? 0 : 0)));
-          newState.ac = Math.max(newState.ac, 13 + dexBonus);
-          newState.activeEffects = [...(newState.activeEffects || []), { name: 'Mage Armor', type: 'ac_bonus', value: 13 + dexBonus, expiresAtTurn: undefined }];
+        } else if (lowerSpell === 'mage armor') {
+          const targetAc = Math.max(newState.ac, 13);
+          newState.ac = targetAc;
+          newState.activeEffects = [
+            ...(newState.activeEffects || []),
+            { name: 'Mage Armor', type: 'buff', expiresAtTurn: undefined }
+          ];
           summaryParts.push(`You ward yourself with Mage Armor, hardening your defenses.`);
+        } else if (lowerSpell === 'shield of faith') {
+          newState.activeEffects = [
+            ...(newState.activeEffects || []),
+            { name: 'Shield of Faith', type: 'ac_bonus', value: 2, expiresAtTurn: (newState.turnCounter || 0) + 3 }
+          ];
+          summaryParts.push(`A shimmering field surrounds you, granting +2 AC for a short while.`);
+        } else if (lowerSpell === 'bless') {
+          newState.activeEffects = [
+            ...(newState.activeEffects || []),
+            { name: 'Bless', type: 'buff', expiresAtTurn: (newState.turnCounter || 0) + 5 }
+          ];
+          summaryParts.push(`You bless your efforts, guiding your strikes and resolve.`);
+        } else if (lowerSpell === 'cure wounds') {
+          const heal = rollDice("1d8") + 2;
+          newState.hp = Math.min(newState.maxHp, newState.hp + heal);
+          summaryParts.push(`Healing energy knits flesh; you recover ${heal} HP.`);
+        } else if (lowerSpell === 'healing word') {
+          const heal = rollDice("1d4") + 2;
+          newState.hp = Math.min(newState.maxHp, newState.hp + heal);
+          summaryParts.push(`You speak a word of restoration, recovering ${heal} HP.`);
+        } else if (lowerSpell === 'mage hand') {
+          if (activeMonster) {
+            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+              idx === activeMonsterIndex
+                ? { ...activeMonster, effects: [...(activeMonster.effects || []), { name: 'Mage Hand', type: 'debuff', expiresAtTurn: (newState.turnCounter || 0) + 2 }] }
+                : entity
+            );
+            summaryParts.push(`A spectral hand clamps onto ${targetName}, pinning it for the next moments.`);
+          } else {
+            summaryParts.push("A spectral hand flickers into being, grasping at loose debris.");
+          }
         } else if (spell.name.toLowerCase() === 'detect magic') {
           summaryParts.push(`You attune your senses; lingering magic hums in the air.`);
         } else if (spell.name.toLowerCase() === 'identify') {
@@ -672,6 +855,16 @@ async function _updateGameState(currentState: GameState, userAction: string) {
       ? `You spot ${threats.map(e => `${e.name} (${e.hp}/${e.maxHp} HP)`).join(', ')}.`
       : "No immediate threats.";
     summaryParts.push(`You look around ${newState.location}. ${threatText}`);
+    const exits = (getSceneById(newState.storySceneId)?.exits || currentScene?.exits || []);
+    if (exits.length > 0) {
+      const exitText = exits.map(ex => {
+        const target = getSceneById(ex.targetSceneId);
+        const label = target?.location || target?.title || ex.targetSceneId;
+        const verb = ex.verb[0];
+        return `${verb} → ${label}`;
+      }).join('; ');
+      summaryParts.push(`Exits: ${exitText}.`);
+    }
   } else if (actionIntent === 'attack' && activeMonster) {
     playerAttackRoll = Math.floor(Math.random() * 20) + 1; // no bonus for now
     if (playerAttackRoll >= activeMonster.ac) {
@@ -710,23 +903,30 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   } else {
     summaryParts.push(`You ${userAction}.`);
   }
+  } // end handledBandage guard
 
   // 5. MONSTER TURN (only if still present and player didn't run)
   let monsterAttackRoll = 0;
   let monsterDamageRoll = 0;
   let monsterDamageNotation = "";
-  const monsterStillAlive = activeMonster && newState.nearbyEntities.find(e => e.name === activeMonster.name && e.status === 'alive');
+  const currentActiveMonster = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
+  const monsterStillAlive = currentActiveMonster && currentActiveMonster.status === 'alive';
   const monsterIsActive = newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend';
   if (monsterStillAlive && monsterIsActive && actionIntent !== 'run') {
-    monsterAttackRoll = Math.floor(Math.random() * 20) + 1 + activeMonster.attackBonus;
-    monsterDamageNotation = activeMonster.damageDice;
-    const playerAc = currentState.ac + newState.tempAcBonus;
-    if (monsterAttackRoll >= playerAc) {
-      monsterDamageRoll = rollDice(monsterDamageNotation);
-      newState.hp = Math.max(0, currentState.hp - monsterDamageRoll);
-      summaryParts.push(`${activeMonster.name} hits you for ${monsterDamageRoll} damage (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
+    const monsterHasMageHand = (currentActiveMonster.effects || []).some(e => e.name.toLowerCase() === 'mage hand');
+    if (monsterHasMageHand) {
+      summaryParts.push(`${currentActiveMonster.name} struggles against the spectral hand and cannot attack this moment.`);
     } else {
-      summaryParts.push(`${activeMonster.name} misses you (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
+      monsterAttackRoll = Math.floor(Math.random() * 20) + 1 + currentActiveMonster.attackBonus;
+      monsterDamageNotation = currentActiveMonster.damageDice;
+      const playerAc = getPlayerAc(newState, newState.ac);
+      if (monsterAttackRoll >= playerAc) {
+        monsterDamageRoll = rollDice(monsterDamageNotation);
+        newState.hp = Math.max(0, newState.hp - monsterDamageRoll);
+        summaryParts.push(`${currentActiveMonster.name} hits you for ${monsterDamageRoll} damage (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
+      } else {
+        summaryParts.push(`${currentActiveMonster.name} misses you (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
+      }
     }
   } else if (!monsterStillAlive && actionIntent === 'attack' && parsedIntent.type !== 'castAbility') {
     summaryParts.push("There is nothing left to attack.");
@@ -789,6 +989,31 @@ async function _updateGameState(currentState: GameState, userAction: string) {
         newState.xp += rewardXp;
         summaryParts.push(`You gain ${rewardXp} XP for securing ${sceneForReward.title || sceneForReward.location}.`);
       }
+      const lootTable = sceneForReward.onComplete.reward?.lootTable;
+      if (lootTable) {
+        const loot = rollLoot(lootTable);
+        if (loot) {
+          const coinGain = Object.entries(loot.coins).filter(([, v]) => (v || 0) > 0);
+          if (coinGain.length > 0) {
+            const gold = loot.coins.gp || 0;
+            const silver = loot.coins.sp || 0;
+            const copper = loot.coins.cp || 0;
+            if (gold > 0) newState.gold += gold;
+            summaryParts.push(`You recover ${gold ? gold + ' gp' : ''}${gold && (silver || copper) ? ', ' : ''}${silver ? silver + ' sp' : ''}${silver && copper ? ', ' : ''}${(!gold && !silver && copper) ? `${copper} cp` : ''}`.trim().replace(/, $/, ''));
+          }
+          if (loot.items.length > 0) {
+            const newItems = loot.items.map(it => ({
+              id: `loot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+              name: it.id.replace(/_/g, ' '),
+              type: 'misc' as const,
+              quantity: it.quantity,
+            }));
+            newState.inventory = [...newState.inventory, ...newItems];
+            newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Scene loot: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}`].slice(-10);
+            summaryParts.push(`Loot found: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}.`);
+          }
+        }
+      }
     }
   }
 
@@ -807,16 +1032,46 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   const wantsLoot = /(loot|rummage|pick over|salvage)/i.test(userAction);
   const deadCorpse = newState.nearbyEntities.find(e => e.status === 'dead' && !e.name.toLowerCase().includes('looted'));
   if (wantsLoot && deadCorpse) {
-    const goldFind = Math.max(1, Math.floor(Math.random() * 6));
-    newState.gold += goldFind;
-    const trophyName = `${deadCorpse.name} Remnant`;
-    newState.inventory = [...newState.inventory, { id: `loot-${Date.now().toString(36)}`, name: trophyName, type: 'misc', quantity: 1 }];
+    const monsterLootMap: Record<string, string> = {
+      'skeleton': '5e_minor_undead_treasure',
+      'zombie': '5e_minor_undead_treasure',
+      'skeleton archer': '5e_minor_undead_treasure',
+      'armoured zombie': '5e_minor_undead_treasure',
+      'fallen knight': '5e_major_undead_boss_treasure',
+      'cultist acolyte': '5e_minor_cultist_treasure',
+    };
+    const corpseKey = normalizeName(deadCorpse.name);
+    let table = monsterLootMap[corpseKey] || Object.entries(monsterLootMap).find(([key]) => corpseKey.includes(key))?.[1];
+    if (!table) {
+      if (corpseKey.includes('skeleton') || corpseKey.includes('zombie')) table = '5e_minor_undead_treasure';
+      if (corpseKey.includes('cultist')) table = table || '5e_minor_cultist_treasure';
+    }
+    const loot = table ? rollLoot(table) : null;
+    let goldFind = 0;
+    const newItems = [];
+    if (loot) {
+      goldFind = loot.coins.gp || 0;
+      if (goldFind > 0) newState.gold += goldFind;
+      if (loot.items.length > 0) {
+        for (const it of loot.items) {
+          newItems.push({ id: `loot-${Date.now().toString(36)}`, name: it.id.replace(/_/g, ' '), type: 'misc', quantity: it.quantity });
+        }
+      }
+    } else {
+      goldFind = Math.max(1, Math.floor(Math.random() * 6));
+      newItems.push({ id: `loot-${Date.now().toString(36)}`, name: `${deadCorpse.name} Remnant`, type: 'misc', quantity: 1 });
+      newState.gold += goldFind;
+    }
+    newState.inventory = [...newState.inventory, ...newItems];
     // Mark corpse as looted
     newState.nearbyEntities = newState.nearbyEntities.map(e =>
       e === deadCorpse ? { ...e, name: `${e.name} (looted)` } : e
     );
-    newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Looted ${deadCorpse.name}: +${goldFind} gold, +${trophyName}`].slice(-10);
-    summaryParts.push(`You loot the ${deadCorpse.name}, gaining ${goldFind} gold and a ${trophyName}.`);
+    newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Looted ${deadCorpse.name}: +${goldFind} gold${newItems.length ? ', +' + newItems.map(i => `${i.quantity}x ${i.name}`).join(', ') : ''}`].slice(-10);
+    const parts = [];
+    if (goldFind > 0) parts.push(`${goldFind} gold`);
+    if (newItems.length > 0) parts.push(newItems.map(i => `${i.quantity}x ${i.name}`).join(', '));
+    summaryParts.push(`You loot the ${deadCorpse.name}${parts.length ? ', gaining ' + parts.join(' and ') : '.'}`);
   }
 
   // 9. SUMMARY & ROLLS
@@ -879,8 +1134,6 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
   const startingArmor = archetype.startingArmor;
   const baseAc = 10 + (archetype.acBonus || 0);
   const baseHp = 20 + (archetype.hpBonus || 0);
-  const isWizard = (archetypeKey || 'fighter') === 'wizard';
-
   let initialHp = baseHp;
   let initialAc = baseAc;
   let skills = classRef.skills;
@@ -895,19 +1148,31 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
   let spellAttackBonus = 0;
   let spellSaveDc = 0;
 
-  if (isWizard) {
-    const starter = starterCharacters.find(c => c.class.toLowerCase() === 'wizard') || starterCharacters[0];
-    if (starter) {
-      initialHp = starter.max_hp;
-      initialAc = 10 + Math.floor(((starter.abilities.dex || 10) - 10) / 2);
-      skills = starter.skills;
-      inventory = buildInventoryFromEquipment(starter.equipment);
-      knownSpells = [...starter.spells.cantrips_known, ...starter.spells.spellbook];
-      preparedSpells = starter.spells.prepared;
+  const starter = starterCharacters.find(c => c.class.toLowerCase() === (archetypeKey || 'fighter')) || starterCharacters[0];
+  if (starter) {
+    initialHp = starter.max_hp;
+    initialAc = computeBaseAcFromStarter(starter.equipment, starter.abilities || {});
+    skills = starter.skills;
+    inventory = buildInventoryFromEquipment(starter.equipment);
+    inventory = [
+      ...inventory,
+      { id: `bandage-${Date.now().toString(36)}`, name: 'Bandage', type: 'misc', quantity: 2 },
+    ];
+
+    if (starter.spells) {
+      const cantrips = starter.spells.cantrips_known || [];
+      const book = (starter.spells.spellbook && starter.spells.spellbook.length > 0)
+        ? starter.spells.spellbook
+        : (starter.spells.spell_list || []);
+      const domain = starter.spells.domain_spells || [];
+      knownSpells = [...cantrips, ...book, ...domain];
+      preparedSpells = starter.spells.prepared || [];
+    }
+    if (starter.casting) {
       spellSlots = Object.fromEntries(
-        Object.entries(starter.casting.slots).map(([lvl, data]) => [lvl, { max: data.max, current: data.current }])
+        Object.entries(starter.casting.slots || {}).map(([lvl, data]) => [lvl, { max: data.max, current: data.current }])
       );
-      spellcastingAbility = starter.casting.spellcasting_ability || 'int';
+      spellcastingAbility = starter.casting.spellcasting_ability || spellcastingAbility;
       spellAttackBonus = starter.casting.spell_attack_bonus || 0;
       spellSaveDc = starter.casting.spell_save_dc || 0;
     }

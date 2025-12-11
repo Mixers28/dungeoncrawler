@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
+// Story scene loader: reads JSON scenes from /story and exposes lookup helpers.
+
 export type StoryExit = {
   verb: string[];
   targetSceneId: string;
@@ -45,8 +47,12 @@ let cachedScenes: Record<string, StoryScene> | null = null;
 let cachedGroups: Record<string, StoryScene[]> | null = null;
 
 function loadScenesFromDisk(): StoryScene[] {
-  const storyDir = path.join(process.cwd(), 'story');
-  const files = fs.readdirSync(storyDir).filter(f => f.endsWith('.json'));
+  const lowerDir = path.join(process.cwd(), 'story');
+  const upperDir = path.join(process.cwd(), 'Story');
+  const storyDir = fs.existsSync(lowerDir) ? lowerDir : upperDir;
+  const files = fs.existsSync(storyDir)
+    ? fs.readdirSync(storyDir).filter(f => f.endsWith('.json'))
+    : [];
   const scenes: StoryScene[] = [];
   for (const file of files) {
     try {
@@ -64,8 +70,15 @@ function loadScenesFromDisk(): StoryScene[] {
 }
 
 function ensureCache() {
-  if (!cachedScenes || !cachedGroups) {
+  const needsRefresh =
+    !cachedScenes ||
+    !cachedGroups ||
+    Object.keys(cachedScenes).length === 0 ||
+    Object.keys(cachedGroups).length === 0;
+
+  if (needsRefresh) {
     const scenes = loadScenesFromDisk();
+    // Index by id and by group for quick lookup/variant selection
     cachedScenes = scenes.reduce<Record<string, StoryScene>>((acc, scene) => {
       acc[scene.id] = scene;
       return acc;

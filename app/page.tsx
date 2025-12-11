@@ -43,11 +43,18 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Toggle
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const focusInput = () => inputRef.current?.focus();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Keep the input active whenever we finish loading or messages change.
+  useEffect(() => {
+    if (!isLoading) focusInput();
+  }, [isLoading, messages.length]);
 
   useEffect(() => {
     if (gameState?.spellSlots) {
@@ -131,6 +138,7 @@ async function handleStart() {
 
     const userAction = input;
     setInput('');
+    focusInput();
     setIsLoading(true);
 
     setMessages(prev => [...prev, { role: 'user', content: userAction }]);
@@ -159,6 +167,7 @@ async function handleStart() {
       router.push('/login');
     } finally {
       setIsLoading(false);
+      focusInput();
     }
   }
 
@@ -321,6 +330,7 @@ async function handleStart() {
           ) : (
             <form onSubmit={handleTurn} className="flex gap-2">
               <input
+                ref={inputRef}
                 className="flex-1 bg-slate-900 border border-slate-700 rounded p-4 focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-600"
                 placeholder="What do you do?"
                 value={input}
@@ -334,7 +344,7 @@ async function handleStart() {
               </button>
               <button
                 type="button"
-                onClick={() => setInput('')}
+                onClick={() => { setInput(''); focusInput(); }}
                 disabled={isLoading}
                 className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="Clear input"
@@ -349,7 +359,7 @@ async function handleStart() {
       {/* RIGHT: Sidebar (Responsive) */}
       {/* 1. DESKTOP: Always visible on right */}
       <div className="w-[350px] hidden md:block h-full border-l border-slate-800">
-        <GameSidebar state={gameState} onInsertCommand={(cmd) => setInput(cmd)} />
+        <GameSidebar state={gameState} onInsertCommand={(cmd) => { setInput(cmd); focusInput(); }} />
       </div>
 
       {/* 2. MOBILE: Slide-over Drawer */}

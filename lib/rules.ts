@@ -1,4 +1,4 @@
-// lib/rules.ts
+// Minimal rules data used at runtime (monsters, weapons, story milestones).
 
 export type MonsterStatBlock = {
   name: string;

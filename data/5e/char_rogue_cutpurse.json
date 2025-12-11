@@ -1,0 +1,49 @@
+{
+  "id": "char_rogue_sneak",
+  "name": "Shadowfoot Cutpurse",
+  "level": 1,
+  "class": "rogue",
+  "subclass": "thief",
+  "race": "human",
+  "hit_die": "d8",
+  "max_hp": 10,
+  "current_hp": 10,
+  "proficiency_bonus": 2,
+  "abilities": {
+    "str": 8,
+    "dex": 16,
+    "con": 14,
+    "int": 12,
+    "wis": 10,
+    "cha": 14
+  },
+  "skills": [
+    "stealth",
+    "acrobatics",
+    "sleight_of_hand",
+    "perception",
+    "investigation"
+  ],
+  "expertise": [
+    "stealth",
+    "thieves_tools"
+  ],
+  "proficiencies": {
+    "armor": ["light"],
+    "weapons": ["simple", "hand crossbow", "longsword", "rapier", "shortsword"],
+    "tools": ["thieves_tools"]
+  },
+  "equipment": [
+    "leather_armor",
+    "rapier",
+    "shortbow",
+    "arrows_20",
+    "dagger",
+    "dagger",
+    "thieves_tools",
+    "burglars_pack"
+  ],
+  "spells": null,
+  "casting": null,
+  "tags": ["rogue", "skirmisher", "dex_striker", "skill_monkey"]
+}

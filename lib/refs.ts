@@ -1,3 +1,4 @@
+// Lightweight, readonly accessors for 5e reference data bundled in /data/5e.
 import abilities from '../data/5e/abilities.json';
 import conditions from '../data/5e/conditions.json';
 import basicActions from '../data/5e/basic_actions.json';
@@ -16,6 +17,7 @@ export const RULES_REFERENCES = {
   armor: armor as { name: string; category: string; baseAC: number; maxDex: number | string; stealthDisadvantage: boolean; weight_lb?: number; strengthRequirement?: number }[],
 };
 
+// Produce a compact, human-readable bundle of common rules hints for prompts/UI.
 export function buildRulesReferenceSnippet() {
   const actions = RULES_REFERENCES.basicActions.slice(0, 6).map(a => `${a.name}: ${a.summary}`).join(' | ');
   const conds = RULES_REFERENCES.conditions.slice(0, 4).map(c => `${c.name}: ${c.summary}`).join(' | ');

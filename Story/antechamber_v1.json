@@ -1,0 +1,25 @@
+{
+  "id": "antechamber_v1",
+  "group": "act1_antechamber",
+  "title": "Fallen Muster Hall",
+  "location": "Ante-Chamber",
+  "description": "Rows of shattered armour stand propped against the walls, arranged as if troops once waited here in formation.",
+  "entryConditions": { "flagsAll": ["hallway_seen"] },
+  "onEnter": {
+    "log": "Metal scrapes stone as one of the ruined suits of armour lurches toward you.",
+    "spawn": [
+      { "name": "Armoured Zombie", "hp": 30, "ac": 16, "attackBonus": 5, "damageDice": "1d8+3" }
+    ]
+  },
+  "exits": [
+    { "verb": ["east", "forward", "door", "boss"], "targetSceneId": "bossroom_v1" },
+    { "verb": ["west", "back", "hallway"], "targetSceneId": "hallway_v1" }
+  ],
+  "onComplete": {
+    "flagsSet": ["antechamber_cleared"],
+    "reward": {
+      "xp": 100,
+      "lootTable": "5e_arms_and_armor_minor"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "coins": {
+    "cp": "1d10",
+    "sp": "3d8",
+    "gp": "1d6"
+  },
+  "items": [
+    {
+      "id": "ritual_dagger",
+      "weight": 4,
+      "qty": "1"
+    },
+    {
+      "id": "cultist_robe",
+      "weight": 3,
+      "qty": "1"
+    },
+    {
+      "id": "unholy_symbol",
+      "weight": 3,
+      "qty": "1"
+    },
+    {
+      "id": "healing_potion",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "scroll_lvl1_dark_ritual",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "small_gem_pouch",
+      "weight": 1,
+      "qty": "1d4"
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+// Shared Zod schemas that define the shape of game content and runtime state.
+
 // 1. ITEMS
 export const itemSchema = z.object({
   id: z.string(),
@@ -16,7 +18,7 @@ export const questSchema = z.object({
   description: z.string(),
 });
 
-// 3. ENTITIES
+// 3. ENTITIES (monsters/NPCs on the map)
 export const entitySchema = z.object({
   name: z.string(),
   status: z.string().default('alive'), 
@@ -27,6 +29,11 @@ export const entitySchema = z.object({
   // New: Attack stats for the monster
   attackBonus: z.coerce.number().int().default(2), 
   damageDice: z.string().default("1d4"),
+  effects: z.array(z.object({
+    name: z.string(),
+    type: z.enum(['debuff', 'buff']).default('debuff'),
+    expiresAtTurn: z.number().optional(),
+  })).default([]),
 });
 
 export const narrationModeEnum = z.enum([
@@ -47,7 +54,7 @@ export const logEntrySchema = z.object({
   createdAt: z.string().default(() => new Date().toISOString()),
 });
 
-// 4. MASTER STATE
+// 4. MASTER STATE (saved/loaded between turns)
 export const gameStateSchema = z.object({
   hp: z.coerce.number().int(),
   maxHp: z.coerce.number().int(),
@@ -116,6 +123,7 @@ export const gameStateSchema = z.object({
   })).default([]),
   storySceneId: z.string().default('iron_gate_v1'),
   storyFlags: z.array(z.string()).default([]),
+  turnCounter: z.number().default(0),
   log: z.array(logEntrySchema).default([]),
 });
 

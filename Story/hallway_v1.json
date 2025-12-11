@@ -1,0 +1,26 @@
+{
+  "id": "hallway_v1",
+  "group": "act1_hallway",
+  "title": "Torchgrave Corridor",
+  "location": "Hallway",
+  "description": "Blackened torch brackets line the walls, most smashed or bent. The remaining flames sputter weakly as if starved of air.",
+  "entryConditions": { "flagsAll": ["courtyard_cleared"] },
+  "onEnter": {
+    "log": "Your shadow stretches and fractures along the walls as movement stirs ahead in the flickering light.",
+    "spawn": [
+      { "name": "Cultist Acolyte", "hp": 9, "ac": 12, "attackBonus": 3, "damageDice": "1d8" },
+      { "name": "Skeleton", "hp": 13, "ac": 13, "attackBonus": 4, "damageDice": "1d6+2" }
+    ]
+  },
+  "exits": [
+    { "verb": ["forward", "east", "antechamber"], "targetSceneId": "antechamber_v1" },
+    { "verb": ["back", "south", "courtyard"], "targetSceneId": "courtyard_v1" }
+  ],
+  "onComplete": {
+    "flagsSet": ["hallway_seen"],
+    "reward": {
+      "xp": 75,
+      "lootTable": "5e_minor_cultist_treasure"
+    }
+  }
+}

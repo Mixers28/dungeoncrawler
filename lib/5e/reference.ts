@@ -6,7 +6,11 @@ import conditionData from '../../data/5e/conditions.json';
 import skillData from '../../data/5e/skills.json';
 import weaponData from '../../data/5e/weapons.json';
 import wizardSpellData from '../../data/5e/spells-wizard.json';
+import clericSpellData from '../../data/5e/spells-cleric.json';
 import wizardStarterData from '../../data/5e/char_wizard_novice.json';
+import warriorStarterData from '../../data/5e/char_warrior_initiate.json';
+import rogueStarterData from '../../data/5e/char_rogue_cutpurse.json';
+import clericStarterData from '../../data/5e/char_cleric_acolyte.json';
 
 const abilityScoreSchema = z.object({
   name: z.string(),
@@ -78,20 +82,28 @@ const starterCharacterSchema = z.object({
     tools: z.array(z.string()),
   }),
   equipment: z.array(z.string()),
-  spells: z.object({
-    cantrips_known: z.array(z.string()),
-    spellbook: z.array(z.string()),
-    prepared: z.array(z.string()),
-  }),
-  casting: z.object({
-    spellcasting_ability: z.string(),
-    spell_attack_bonus: z.number(),
-    spell_save_dc: z.number(),
-    slots: z.record(z.string(), z.object({
-      max: z.number(),
-      current: z.number(),
-    })),
-  }),
+  spells: z.union([
+    z.object({
+      cantrips_known: z.array(z.string()).default([]),
+      spellbook: z.array(z.string()).default([]),
+      spell_list: z.array(z.string()).default([]),
+      domain_spells: z.array(z.string()).default([]),
+      prepared: z.array(z.string()).default([]),
+    }).passthrough(),
+    z.null()
+  ]).default(null),
+  casting: z.union([
+    z.object({
+      spellcasting_ability: z.string(),
+      spell_attack_bonus: z.number(),
+      spell_save_dc: z.number(),
+      slots: z.record(z.string(), z.object({
+        max: z.number(),
+        current: z.number(),
+      })),
+    }),
+    z.null()
+  ]).default(null),
   tags: z.array(z.string()).default([]),
 });
 
@@ -143,8 +155,15 @@ export const conditionsByName = indexByName(conditions);
 
 export const wizardSpells: SpellDef[] = parseData('wizard spells', spellSchema, wizardSpellData);
 export const wizardSpellsByName = indexByName(wizardSpells);
+export const clericSpells: SpellDef[] = parseData('cleric spells', spellSchema, clericSpellData);
+export const clericSpellsByName = indexByName(clericSpells);
 
-export const starterCharacters: StarterCharacterDef[] = parseData('starter characters', starterCharacterSchema, [wizardStarterData]);
+export const starterCharacters: StarterCharacterDef[] = parseData('starter characters', starterCharacterSchema, [
+  wizardStarterData,
+  warriorStarterData,
+  rogueStarterData,
+  clericStarterData,
+]);
 export const starterCharacterById = indexByName(starterCharacters);
 
 export type {

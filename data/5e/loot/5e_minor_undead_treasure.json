@@ -1,0 +1,44 @@
+{
+  "coins": {
+    "cp": "2d10",
+    "sp": "1d8",
+    "gp": "1d4"
+  },
+  "items": [
+    {
+      "id": "tarnished_holy_symbol",
+      "weight": 3,
+      "qty": "1"
+    },
+    {
+      "id": "bone_charm",
+      "weight": 3,
+      "qty": "1d2"
+    },
+    {
+      "id": "rusted_shield",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "rotting_cloak",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "healing_potion",
+      "weight": 1,
+      "qty": "1"
+    },
+    {
+      "id": "scroll_cantrip_necromancy",
+      "weight": 1,
+      "qty": "1"
+    },
+    {
+      "id": "bandage",
+      "weight": 1,
+      "qty": "1d2"
+    }
+  ]
+}
