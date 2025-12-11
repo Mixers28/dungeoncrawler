@@ -6,6 +6,7 @@ import conditionData from '../../data/5e/conditions.json';
 import skillData from '../../data/5e/skills.json';
 import weaponData from '../../data/5e/weapons.json';
 import wizardSpellData from '../../data/5e/spells-wizard.json';
+import wizardStarterData from '../../data/5e/char_wizard_novice.json';
 
 const abilityScoreSchema = z.object({
   name: z.string(),
@@ -58,6 +59,42 @@ const spellSchema = z.object({
   url: z.string(),
 });
 
+const starterCharacterSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  level: z.number(),
+  class: z.string(),
+  subclass: z.string().optional(),
+  race: z.string().optional(),
+  hit_die: z.string(),
+  max_hp: z.number(),
+  current_hp: z.number(),
+  proficiency_bonus: z.number(),
+  abilities: z.record(z.string(), z.number()),
+  skills: z.array(z.string()),
+  proficiencies: z.object({
+    armor: z.array(z.string()),
+    weapons: z.array(z.string()),
+    tools: z.array(z.string()),
+  }),
+  equipment: z.array(z.string()),
+  spells: z.object({
+    cantrips_known: z.array(z.string()),
+    spellbook: z.array(z.string()),
+    prepared: z.array(z.string()),
+  }),
+  casting: z.object({
+    spellcasting_ability: z.string(),
+    spell_attack_bonus: z.number(),
+    spell_save_dc: z.number(),
+    slots: z.record(z.string(), z.object({
+      max: z.number(),
+      current: z.number(),
+    })),
+  }),
+  tags: z.array(z.string()).default([]),
+});
+
 type AbilityScoreDef = z.infer<typeof abilityScoreSchema>;
 type SkillDef = z.infer<typeof skillSchema>;
 type BasicActionDef = z.infer<typeof basicActionSchema>;
@@ -65,6 +102,7 @@ type WeaponDef = z.infer<typeof weaponSchema>;
 type ArmorDef = z.infer<typeof armorSchema>;
 type ConditionDef = z.infer<typeof conditionSchema>;
 type SpellDef = z.infer<typeof spellSchema>;
+type StarterCharacterDef = z.infer<typeof starterCharacterSchema>;
 
 function parseData<T>(label: string, schema: z.ZodSchema<T>, raw: unknown[]): T[] {
   const parsed = schema.array().safeParse(raw);
@@ -106,6 +144,9 @@ export const conditionsByName = indexByName(conditions);
 export const wizardSpells: SpellDef[] = parseData('wizard spells', spellSchema, wizardSpellData);
 export const wizardSpellsByName = indexByName(wizardSpells);
 
+export const starterCharacters: StarterCharacterDef[] = parseData('starter characters', starterCharacterSchema, [wizardStarterData]);
+export const starterCharacterById = indexByName(starterCharacters);
+
 export type {
   AbilityScoreDef,
   SkillDef,
@@ -114,4 +155,5 @@ export type {
   ArmorDef,
   ConditionDef,
   SpellDef,
+  StarterCharacterDef,
 };
