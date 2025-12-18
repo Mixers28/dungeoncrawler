@@ -1,77 +1,55 @@
-# VS Code Agent Spec – Plumbing Dev Feature Flow
+# VS Code Agent Spec – Dungeon Portal Dev Feature Flow
 
-**Role:** You are the "Dev Feature Flow Agent" running inside VS Code for the **Micro-SaaS Plumbing** repo.  
-Your job is to wire the project to Vellum + Context7 and provide a single command that:
+**Role:** You are a coding agent working inside VS Code (or similar) on the **Dungeon Portal** repo.
 
-1. Collects context about the requested feature.
-2. Calls the **Vellum DevFeatureFlow workflow**.
-3. Applies the returned patch.
-4. Shows the review.
-5. Appends session notes to the repo.
+Your job is to:
+1. Load the repo’s local context docs (the “markdown MCP” layer).
+2. Implement a requested feature/fix with minimal, consistent changes.
+3. Validate via `npm run lint` + `npm run build` when possible.
+4. Update relevant docs so they reflect repo reality.
 
-You MUST keep all generated files idempotent (safe to re-run without breaking anything).
+## 0. Preconditions
 
----
+- Work from the `dungeoncrawler/` project directory.
+- Required env vars for full functionality:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `GROQ_API_KEY`
 
-## 0. Preconditions & Assumptions
+If keys are missing, continue with static refactors and UI changes, but call out that runtime flows (auth/save/narrator) can’t be verified.
 
-- The current workspace is the **micro-saas-plumbing** project.
-- The repo uses **Node.js** (or Bun/Yarn) for scripts.
-- The user will provide valid API keys via environment variables or `.env` file.
+## 1. Context Hydration Order
 
-**Environment variables you rely on:**
+Read these first:
+- `DOcs/PROJECT_CONTEXT.md`
+- `DOcs/NOW.md`
+- Recent `DOcs/SESSION_NOTES.md`
+- `README.md`
+- `PROJECT_STATUS.md`
+- Task-specific docs as relevant (`Flavor.md`, `SMOKE.md`)
 
-- `VELLUM_API_KEY` – for calling the Vellum workflow.
-- (Optional) `VELLUM_API_VERSION` – if not set, default to `2024-01-15`.
-- `CONTEXT7_API_KEY` – for the MCP server in VS Code.
+## 2. Implementation Rules
 
-If any required key is missing, you MUST:
-- Show a clear error message, and
-- Stop before making any code changes.
+- Keep the **Accountant** deterministic and authoritative.
+- Keep the **Narrator** flavor-only (no numbers, no new loot/exits/mechanics).
+- Prefer changes that reduce ambiguity and improve debuggability:
+  - Log is factual and self-contained.
+  - UI shows the last resolved rolls and critical state.
+  - Fallbacks exist for non-critical assets (images).
 
----
+## 3. Validation
 
-## 1. Files & Structure You Must Maintain
+From `dungeoncrawler/`:
+- `npm run lint`
+- `npm run build`
 
-You are responsible for creating and keeping these files up to date:
+If either fails, fix only issues caused by your change (do not embark on unrelated refactors).
 
-1. `.vscode/settings.json`  
-   - Add a `mcp.servers.context7` entry using `npx @upstash/context7-mcp`.
-2. `config/vellum/dev_feature_flow.yaml`  
-   - Describes the Vellum workflow inputs, nodes, and outputs.
-3. `scripts/run_dev_feature_flow.ts`  
-   - Node script that calls the Vellum workflow and prints:
-     - `=== PATCH ===`
-     - `=== REVIEW ===`
-     - `=== SESSION NOTES ===`
-4. `docs/Session_Notes.md` (or similar)  
-   - Where you append session notes returned by the workflow.
+## 4. Documentation Updates
 
-### 1.1 `.vscode/settings.json`
+When behavior changes, update:
+- `PROJECT_STATUS.md` (what changed)
+- `README.md` (if it affects “What’s in this branch” or quick checks)
+- `Project_README.md` (if setup/env/persistence requirements changed)
+- `DOcs/NOW.md` and `DOcs/SESSION_NOTES.md` (if it changes priorities or records decisions)
 
-**Goal:** Ensure the MCP server for Context7 is configured.
-
-Algorithm:
-
-1. Locate or create `.vscode/settings.json` at the repo root.
-2. Parse it as JSON (treat comments carefully if present):
-   - If parsing fails, try to preserve existing content as much as possible and only append the `mcp` block.
-3. Ensure the following structure exists (merge, don’t overwrite):
-
-   ```jsonc
-   {
-     "mcp": {
-       "servers": {
-         "context7": {
-           "type": "stdio",
-           "command": "npx",
-           "args": [
-             "-y",
-             "@upstash/context7-mcp",
-             "--api-key",
-             "YOUR_CONTEXT7_API_KEY"
-           ]
-         }
-       }
-     }
-   }

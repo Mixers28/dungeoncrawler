@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Skull, ArrowRight, BookOpen, Menu, X } from 'lucide-react'; // Added Menu, X
 import type { GameState, LogEntry, NarrationMode } from '../lib/game-schema';
 import { GameSidebar } from '../components/GameSidebar';
+import { DiceTray } from '../components/DiceTray';
 import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 
@@ -280,6 +281,10 @@ async function handleStart() {
           </button>
         </div>
 
+        <div className="md:hidden px-4 pb-2">
+          <DiceTray state={gameState} variant="compact" />
+        </div>
+
         <div className="flex-1 overflow-y-auto space-y-6 p-4 scrollbar-thin scrollbar-thumb-slate-700 pb-32">
           {messages.map((m, i) => {
             if (m.role === 'user') {
@@ -373,7 +378,14 @@ async function handleStart() {
             <button onClick={() => setIsSidebarOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-900 p-2 rounded-full text-slate-300 border border-slate-700">
               <X size={20} />
             </button>
-            <GameSidebar state={gameState} onInsertCommand={(cmd) => setInput(cmd)} />
+            <GameSidebar
+              state={gameState}
+              onInsertCommand={(cmd) => {
+                setInput(cmd);
+                setIsSidebarOpen(false);
+                focusInput();
+              }}
+            />
           </div>
         </div>
       )}

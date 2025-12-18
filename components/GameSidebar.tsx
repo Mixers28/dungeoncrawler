@@ -3,10 +3,42 @@
 import { useState } from 'react';
 import { GameState } from '../lib/game-schema';
 import { Shield, Sword, MapPin, Coins, Scroll, Skull, ImageOff, Heart } from 'lucide-react';
+import { DiceTray } from './DiceTray';
+
+function SidebarHeaderImage({
+  primaryUrl,
+  fallbackUrl,
+  alt,
+}: {
+  primaryUrl: string;
+  fallbackUrl: string;
+  alt: string;
+}) {
+  const [stage, setStage] = useState<'primary' | 'fallback' | 'none'>(primaryUrl ? 'primary' : 'fallback');
+
+  if (stage === 'none') {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-slate-800 via-slate-900 to-black flex items-center justify-center opacity-50">
+        <ImageOff className="text-slate-700 mb-6" size={48} />
+      </div>
+    );
+  }
+
+  const src = stage === 'primary' ? primaryUrl : fallbackUrl;
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover opacity-80 transition-opacity duration-700"
+      key={`${stage}:${src}`}
+      onError={() => setStage(prev => (prev === 'primary' ? 'fallback' : 'none'))}
+    />
+  );
+}
 
 export function GameSidebar({ state, onInsertCommand }: { state: GameState; onInsertCommand?: (cmd: string) => void }) {
   const hpPercent = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
-  const [imageError, setImageError] = useState(false);
   const handleSpellClick = (name: string) => {
     const cmd = `cast ${name.toLowerCase()}`;
     if (onInsertCommand) {
@@ -24,24 +56,22 @@ export function GameSidebar({ state, onInsertCommand }: { state: GameState; onIn
   const imageUrl = state.currentImage || "";
   const locationTrail = state.locationHistory?.slice(-6) || [];
 
+  const fallbackImageUrl =
+    state.storyAct <= 0 ? '/prologue/gate.png' :
+    state.storyAct === 1 ? '/prologue/ruins.png' :
+    '/prologue/wanderer.png';
+
   return (
     <div className="h-full bg-slate-950 border-l border-slate-800 flex flex-col text-slate-200 overflow-hidden font-sans">
       
       {/* HEADER IMAGE */}
       <div className="relative w-full h-48 bg-slate-900 shrink-0 group overflow-hidden">
-        {!imageError && imageUrl ? (
-          <img 
-            src={imageUrl} 
-            alt={state.location}
-            className="w-full h-full object-cover opacity-80 transition-opacity duration-700"
-            key={imageUrl} 
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-slate-800 via-slate-900 to-black flex items-center justify-center opacity-50">
-             <ImageOff className="text-slate-700 mb-6" size={48} />
-          </div>
-        )}
+        <SidebarHeaderImage
+          key={`${state.location}:${imageUrl}`}
+          primaryUrl={imageUrl}
+          fallbackUrl={fallbackImageUrl}
+          alt={state.location}
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none" />
         <div className="absolute bottom-4 left-4 right-4 z-10">
             <h2 className="text-xl font-bold text-amber-500 flex items-center gap-2 drop-shadow-md">
@@ -88,6 +118,8 @@ export function GameSidebar({ state, onInsertCommand }: { state: GameState; onIn
           <div className="text-xs text-slate-500">{state.character?.background || 'Wanderer'}</div>
           <div className="text-xs text-slate-400">XP: {state.xp} / {state.xpToNext}</div>
         </div>
+
+        <DiceTray state={state} />
 
         {/* LOCATION TRAIL / MINI-MAP */}
         <div className="space-y-2">

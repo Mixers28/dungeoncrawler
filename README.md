@@ -8,6 +8,7 @@ Branch `dcv01` focuses on hybrid facts+flavor, deterministic mechanics, a prefab
 - 5e reference layer: typed loaders for weapons, armor, skills, basic actions, conditions, wizard + cleric spell lists (`data/5e/spells-wizard.json`, `data/5e/spells-cleric.json`), and starter prefabs in `data/5e/char_*.json`.
 - Story graph: scenes loaded from `Story/*.json` with gated exits, spawns, rewards (XP + loot tables), and location history; narrator modes expanded but flavor stays on a leash.
 - Combat/spells: wizard and cleric spells recognized with slots/prepared checks; basic effects for key spells (damage, heals, AC buffs, pins); bandages added as a starter heal.
+- UI: sidebar includes a dice tray that surfaces last resolved attack/damage rolls, plus a header image fallback when a generated/cached image fails.
 - Loot: scene rewards and corpse looting roll from `data/5e/loot/*.json`, with monster→table mapping and coin/item drops.
 - GameState backfill: skills/logs/story/spell fields hydrate so older saves keep working.
 

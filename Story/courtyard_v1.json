@@ -8,8 +8,8 @@
   "onEnter": {
     "log": "You step into the courtyard; something rattles in the fountain and the bones begin to shift.",
     "spawn": [
+      { "name": "Skeleton", "hp": 13, "ac": 13, "attackBonus": 4, "damageDice": "1d6+2" },
       { "name": "Skeleton", "hp": 13, "ac": 13, "attackBonus": 4, "damageDice": "1d6+2" }
-      //{ "name": "Skeleton", "hp": 13, "ac": 13, "attackBonus": 4, "damageDice": "1d6+2" }
     ]
   },
   "exits": [

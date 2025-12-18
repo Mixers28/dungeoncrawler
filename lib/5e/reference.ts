@@ -116,7 +116,7 @@ type ConditionDef = z.infer<typeof conditionSchema>;
 type SpellDef = z.infer<typeof spellSchema>;
 type StarterCharacterDef = z.infer<typeof starterCharacterSchema>;
 
-function parseData<T>(label: string, schema: z.ZodSchema<T>, raw: unknown[]): T[] {
+function parseData<S extends z.ZodTypeAny>(label: string, schema: S, raw: unknown): z.infer<S>[] {
   const parsed = schema.array().safeParse(raw);
   if (!parsed.success) {
     throw new Error(`5e reference load failed for ${label}: ${parsed.error.message}`);

@@ -8,6 +8,7 @@ export const itemSchema = z.object({
   name: z.string(),
   type: z.enum(['weapon', 'armor', 'potion', 'scroll', 'misc', 'food', 'material', 'key']),
   quantity: z.coerce.number().int(),
+  effect: z.string().optional(),
 });
 
 // 2. QUESTS
