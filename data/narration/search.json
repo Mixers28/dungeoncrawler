@@ -1,0 +1,26 @@
+[
+  {
+    "id": "search_found_default_1",
+    "modes": ["SEARCH_FOUND"],
+    "tags": ["default"],
+    "text": "Dust puffs up as you rummage through the remains, your fingers closing on {items} at last."
+  },
+  {
+    "id": "search_found_iron_gate_1",
+    "modes": ["SEARCH_FOUND"],
+    "tags": ["location:the_iron_gate", "location:iron_gate"],
+    "text": "At the foot of the Iron Gate, the chill stone leeches warmth from your hands as you pry {items} free."
+  },
+  {
+    "id": "search_empty_default_1",
+    "modes": ["SEARCH_EMPTY"],
+    "tags": ["default"],
+    "text": "Your search turns up nothing but dust, old blood, and the stale smell of neglect."
+  },
+  {
+    "id": "loot_gain_default_1",
+    "modes": ["LOOT_GAIN"],
+    "tags": ["default"],
+    "text": "You gather {items}, the spoils cold and heavy in your hands."
+  }
+]

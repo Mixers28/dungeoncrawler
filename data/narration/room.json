@@ -1,0 +1,20 @@
+[
+  {
+    "id": "room_intro_default_1",
+    "modes": ["ROOM_INTRO"],
+    "tags": ["default"],
+    "text": "The air hangs heavy in {location}, the silence broken only by your measured breath."
+  },
+  {
+    "id": "investigate_default_1",
+    "modes": ["INVESTIGATE"],
+    "tags": ["default"],
+    "text": "You study the details in {location}, tracing the scars of age and use."
+  },
+  {
+    "id": "general_default_1",
+    "modes": ["GENERAL"],
+    "tags": ["default"],
+    "text": "The moment passes in {location}, the dungeon watching as you decide your next move."
+  }
+]

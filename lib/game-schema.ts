@@ -38,13 +38,15 @@ export const entitySchema = z.object({
 });
 
 export const narrationModeEnum = z.enum([
-  'GENERAL_INTERACTION',
   'ROOM_INTRO',
-  'INSPECTION',
-  'COMBAT_FOCUS',
-  'SEARCH',
+  'COMBAT_HIT',
+  'COMBAT_MISS',
+  'COMBAT_KILL',
+  'SEARCH_FOUND',
+  'SEARCH_EMPTY',
+  'LOOT_GAIN',
   'INVESTIGATE',
-  'LOOT',
+  'GENERAL',
   'SHEET',
 ]);
 export const logEntrySchema = z.object({
