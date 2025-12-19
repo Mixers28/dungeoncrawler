@@ -5,41 +5,41 @@
 
 <!-- SUMMARY_START -->
 **Current Focus (auto-maintained by Agent):**
-- Polish the docs so the workflow is unmistakable.
-- Build an end-to-end example project walkthrough.
-- Trial the kit against one real codebase.
+- Validate Railway deploy from `dcv01` and monitor build warnings.
+- Keep docs aligned with repo structure and story assets.
+- Stabilize runtime behavior (cache limits, story loading, Supabase sessions).
 <!-- SUMMARY_END -->
 
 ---
 
 ## Current Objective
 
-Deliver a polished local-mcp-context-kit template that includes example usage and has been validated on a real repo.
+Deploy Dungeon Portal via Railway from `dcv01` and verify runtime health.
 
 ---
 
 ## Active Branch
 
-- `main`
+- `dcv01`
 
 ---
 
 ## What We Are Working On Right Now
 
-- [ ] Tighten and proofread all docs (PROJECT_CONTEXT, NOW, SESSION_NOTES, supporting guides).
-- [ ] Create an example project walkthrough showing how agents update the memory files.
-- [ ] Run the workflow on a real codebase to confirm the process is solid.
+- [ ] Confirm Railway deploy succeeds from `dcv01` and app boots.
+- [ ] Review Edge runtime warnings from Supabase middleware and decide on mitigation.
+- [ ] Verify story assets load from `story/` after directory consolidation.
 
 ---
 
 ## Next Small Deliverables
 
-- Updated docs folder with polished guidance and screenshots if needed.
-- Checked-in example project or scenario illustrating usage.
-- Report/findings from testing the kit on a live repo.
+- Railway deploy report (build logs + runtime notes).
+- Follow-up fixes for Edge warnings if required.
+- Confirmation that story assets and cache limits behave in prod.
 
 ---
 
 ## Notes / Scratchpad
 
-- Blocked on gathering any additional stakeholder requirements before publishing widely.
+- Track whether Railway needs environment variables or build overrides.

@@ -37,6 +37,35 @@
 ## Session Template (Copy/Paste for each new session)
 ## Recent Sessions (last 3-5)
 
+### 2025-12-19
+
+**Participants:** User, Codex Agent  
+**Branch:** dcv01  
+
+### What we worked on
+- Updated Next.js to 14.2.35 and aligned ESLint tooling after audit fixes.
+- Consolidated story assets to `story/` and corrected doc references/mismatches.
+- Added cache pruning limits for scene images and pushed to `dcv01`.
+- Ran `npm run lint` and `npm run build` to validate the branch.
+
+### Files touched
+- app/actions.ts
+- package.json
+- package-lock.json
+- README.md
+- DOcs/PRODUCT_BRIEF_ONE_PAGER.md
+- DOcs/dcv01-notes.md
+- docs/dcv01-notes.md
+- PROJECT_STATUS.md
+- docs/PROJECT_CONTEXT.md
+- docs/NOW.md
+- Story/* (removed duplicate directory)
+
+### Outcomes / Decisions
+- Railway deploy target confirmed as `dcv01`.
+- Scene cache now prunes by size and file count to avoid unbounded growth.
+- Story assets are consolidated under `story/` going forward.
+
 ### 2025-12-01 (Session 2)
 
 **Participants:** User, Codex Agent  
@@ -91,4 +120,3 @@
 
 ## Archive (do not load by default)
 ...
-

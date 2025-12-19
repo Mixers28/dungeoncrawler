@@ -5,37 +5,37 @@
 
 <!-- SUMMARY_START -->
 **Summary (auto-maintained by Agent):**
-- Template repo proving Markdown + Git can store long-lived memory for AI coding agents.
-- Entire workflow stays local inside VS Code + PowerShell, no backend dependencies.
-- Immediate push: polish docs, add an example project, and validate on a real codebase.
+- Dungeon Portal is a Next.js dungeon crawler with Supabase auth/saves and Groq-backed narration.
+- Story content lives in `story/*.json` and game state stays deterministic on the server.
+- Deployment target is Railway, driven from a tracked git branch.
 <!-- SUMMARY_END -->
 
 ---
 
 ## 1. Project Overview
 
-- **Name:** local-mcp-context-kit
-- **Owner:** TBD (template maintainer)
-- **Purpose:** Template repo demonstrating how Markdown plus Git can serve as durable memory for AI coding agents.
-- **Primary Stack:** Git + Markdown docs, VS Code editor, PowerShell helper scripts (no backend).
-- **Target Platforms:** Local developer environments (VS Code on desktop).
+- **Name:** Dungeon Portal
+- **Owner:** TBD
+- **Purpose:** AI-assisted, text-first dungeon crawler with deterministic mechanics and Supabase persistence.
+- **Primary Stack:** Next.js (App Router), TypeScript, Supabase, Tailwind CSS, Groq API.
+- **Target Platforms:** Web (desktop/mobile), Railway deployment target.
 
 ---
 
 ## 2. Core Design Pillars
 
-- Keep project memory transparent and versioned via Markdown in Git.
-- Maintain an editor-native workflow (VS Code + PowerShell) without external services.
-- Provide a reusable template that agents and humans can adopt quickly.
+- Keep deterministic game state authoritative; narration decorates but does not mutate state.
+- Keep story content in JSON so scenes/exits/rewards are data-driven.
+- Keep auth and saves handled by Supabase with server-side actions.
 
 ---
 
 ## 3. Technical Decisions & Constraints
 
-- Language(s): Markdown for docs; PowerShell/Python helper scripts as needed.
-- Framework(s): None; rely on native editor tooling.
-- Database / storage: Git repository history; no external database.
-- Hosting / deployment: Shared via Git hosting and cloned locally.
+- Language(s): TypeScript/React for app; Markdown for docs.
+- Framework(s): Next.js App Router; Tailwind CSS.
+- Database / storage: Supabase (auth + `saved_games` table).
+- Hosting / deployment: Railway, pulling from a git branch.
 - Non-negotiable constraints:
   - Must remain backend-free and editor-native.
   - Documentation stays in plain Markdown for easy review.
@@ -44,18 +44,18 @@
 
 ## 4. Architecture Snapshot
 
-- Docs folder holds long-term (PROJECT_CONTEXT), working-memory (NOW), and session logs (SESSION_NOTES).
-- Scripts (e.g., session-helper.sh / session-helper.ps1) guide agents through start/end rituals.
-- VS Code tasks integrate with these scripts so humans/agents share the same workflow.
+- App lives in `app/` with server actions handling core game logic.
+- Story scenes load from `story/*.json` with deterministic picks by seed.
+- Supabase middleware handles sessions; saves are upserted per user.
 
 ---
 
 ## 5. Links & Related Docs
 
 - Roadmap: TBD
-- Design docs: docs/MCP_LOCAL_DESIGN.md, docs/AGENT_SESSION_PROTOCOL.md
-- Specs: docs/Repo_Structure.md
-- Product / UX docs: docs/PROJECT_CONTEXT.md, docs/NOW.md
+- Design docs: `PROJECT_STATUS.md`, `SMOKE.md`
+- Specs: `Project_README.md`, `README.md`
+- Product / UX docs: `Flavor.md`, `docs/NOW.md`
 
 ---
 
