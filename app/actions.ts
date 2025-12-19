@@ -242,6 +242,9 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
 }
 
 // --- RESOLVERS ---
+const SCENE_CACHE_MAX_BYTES = 200 * 1024 * 1024; // 200 MB cap for cached scene images
+const SCENE_CACHE_MAX_FILES = 250;
+
 async function ensureCacheDir() {
   const cacheDir = path.join(process.cwd(), 'public', 'scene-cache');
   try {
@@ -250,6 +253,37 @@ async function ensureCacheDir() {
     console.error("Failed to ensure cache dir", err);
   }
   return cacheDir;
+}
+
+async function pruneSceneCache(cacheDir: string) {
+  try {
+    const entries = await fs.readdir(cacheDir, { withFileTypes: true });
+    const files = entries.filter(entry => entry.isFile());
+    if (files.length === 0) return;
+
+    const stats = await Promise.all(files.map(async entry => {
+      const fullPath = path.join(cacheDir, entry.name);
+      const info = await fs.stat(fullPath);
+      return { path: fullPath, mtimeMs: info.mtimeMs, size: info.size };
+    }));
+
+    stats.sort((a, b) => a.mtimeMs - b.mtimeMs);
+    let totalBytes = stats.reduce((sum, file) => sum + file.size, 0);
+
+    while (stats.length > SCENE_CACHE_MAX_FILES || totalBytes > SCENE_CACHE_MAX_BYTES) {
+      const oldest = stats.shift();
+      if (!oldest) break;
+      try {
+        await fs.unlink(oldest.path);
+        totalBytes -= oldest.size;
+      } catch (err) {
+        console.error("Failed to prune cache file", oldest.path, err);
+        break;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to prune scene cache", err);
+  }
 }
 
 async function cacheSceneImage(remoteUrl: string, fileName: string): Promise<string | null> {
@@ -267,6 +301,7 @@ async function cacheSceneImage(remoteUrl: string, fileName: string): Promise<str
     if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
     const arrayBuffer = await res.arrayBuffer();
     await fs.writeFile(filePath, Buffer.from(arrayBuffer));
+    await pruneSceneCache(cacheDir);
     return `/scene-cache/${fileName}`;
   } catch (err) {
     console.error("Image cache fetch failed, using remote URL", err);

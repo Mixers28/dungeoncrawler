@@ -13,12 +13,12 @@
 - Clamped story act to defined acts, and fed the narrator the current act, room description, and inventory to reduce hallucinations and keep plot/location anchored (`app/actions.ts`).
 - Made turn resolution fully deterministic in JS (attack/defend/run logic, HP/AC updates, and combat summaries) so narrator, sidebar, and saves stay in sync (`app/actions.ts`).
 - Refreshed sidebar synchronization by re-cloning nearby entities on updates so threat lists re-render reliably (`app/actions.ts`).
-- Tightened narrator output: capped at 3 sentences, only mentions stats/inventory when changed, and enforces consistency with provided state (`app/actions.ts`).
+- Tightened narrator output: capped at 1 sentence, only mentions stats/inventory when changed, and enforces consistency with provided state (`app/actions.ts`).
 - Included last roll values in narrator context and instructed it to never contradict HP/roll/entity data (`app/actions.ts`).
 - Start-of-run is neutral (combat off) and monsters act only after hostile/defensive actions; “look” no longer triggers surprise damage (`app/actions.ts`).
 - Narrator now uses provided roll values and HP delta and must not claim pending rolls or damage when none occurred (`app/actions.ts`).
 - Scene images are cached locally in `public/scene-cache` keyed by scene+seed; repeat visits reuse cached files instead of re-calling the generator (`app/actions.ts`).
-- Narrator prompt updated to mirror DM principles: concise (≤3 sentences), telegraph threats, no surprise damage without triggers, and must use provided rolls/HP/entity data faithfully (`app/actions.ts`).
+- Narrator prompt updated to mirror DM principles: concise (≤1 sentence), telegraph threats, no surprise damage without triggers, and must use provided rolls/HP/entity data faithfully (`app/actions.ts`).
 - Added 5e reference snippets (abilities, conditions, basic actions) and fed them to the narrator for grounded descriptions (`data/5e/*`, `lib/refs.ts`, `app/actions.ts`).
 - Expanded 5e references with skills-to-abilities, weapon table, armor table, and fuller conditions for future rule grounding (`data/5e/*`, `lib/refs.ts`).
 - Scene cache now keeps a small variant pool per scene (3 variants) and reuses by scene key; variant chosen deterministically per run, avoiding re-generation while allowing variety (`app/actions.ts`).
@@ -30,7 +30,7 @@
 - Improved combat narration alignment: added alive threat context, forbid “pending” phrasing, require concrete hit/miss/damage lines, and blocked wound mentions when no HP loss; added generic corpse loot to keep inventory/narrative aligned (`app/actions.ts`).
 - Updated references: PHB/DMG PDFs stored in `DOcs/`, README adjusted accordingly (`Project_README.md`).
 - Room descriptions are now deterministic (no model generation) and narrator is clamped to provided location text to avoid scene hallucinations (`app/actions.ts`).
-- Added one-time purge of cached room/scene data on hydrate to clear legacy hallucinated content (`app/actions.ts`).
+- Rebuilds cached room/scene registries on hydrate to keep derived data fresh (`app/actions.ts`).
 - UI: added a sidebar dice tray to show last resolved player/monster rolls, and added a story-act-based image fallback if the room image fails to load (`components/DiceTray.tsx`, `components/GameSidebar.tsx`).
 
 ## Future Plans

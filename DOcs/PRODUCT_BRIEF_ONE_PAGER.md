@@ -32,7 +32,7 @@ Players who:
 ## 5. Current scope
 
 - Quick-start archetypes (Fighter/Rogue/Cleric/Wizard)
-- Story graph from `Story/*.json` (exits/spawns/rewards)
+- Story graph from `story/*.json` (exits/spawns/rewards)
 - 5e reference layer (`data/5e/*`) for weapons/armor/skills/spells/loot
 - Save/load via Supabase table `saved_games`
 - Scene image caching (`public/scene-cache`) and resilient UI fallback when images fail
@@ -42,4 +42,3 @@ Players who:
 - Player can understand why an outcome happened (and see the last resolved rolls).
 - Narrator never contradicts state or invents mechanics/loot/exits.
 - Loading older saves is safe via schema hydration/backfill.
-

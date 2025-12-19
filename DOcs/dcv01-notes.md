@@ -22,7 +22,7 @@
 - Older modified files in the branch are untouched; see `git status` before merging.
 - Spell resolution covers only the starter set; higher-level spells are unmodeled.
 - Active effect durations (Shield, Mage Armor) are simplified; no per-turn expiry.
-- Story scenes are loaded but story JSON files are not tracked in Git yet; ensure they’re bundled/persisted.
+- Story scenes are tracked in `story/` and loaded at runtime; keep the directory present in deploys.
 
 ## Quick smoke
 - See `SMOKE.md` for manual steps.
