@@ -1055,12 +1055,13 @@ async function _updateGameState(
 
   const isNewLocation = newState.location !== currentState.location;
   const isSheet = parsedIntent.type === 'checkSheet';
+  const resolvedCombatOutcome = combatOutcome as 'hit' | 'miss' | 'kill' | null;
 
   let narrationMode: NarrationMode = "GENERAL";
   if (isSheet) narrationMode = "SHEET";
-  else if (combatOutcome === 'kill') narrationMode = "COMBAT_KILL";
-  else if (combatOutcome === 'hit') narrationMode = "COMBAT_HIT";
-  else if (combatOutcome === 'miss') narrationMode = "COMBAT_MISS";
+  else if (resolvedCombatOutcome === 'kill') narrationMode = "COMBAT_KILL";
+  else if (resolvedCombatOutcome === 'hit') narrationMode = "COMBAT_HIT";
+  else if (resolvedCombatOutcome === 'miss') narrationMode = "COMBAT_MISS";
   else if (foundLootItems) narrationMode = "LOOT_GAIN";
   else if (foundSearchItems) narrationMode = "SEARCH_FOUND";
   else if (attemptedInvestigate) narrationMode = "INVESTIGATE";
