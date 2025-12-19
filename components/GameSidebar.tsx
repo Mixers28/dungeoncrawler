@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { GameState } from '../lib/game-schema';
+import { BUILD_SHA } from '../lib/build-info';
 import { Shield, Sword, MapPin, Coins, Scroll, Skull, ImageOff, Heart } from 'lucide-react';
 import { DiceTray } from './DiceTray';
 
@@ -39,6 +40,7 @@ function SidebarHeaderImage({
 
 export function GameSidebar({ state, onInsertCommand }: { state: GameState; onInsertCommand?: (cmd: string) => void }) {
   const hpPercent = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
+  const buildSha = process.env.NEXT_PUBLIC_GIT_SHA || BUILD_SHA;
   const handleSpellClick = (name: string) => {
     const cmd = `cast ${name.toLowerCase()}`;
     if (onInsertCommand) {
@@ -311,6 +313,9 @@ export function GameSidebar({ state, onInsertCommand }: { state: GameState; onIn
                 </div>
             </div>
         )}
+      </div>
+      <div className="border-t border-slate-800 px-4 py-3 text-[10px] uppercase tracking-widest text-slate-600">
+        Build {buildSha}
       </div>
     </div>
   );
