@@ -1,0 +1,23 @@
+{
+  "id": "treasury_v1",
+  "group": "act1_treasury",
+  "title": "Gold-Dusted Vault",
+  "location": "Treasury",
+  "description": "Pale dust coats the toppled chests, glowing faintly as if the gold within has bled into the air.",
+  "entryConditions": { "flagsAll": ["boss1_cleared"] },
+  "onEnter": {
+    "log": "At last, you stand among the hoards the Iron King once guarded.",
+    "spawn": []
+  },
+  "exits": [
+    { "verb": ["stairs", "up", "leave", "exit"], "targetSceneId": "act2_entry", "log": "You ascend a narrow stair toward the upper halls." }
+  ],
+  "onComplete": {
+    "flagsSet": ["act1_complete"],
+    "reward": {
+      "xp": 250,
+      "lootTable": "5e_treasure_hoard_low",
+      "items": []
+    }
+  }
+}

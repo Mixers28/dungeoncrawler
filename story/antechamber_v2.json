@@ -1,0 +1,25 @@
+{
+  "id": "antechamber_v2",
+  "group": "act1_antechamber",
+  "title": "Hall of Echoing Shields",
+  "location": "Ante-Chamber",
+  "description": "Dozens of dented shields lie scattered across the floor, each clattering softly under your boots.",
+  "entryConditions": { "flagsAll": ["hallway_seen"] },
+  "onEnter": {
+    "log": "The clatter swells into a rumble as a corpse wrapped in broken mail hauls itself upright.",
+    "spawn": [
+      { "name": "Armoured Zombie", "hp": 30, "ac": 16, "attackBonus": 5, "damageDice": "1d8+3" }
+    ]
+  },
+  "exits": [
+    { "verb": ["east", "forward", "door", "boss"], "targetSceneId": "bossroom_v2" },
+    { "verb": ["west", "back", "hallway"], "targetSceneId": "hallway_v2" }
+  ],
+  "onComplete": {
+    "flagsSet": ["antechamber_cleared"],
+    "reward": {
+      "xp": 100,
+      "lootTable": "5e_arms_and_armor_minor"
+    }
+  }
+}
