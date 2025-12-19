@@ -13,6 +13,9 @@ import { rollLoot } from '../lib/loot';
 import { gameStateSchema, type GameState, type LogEntry, type NarrationMode } from '../lib/game-schema';
 import { generateCannedFlavor, type NarrationContext } from '../lib/narrationEngine';
 import { classifyStunt, DIFFICULTY_TO_DC, type ClassifiedStunt, type StuntTemplate } from '../lib/stunts';
+import { getNextLevelDef } from '../lib/progression';
+import { armorById, armorByName as equipmentArmorByName, resolveArmorId, resolveWeaponId, weaponsById, weaponsByName as equipmentWeaponsByName } from '../lib/items';
+import { getTraderAtLocation } from '../lib/traders';
 
 
 // --- HELPERS ---
@@ -77,7 +80,32 @@ const normalizeName = (name: string | undefined) =>
   (name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 type ActionIntent = 'attack' | 'defend' | 'run' | 'other';
 
-const XP_THRESHOLDS = [0, 300, 900, 2700, 6500, 14000, 23000];
+function awardGold(state: GameState, amount: number) {
+  if (!Number.isFinite(amount) || amount === 0) return;
+  state.gold = Math.max(0, (state.gold || 0) + amount);
+}
+
+function applyXpAndCheckLevelUp(state: GameState, xpGained: number, logs: string[], reason?: string) {
+  if (!Number.isFinite(xpGained) || xpGained <= 0) return;
+  state.xp += xpGained;
+  if (reason) {
+    logs.push(`You gain ${xpGained} XP ${reason}`);
+  } else {
+    logs.push(`You gain ${xpGained} XP.`);
+  }
+
+  while (true) {
+    const next = getNextLevelDef(state.level);
+    if (!next) break;
+    if (state.xp < next.xpRequired) break;
+    state.level = next.level;
+    state.maxHp += next.hpGain;
+    state.hp = state.maxHp;
+    logs.push(`You reach level ${state.level}. Your maximum HP increases to ${state.maxHp}.`);
+  }
+  const upcoming = getNextLevelDef(state.level);
+  if (upcoming) state.xpToNext = upcoming.xpRequired;
+}
 const VALID_NARRATION_MODES = new Set<string>([
   'ROOM_INTRO',
   'COMBAT_HIT',
@@ -308,6 +336,17 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
   state.storySceneId = state.storySceneId || 'iron_gate_v1';
   state.storyFlags = state.storyFlags || [];
   state.turnCounter = state.turnCounter || 0;
+  state.gold = Math.max(0, state.gold || 0);
+  state.equippedWeaponId = state.equippedWeaponId || resolveWeaponId(state.inventory.find(i => i.type === 'weapon')?.name);
+  state.equippedArmorId = state.equippedArmorId || resolveArmorId(state.inventory.find(i => i.type === 'armor')?.name);
+  if (state.equippedArmorId) {
+    const armorDef = armorById[state.equippedArmorId];
+    if (armorDef?.baseAC) state.ac = Math.max(state.ac, armorDef.baseAC);
+  }
+  if (!Number.isFinite(state.xpToNext) || state.xpToNext <= 0) {
+    const next = getNextLevelDef(state.level);
+    state.xpToNext = next?.xpRequired ?? 300;
+  }
 
   // Backfill: migrate old narrativeHistory into log as summary-only entries
   if ((!state.log || state.log.length === 0) && state.narrativeHistory && state.narrativeHistory.length > 0) {
@@ -592,6 +631,124 @@ function resolveStunt(
   return { summary, mode };
 }
 
+function getEquippedWeaponDamageDice(state: GameState, fallbackName: string): string {
+  if (state.equippedWeaponId) {
+    const def = weaponsById[state.equippedWeaponId];
+    if (def?.damageDice) return def.damageDice;
+  }
+  const byName = equipmentWeaponsByName[fallbackName.toLowerCase()];
+  if (byName?.damageDice) return byName.damageDice;
+  return getWeaponDamageDice(fallbackName);
+}
+
+function getBaseAcFromEquipped(state: GameState): number {
+  if (state.equippedArmorId) {
+    const def = armorById[state.equippedArmorId];
+    if (def?.baseAC) return def.baseAC;
+  }
+  return state.ac;
+}
+
+type TradeIntent = { type: 'openShop' | 'buy' | 'sell'; itemName?: string };
+
+function parseTradeIntent(userAction: string): TradeIntent | null {
+  const text = userAction.trim().toLowerCase();
+  if (text.includes('talk to trader') || text.includes('open shop') || text.includes('trade')) {
+    return { type: 'openShop' };
+  }
+  if (text.startsWith('buy ')) {
+    return { type: 'buy', itemName: text.replace(/^buy\s+/, '') };
+  }
+  if (text.startsWith('sell ')) {
+    return { type: 'sell', itemName: text.replace(/^sell\s+/, '') };
+  }
+  return null;
+}
+
+function resolveTradeIntent(
+  state: GameState,
+  tradeIntent: TradeIntent
+): { eventSummary: string; narrationMode: NarrationMode } {
+  const trader = getTraderAtLocation(state.location);
+  const narrationMode: NarrationMode = 'GENERAL';
+
+  if (!trader) {
+    return { eventSummary: 'There is no trader here to do business with.', narrationMode };
+  }
+
+  if (tradeIntent.type === 'openShop') {
+    const itemsList = trader.inventory.map(item => `${item.itemId} (${item.price}g)`).join(', ');
+    const eventSummary = `You approach ${trader.name}. For sale: ${itemsList}. You have ${state.gold} gold.`;
+    return { eventSummary, narrationMode };
+  }
+
+  if (tradeIntent.type === 'buy' && tradeIntent.itemName) {
+    const itemName = tradeIntent.itemName.trim().toLowerCase();
+    const invEntry = trader.inventory.find(item => item.itemId.toLowerCase() === itemName);
+    if (!invEntry) {
+      const eventSummary = `${trader.name} does not sell ${tradeIntent.itemName}.`;
+      return { eventSummary, narrationMode };
+    }
+    if (state.gold < invEntry.price) {
+      const eventSummary = `You cannot afford ${invEntry.itemId} (costs ${invEntry.price} gold, you have ${state.gold}).`;
+      return { eventSummary, narrationMode };
+    }
+
+    awardGold(state, -invEntry.price);
+    const weaponDef = weaponsById[invEntry.itemId] || equipmentWeaponsByName[invEntry.itemId];
+    const armorDef = armorById[invEntry.itemId] || equipmentArmorByName[invEntry.itemId];
+    const displayName = weaponDef?.name || armorDef?.name || invEntry.itemId.replace(/_/g, ' ');
+    const itemType = weaponDef ? 'weapon' : armorDef ? 'armor' : 'potion';
+    const existingIdx = state.inventory.findIndex(item => item.name.toLowerCase() === displayName.toLowerCase());
+    if (existingIdx >= 0) {
+      state.inventory = state.inventory.map((item, idx) =>
+        idx === existingIdx ? { ...item, quantity: item.quantity + 1 } : item
+      );
+    } else {
+      state.inventory = [
+        ...state.inventory,
+        { id: `shop-${Date.now().toString(36)}`, name: displayName, type: itemType, quantity: 1 },
+      ];
+    }
+
+    if (weaponDef) state.equippedWeaponId = weaponDef.id;
+    if (armorDef) {
+      state.equippedArmorId = armorDef.id;
+      state.ac = Math.max(state.ac, armorDef.baseAC);
+    }
+
+    const eventSummary = `You buy ${displayName} from ${trader.name} for ${invEntry.price} gold. You now have ${state.gold} gold.`;
+    return { eventSummary, narrationMode };
+  }
+
+  if (tradeIntent.type === 'sell' && tradeIntent.itemName) {
+    const itemName = tradeIntent.itemName.trim().toLowerCase();
+    const invIdx = state.inventory.findIndex(item => item.name.toLowerCase() === itemName);
+    if (invIdx < 0) {
+      const eventSummary = `You do not have ${tradeIntent.itemName} to sell.`;
+      return { eventSummary, narrationMode };
+    }
+
+    const invItem = state.inventory[invIdx];
+    const traderPrice = trader.inventory.find(item => item.itemId.toLowerCase() === itemName)?.price;
+    const basePrice = traderPrice ?? 2;
+    const sellPrice = Math.max(1, Math.floor(basePrice * trader.buybackRate));
+    awardGold(state, sellPrice);
+    const remainingQty = Math.max(0, invItem.quantity - 1);
+    if (remainingQty === 0) {
+      state.inventory = state.inventory.filter((_, idx) => idx !== invIdx);
+    } else {
+      state.inventory = state.inventory.map((item, idx) =>
+        idx === invIdx ? { ...item, quantity: remainingQty } : item
+      );
+    }
+    const eventSummary = `You sell ${invItem.name} for ${sellPrice} gold. You now have ${state.gold} gold.`;
+    return { eventSummary, narrationMode };
+  }
+
+  return { eventSummary: 'You fail to complete any trade.', narrationMode };
+}
+
 function buildAccountantFacts(params: {
   newState: GameState;
   previousState: GameState;
@@ -690,11 +847,11 @@ async function _updateGameState(
     : currentState.inventory.find(i => i.type === 'weapon')?.name;
 
   let weaponName = preferredWeaponName || "Fists";
-  let playerDmgDice = getWeaponDamageDice(weaponName);
+  let playerDmgDice = getEquippedWeaponDamageDice(currentState, weaponName);
   const weaponAllowed = isWeaponAllowedForClass(weaponName, classKey);
   if (!weaponAllowed && weaponName !== "Fists") {
-    playerDmgDice = "1d4";
     weaponName = "Fists";
+    playerDmgDice = getEquippedWeaponDamageDice(currentState, weaponName);
   }
 
   // 2. PREP STATE
@@ -973,17 +1130,24 @@ async function _updateGameState(
       .join('; ');
     summaryParts.push(`Skills: ${skills}. Equipped weapon: ${primaryWeapon}. Armor: ${armor}. Spells known: ${known}. Spells prepared: ${prepared}. Slots: ${slotText || 'None'}.`);
   } else {
-    const stunt = classifyStunt(userAction);
-    if (stunt) {
-      const { summary, mode } = resolveStunt(newState, stunt);
-      stuntModeOverride = mode;
-      summaryParts.push(summary);
-    } else if (actionIntent === 'other' && newState.nearbyEntities.length === 0) {
-      summaryParts.push("You act, but there is no immediate threat here.");
-    } else if (actionIntent === 'attack' && !activeMonster) {
-      summaryParts.push("You swing, but no foe stands before you.");
+    const tradeIntent = parseTradeIntent(userAction);
+    if (tradeIntent) {
+      const tradeResult = resolveTradeIntent(newState, tradeIntent);
+      stuntModeOverride = tradeResult.narrationMode;
+      summaryParts.push(tradeResult.eventSummary);
     } else {
-      summaryParts.push(`You ${safeUserAction}.`);
+      const stunt = classifyStunt(userAction);
+      if (stunt) {
+        const { summary, mode } = resolveStunt(newState, stunt);
+        stuntModeOverride = mode;
+        summaryParts.push(summary);
+      } else if (actionIntent === 'other' && newState.nearbyEntities.length === 0) {
+        summaryParts.push("You act, but there is no immediate threat here.");
+      } else if (actionIntent === 'attack' && !activeMonster) {
+        summaryParts.push("You swing, but no foe stands before you.");
+      } else {
+        summaryParts.push(`You ${safeUserAction}.`);
+      }
     }
   }
   } // end handledBandage guard
@@ -1002,7 +1166,7 @@ async function _updateGameState(
     } else {
       monsterAttackRoll = Math.floor(Math.random() * 20) + 1 + currentActiveMonster.attackBonus;
       monsterDamageNotation = currentActiveMonster.damageDice;
-      const playerAc = getPlayerAc(newState, newState.ac);
+      const playerAc = getPlayerAc(newState, getBaseAcFromEquipped(newState));
       if (monsterAttackRoll >= playerAc) {
         monsterDamageRoll = rollDice(monsterDamageNotation);
         newState.hp = Math.max(0, newState.hp - monsterDamageRoll);
@@ -1058,8 +1222,7 @@ async function _updateGameState(
   const monsterKilled = monsterWasAlive && monsterNow && monsterNow.status === 'dead';
   if (monsterKilled) {
     const xpAward = MONSTER_MANUAL[activeMonster!.name]?.hp ? Math.max(25, MONSTER_MANUAL[activeMonster!.name].hp * 5) : 50;
-    newState.xp += xpAward;
-    summaryParts.push(`You gain ${xpAward} XP.`);
+    applyXpAndCheckLevelUp(newState, xpAward, summaryParts);
   }
 
   // Scene completion rewards
@@ -1071,8 +1234,12 @@ async function _updateGameState(
       newState.storyFlags = [...(newState.storyFlags || []), ...newFlags];
       const rewardXp = sceneForReward.onComplete.reward?.xp || 0;
       if (rewardXp > 0) {
-        newState.xp += rewardXp;
-        summaryParts.push(`You gain ${rewardXp} XP for securing ${sceneForReward.title || sceneForReward.location}.`);
+        applyXpAndCheckLevelUp(
+          newState,
+          rewardXp,
+          summaryParts,
+          `for securing ${sceneForReward.title || sceneForReward.location}.`
+        );
       }
       const lootTable = sceneForReward.onComplete.reward?.lootTable;
       if (lootTable) {
@@ -1083,7 +1250,7 @@ async function _updateGameState(
             const gold = loot.coins.gp || 0;
             const silver = loot.coins.sp || 0;
             const copper = loot.coins.cp || 0;
-            if (gold > 0) newState.gold += gold;
+            if (gold > 0) awardGold(newState, gold);
             summaryParts.push(`You recover ${gold ? gold + ' gp' : ''}${gold && (silver || copper) ? ', ' : ''}${silver ? silver + ' sp' : ''}${silver && copper ? ', ' : ''}${(!gold && !silver && copper) ? `${copper} cp` : ''}`.trim().replace(/, $/, ''));
           }
           if (loot.items.length > 0) {
@@ -1102,16 +1269,6 @@ async function _updateGameState(
     }
   }
 
-  let leveled = false;
-  while (newState.level < XP_THRESHOLDS.length && newState.xp >= XP_THRESHOLDS[newState.level]) {
-    newState.level += 1;
-    newState.xpToNext = XP_THRESHOLDS[newState.level] ?? newState.xpToNext;
-    // Simple HP bump per level
-    newState.maxHp += 2;
-    newState.hp = Math.max(newState.hp, newState.maxHp);
-    leveled = true;
-  }
-  if (leveled) summaryParts.push(`You reach level ${newState.level}.`);
 
   // 8b. LOOT CORPSES (simple generic loot)
   const wantsLoot = /(loot|rummage|pick over|salvage)/i.test(userAction);
@@ -1137,7 +1294,7 @@ async function _updateGameState(
     const newItems: GameState['inventory'] = [];
     if (loot) {
       goldFind = loot.coins.gp || 0;
-      if (goldFind > 0) newState.gold += goldFind;
+      if (goldFind > 0) awardGold(newState, goldFind);
       if (loot.items.length > 0) {
         for (const it of loot.items) {
           newItems.push({
@@ -1156,7 +1313,7 @@ async function _updateGameState(
         type: 'misc',
         quantity: 1,
       });
-      newState.gold += goldFind;
+      awardGold(newState, goldFind);
     }
     newState.inventory = [...newState.inventory, ...newItems];
     foundLootItems = goldFind > 0 || newItems.length > 0;
@@ -1282,9 +1439,10 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
   const worldSeed = Math.floor(Math.random() * 999999);
   const gateScene = pickSceneVariant('act1_gate', worldSeed) || getSceneById('iron_gate_v1');
 
+  const nextLevel = getNextLevelDef(1);
   const baseState: GameState = {
     hp: initialHp, maxHp: initialHp, ac: initialAc, tempAcBonus: 0, gold: 0,
-    level: 1, xp: 0, xpToNext: XP_THRESHOLDS[1],
+    level: 1, xp: 0, xpToNext: nextLevel?.xpRequired ?? 300,
     character: {
       name: 'Adventurer',
       class: archetype.label,
@@ -1296,6 +1454,8 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
     },
     location: gateScene?.location || "The Iron Gate", 
     inventory,
+    equippedWeaponId: resolveWeaponId(inventory.find(i => i.type === 'weapon')?.name),
+    equippedArmorId: resolveArmorId(inventory.find(i => i.type === 'armor')?.name),
     skills,
     knownSpells,
     preparedSpells,

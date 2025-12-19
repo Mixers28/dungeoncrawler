@@ -63,7 +63,7 @@ export const gameStateSchema = z.object({
   maxHp: z.coerce.number().int(),
   ac: z.coerce.number().int(), // Base AC
   tempAcBonus: z.coerce.number().int().default(0), // For Defensive Stance
-  gold: z.coerce.number().int(),
+  gold: z.coerce.number().int().nonnegative().default(0),
   level: z.coerce.number().int().default(1),
   xp: z.coerce.number().int().default(0),
   xpToNext: z.coerce.number().int().default(300),
@@ -86,6 +86,8 @@ export const gameStateSchema = z.object({
   }),
   location: z.string(),
   inventory: z.array(itemSchema).default([]), 
+  equippedWeaponId: z.string().optional(),
+  equippedArmorId: z.string().optional(),
   quests: z.array(questSchema).default([]),
   nearbyEntities: z.array(entitySchema).default([]),
   lastActionSummary: z.string(),
