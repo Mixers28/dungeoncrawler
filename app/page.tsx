@@ -299,17 +299,13 @@ async function handleStart() {
 
             return (
               <div key={i} className="flex justify-start">
-                <div className="max-w-[85%] p-4 rounded-lg leading-relaxed bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700 shadow-lg space-y-3">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-widest text-amber-400 font-semibold mb-1">Facts</div>
-                    <div className="whitespace-pre-wrap text-slate-100">{m.summary}</div>
+                <div className="max-w-[85%] p-4 rounded-lg leading-relaxed bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700 shadow-lg">
+                  <div className="whitespace-pre-wrap text-slate-100">
+                    {m.summary}
+                    {m.flavor && (
+                      <span className="text-slate-300 italic"> {m.flavor}</span>
+                    )}
                   </div>
-                  {m.flavor && (
-                    <div className="border-t border-slate-700 pt-3">
-                      <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mb-1">Flavor</div>
-                      <div className="text-slate-200 italic">{m.flavor}</div>
-                    </div>
-                  )}
                 </div>
               </div>
             );
