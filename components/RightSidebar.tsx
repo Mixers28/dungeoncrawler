@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { GameState } from '../lib/game-schema';
 import { DiceTray } from './DiceTray';
-import { Sword, Scroll, Skull, Heart } from 'lucide-react';
+import { Scroll, Skull, Heart } from 'lucide-react';
 
 export function RightSidebar({ state, onInsertCommand }: { state: GameState; onInsertCommand?: (cmd: string) => void }) {
   const [showSpellbook, setShowSpellbook] = useState(true);

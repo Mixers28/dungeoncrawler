@@ -630,12 +630,37 @@ async function _updateGameState(
   attemptedSearch = wantsSearch;
   attemptedInvestigate = wantsInvestigate;
 
-  // Quick-use bandages (healing consumable)
+  // Quick-use consumables (bandages, potions)
   const wantsBandage = /bandage/i.test(userAction);
+  const wantsPotion = /(potion|elixir|draught|draft)/i.test(userAction);
   const bandageIdx = newState.inventory.findIndex(i => i.name.toLowerCase().includes('bandage') && i.quantity > 0);
-  let handledBandage = false;
-  if (wantsBandage) {
-    handledBandage = true;
+  const potionIdx = wantsPotion
+    ? newState.inventory.findIndex(i => i.name.toLowerCase().includes('potion') && i.quantity > 0)
+    : -1;
+  let handledConsumable = false;
+
+  if (wantsPotion) {
+    handledConsumable = true;
+    if (potionIdx >= 0) {
+      const item = newState.inventory[potionIdx];
+      const potionName = item.name.toLowerCase();
+      let healDice = '2d4+2';
+      if (potionName.includes('greater')) healDice = '4d4+4';
+      const heal = rollDice(healDice);
+      newState.hp = Math.min(newState.maxHp, newState.hp + heal);
+      const remainingQty = Math.max(0, item.quantity - 1);
+      if (remainingQty <= 0) {
+        newState.inventory = newState.inventory.filter((_, idx) => idx !== potionIdx);
+      } else {
+        newState.inventory = newState.inventory.map((it, idx) => idx === potionIdx ? { ...it, quantity: remainingQty } : it);
+      }
+      newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} (${heal} HP) at ${newState.location}`].slice(-10);
+      summaryParts.push(`You drink ${item.name}, recovering ${heal} HP.`);
+    } else {
+      summaryParts.push("You fumble for a potion, but you have none left.");
+    }
+  } else if (wantsBandage) {
+    handledConsumable = true;
     if (bandageIdx >= 0) {
       const heal = 6;
       newState.hp = Math.min(newState.maxHp, newState.hp + heal);
@@ -653,7 +678,7 @@ async function _updateGameState(
     }
   }
 
-  if (!handledBandage) {
+  if (!handledConsumable) {
   if (parsedIntent.type === 'castAbility') {
     const spellKey = parsedIntent.abilityName.toLowerCase();
     const normalizedKey = normalizeSpellName(spellKey);

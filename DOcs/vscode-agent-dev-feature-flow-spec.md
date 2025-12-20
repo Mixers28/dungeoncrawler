@@ -21,9 +21,9 @@ If keys are missing, continue with static refactors and UI changes, but call out
 ## 1. Context Hydration Order
 
 Read these first:
-- `DOcs/PROJECT_CONTEXT.md`
-- `DOcs/NOW.md`
-- Recent `DOcs/SESSION_NOTES.md`
+- `docs/PROJECT_CONTEXT.md`
+- `docs/NOW.md`
+- Recent `docs/SESSION_NOTES.md`
 - `README.md`
 - `PROJECT_STATUS.md`
 - Task-specific docs as relevant (`Flavor.md`, `SMOKE.md`)
@@ -51,5 +51,5 @@ When behavior changes, update:
 - `PROJECT_STATUS.md` (what changed)
 - `README.md` (if it affects “What’s in this branch” or quick checks)
 - `Project_README.md` (if setup/env/persistence requirements changed)
-- `DOcs/NOW.md` and `DOcs/SESSION_NOTES.md` (if it changes priorities or records decisions)
+- `docs/NOW.md` and `docs/SESSION_NOTES.md` (if it changes priorities or records decisions)
 

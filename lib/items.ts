@@ -24,6 +24,21 @@ function normalizeItemId(name: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
+function normalizeWeaponName(name: string): string {
+  const stripped = name
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b(rusted|rusty|ancient|old|worn|cracked|broken|battered|chipped|fine|ornate)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (/\bshort\s*sword\b/.test(stripped)) return 'shortsword';
+  if (/\blong\s*sword\b/.test(stripped)) return 'longsword';
+  if (/\bgreat\s*sword\b/.test(stripped)) return 'greatsword';
+
+  return stripped;
+}
+
 function readCost(raw: unknown): number | undefined {
   if (!raw || typeof raw !== 'number') return undefined;
   return Number.isFinite(raw) ? raw : undefined;
@@ -73,8 +88,10 @@ export const armorByName = armorDefs.reduce<Record<string, ArmorDef>>((acc, def)
 
 export function resolveWeaponId(name: string | undefined): string | undefined {
   if (!name) return undefined;
-  return weaponsByName[name.toLowerCase()]?.id;
+  return weaponsByName[normalizeWeaponName(name)]?.id;
 }
+
+export { normalizeWeaponName };
 
 export function resolveArmorId(name: string | undefined): string | undefined {
   if (!name) return undefined;

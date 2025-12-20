@@ -1,3 +1,3 @@
 # Deprecated
 
-This document is deprecated. Source of truth moved to `DOcs/phased-plan.md`.
+This document is deprecated. Source of truth moved to `docs/phased-plan.md`.

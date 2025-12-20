@@ -28,7 +28,7 @@
 - Added quick-start class selection (Fighter/Rogue/Cleric/Wizard), storing archetype bonuses/items in state and showing class/XP in sidebar (`app/page.tsx`, `app/actions.ts`, `app/characters.ts`, `components/GameSidebar.tsx`, `lib/game-schema.ts`).
 - Hardened narration/state sync: EVENT_SUMMARY is authoritative, no pending/future rolls, wounds only called out on HP loss, and empty summaries are prevented (`app/actions.ts`).
 - Improved combat narration alignment: added alive threat context, forbid “pending” phrasing, require concrete hit/miss/damage lines, and blocked wound mentions when no HP loss; added generic corpse loot to keep inventory/narrative aligned (`app/actions.ts`).
-- Updated references: PHB/DMG PDFs stored in `DOcs/`, README adjusted accordingly (`Project_README.md`).
+- Updated references: PHB/DMG PDFs stored in `docs/`, README adjusted accordingly (`Project_README.md`).
 - Room descriptions are now deterministic (no model generation) and narrator is clamped to provided location text to avoid scene hallucinations (`app/actions.ts`).
 - Rebuilds cached room/scene registries on hydrate to keep derived data fresh (`app/actions.ts`).
 - UI: added a sidebar dice tray to show last resolved player/monster rolls, and added a story-act-based image fallback if the room image fails to load (`components/DiceTray.tsx`, `components/GameSidebar.tsx`).

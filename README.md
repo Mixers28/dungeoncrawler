@@ -25,7 +25,7 @@ Branch `dcv01` focuses on hybrid facts+flavor, deterministic mechanics, a prefab
 See `SMOKE.md` for a fuller manual runbook.
 
 ## Docs & references
-- Branch notes: `DOcs/dcv01-notes.md`
+- Branch notes: `docs/dcv01-notes.md`
 - Flavor/Narrator task context: `Flavor.md`
 - 5e data: `data/5e/*.json` (weapons/armor/skills/spells; loot tables in `data/5e/loot`)
 - Original overview: `Project_README.md`

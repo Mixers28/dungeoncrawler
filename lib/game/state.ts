@@ -4,7 +4,7 @@ import { gameStateSchema, type GameState, type LogEntry, type NarrationMode } fr
 import { getSceneById, pickSceneVariant } from '../story';
 import { getClassReference } from '../5e/classes';
 import { armorByName, starterCharacters, weaponsByName } from '../5e/reference';
-import { armorById, resolveArmorId, resolveWeaponId, weaponsById } from '../items';
+import { armorById, normalizeWeaponName, resolveArmorId, resolveWeaponId, weaponsById } from '../items';
 import { getNextLevelDef } from '../progression';
 import { ARCHETYPES, ArchetypeKey } from '../../app/characters';
 
@@ -84,7 +84,7 @@ function buildInventoryFromEquipment(equipment: string[]): GameState["inventory"
   let equippedShield = false;
 
   return equipment.map((rawName, idx) => {
-    const normalizedKey = rawName.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const normalizedKey = normalizeWeaponName(rawName);
     const weaponRef = weaponsByName[normalizedKey];
     const armorRef = armorByName[normalizedKey];
     const isWeapon = !!weaponRef;
