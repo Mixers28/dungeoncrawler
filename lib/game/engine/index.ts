@@ -1,16 +1,16 @@
 import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../../rules';
 import { getClassReference } from '../../5e/classes';
-import { weaponsByName, wizardSpellsByName, clericSpellsByName } from '../../5e/reference';
+import { armorByName, weaponsByName, wizardSpellsByName, clericSpellsByName } from '../../5e/reference';
 import { rollLoot } from '../../loot';
 import { getSceneById, pickSceneVariant } from '../../story';
 import { generateCannedFlavor, type NarrationContext } from '../../narrationEngine';
 import { DIFFICULTY_TO_DC, type ClassifiedStunt, type StuntTemplate } from '../../stunts';
 import { getNextLevelDef } from '../../progression';
-import { armorById, armorByName as equipmentArmorByName, weaponsById, weaponsByName as equipmentWeaponsByName } from '../../items';
+import { armorById, armorByName as equipmentArmorByName, resolveArmorId, resolveWeaponId, weaponsById, weaponsByName as equipmentWeaponsByName } from '../../items';
 import { getTraderAtLocation } from '../../traders';
 import { rollDice, rollD20 } from '../dice';
 import { type CoreActionIntent, type GameIntent, type TradeIntent } from '../intent';
-import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, resolveRoomDescription, resolveSceneImage } from '../state';
+import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, computeArmorClassFromInventory, resolveRoomDescription, resolveSceneImage } from '../state';
 
 
 // --- HELPERS ---
@@ -39,6 +39,10 @@ const normalizeSpellName = (name: string | undefined) =>
 
 const normalizeName = (name: string | undefined) =>
   (name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+function isShieldName(name: string): boolean {
+  return armorByName[name.toLowerCase()]?.category?.toLowerCase() === 'shield';
+}
 
 function awardGold(state: GameState, amount: number) {
   if (!Number.isFinite(amount) || amount === 0) return;
@@ -132,49 +136,6 @@ function buildNarrationContext(
   };
 }
 
- 
-
-function applySceneEntry(sceneId: string, baseState: GameState, summaryParts: string[], opts?: { recordHistory?: boolean }): { state: GameState; roomDesc: string } {
-  const scene = getSceneById(sceneId);
-  const nextState = { ...baseState };
-  const recordHistory = opts?.recordHistory ?? true;
-  let roomDesc = baseState.roomRegistry?.[scene?.location || baseState.location] || baseState.location;
-
-  if (scene) {
-    nextState.storySceneId = scene.id;
-    nextState.location = scene.location;
-    if (scene.description) {
-      roomDesc = scene.description;
-      nextState.roomRegistry = { ...(nextState.roomRegistry || {}), [scene.location]: scene.description };
-    }
-    if (scene.onEnter?.log) {
-      summaryParts.push(scene.onEnter.log);
-    }
-    if (scene.onEnter?.spawn) {
-      nextState.nearbyEntities = scene.onEnter.spawn.map(sp => ({
-        name: sp.name,
-        status: 'alive',
-        description: sp.name,
-        hp: sp.hp,
-        maxHp: sp.maxHp || sp.hp,
-        ac: sp.ac,
-        attackBonus: sp.attackBonus,
-        damageDice: sp.damageDice,
-        effects: [],
-      }));
-    } else {
-      nextState.nearbyEntities = [];
-    }
-  }
-
-  if (recordHistory) {
-    const trail = nextState.locationHistory || [];
-    nextState.locationHistory = [...trail, nextState.location].slice(-10);
-  }
-
-  return { state: nextState, roomDesc };
-}
-
 // Guardrail: strip control characters and obvious prompt-injection phrases before surfacing user text.
 function sanitizeForNarrator(text: string): string {
   if (!text) return "";
@@ -198,8 +159,12 @@ function summarizeInventory(inventory: GameState["inventory"]): { summary: strin
     return { summary: "Unarmed; nothing notable carried.", items: [] };
   }
 
-  const primaryWeapon = inventory.find(i => i.type === 'weapon')?.name;
-  const armor = inventory.find(i => i.type === 'armor')?.name;
+  const primaryWeapon =
+    inventory.find(i => i.type === 'weapon' && i.equipped)?.name ||
+    inventory.find(i => i.type === 'weapon')?.name;
+  const armor =
+    inventory.find(i => i.type === 'armor' && i.equipped && !isShieldName(i.name))?.name ||
+    inventory.find(i => i.type === 'armor' && !isShieldName(i.name))?.name;
   const extras = inventory
     .filter(i => i.type !== 'weapon' && i.type !== 'armor')
     .slice(0, 1)
@@ -344,11 +309,10 @@ function getEquippedWeaponDamageDice(state: GameState, fallbackName: string): st
 }
 
 function getBaseAcFromEquipped(state: GameState): number {
-  if (state.equippedArmorId) {
-    const def = armorById[state.equippedArmorId];
-    if (def?.baseAC) return def.baseAC;
-  }
-  return state.ac;
+  if (!state.inventory || state.inventory.length === 0) return state.ac;
+  const abilityScores = state.abilityScores || {};
+  const computed = computeArmorClassFromInventory(state.inventory, abilityScores);
+  return Math.max(state.ac, computed);
 }
 
 function resolveTradeIntent(
@@ -393,14 +357,30 @@ function resolveTradeIntent(
     } else {
       state.inventory = [
         ...state.inventory,
-        { id: `shop-${Date.now().toString(36)}`, name: displayName, type: itemType, quantity: 1 },
+        { id: `shop-${Date.now().toString(36)}`, name: displayName, type: itemType, quantity: 1, equipped: false },
       ];
     }
 
-    if (weaponDef) state.equippedWeaponId = weaponDef.id;
+    if (weaponDef) {
+      state.inventory = state.inventory.map(item =>
+        item.type === 'weapon' ? { ...item, equipped: item.name.toLowerCase() === displayName.toLowerCase() } : item
+      );
+      state.equippedWeaponId = resolveWeaponId(displayName);
+    }
     if (armorDef) {
-      state.equippedArmorId = armorDef.id;
-      state.ac = Math.max(state.ac, armorDef.baseAC);
+      const buyingShield = isShieldName(displayName);
+      state.inventory = state.inventory.map(item => {
+        if (item.type !== 'armor') return item;
+        const itemIsShield = isShieldName(item.name);
+        if (buyingShield) {
+          return itemIsShield
+            ? { ...item, equipped: item.name.toLowerCase() === displayName.toLowerCase() }
+            : item;
+        }
+        return itemIsShield ? item : { ...item, equipped: item.name.toLowerCase() === displayName.toLowerCase() };
+      });
+      if (!buyingShield) state.equippedArmorId = resolveArmorId(displayName);
+      state.ac = Math.max(state.ac, computeArmorClassFromInventory(state.inventory, state.abilityScores || {}));
     }
 
     const eventSummary = `You buy ${displayName} from ${trader.name} for ${invEntry.price} gold. You now have ${state.gold} gold.`;
@@ -867,7 +847,7 @@ async function _updateGameState(
   if (wantsKey && !hasIronKey) {
     newState.inventory = [
       ...newState.inventory,
-      { id: `key-${Date.now().toString(36)}`, name: 'Iron Key', type: 'key', quantity: 1 }
+      { id: `key-${Date.now().toString(36)}`, name: 'Iron Key', type: 'key', quantity: 1, equipped: false }
     ];
     newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Gained Iron Key at ${newState.location}`].slice(-10);
     summaryParts.push("You recover the Iron Key from the debris.");
@@ -934,6 +914,7 @@ async function _updateGameState(
               name: it.id.replace(/_/g, ' '),
               type: 'misc' as const,
               quantity: it.quantity,
+              equipped: false,
             }));
             newState.inventory = [...newState.inventory, ...newItems];
             newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Scene loot: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}`].slice(-10);
@@ -977,6 +958,7 @@ async function _updateGameState(
             name: it.id.replace(/_/g, ' '),
             type: 'misc',
             quantity: it.quantity,
+            equipped: false,
           });
         }
       }
@@ -987,6 +969,7 @@ async function _updateGameState(
         name: `${deadCorpse.name} Remnant`,
         type: 'misc',
         quantity: 1,
+        equipped: false,
       });
       awardGold(newState, goldFind);
     }

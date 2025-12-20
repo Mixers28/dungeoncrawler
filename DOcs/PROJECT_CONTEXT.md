@@ -8,6 +8,7 @@
 - Dungeon Portal is a Next.js dungeon crawler with Supabase auth/saves and Groq-backed narration.
 - Story content lives in `story/*.json` and game state stays deterministic on the server.
 - Deployment target is Railway, driven from a tracked git branch.
+- Core game logic has been modularized under `lib/game/` with economy/progression and canned narration systems.
 <!-- SUMMARY_END -->
 
 ---

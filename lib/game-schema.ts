@@ -8,6 +8,7 @@ export const itemSchema = z.object({
   name: z.string(),
   type: z.enum(['weapon', 'armor', 'potion', 'scroll', 'misc', 'food', 'material', 'key']),
   quantity: z.coerce.number().int(),
+  equipped: z.boolean().default(false),
   effect: z.string().optional(),
 });
 
@@ -113,6 +114,7 @@ export const gameStateSchema = z.object({
   
   // NEW: COMBAT TRACKING
   isCombatActive: z.boolean().default(false),
+  abilityScores: z.record(z.string(), z.number()).default({}),
   skills: z.array(z.string()).default([]),
   knownSpells: z.array(z.string()).default([]),
   preparedSpells: z.array(z.string()).default([]),

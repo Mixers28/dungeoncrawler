@@ -4,12 +4,26 @@ import { gameStateSchema, type GameState, type LogEntry, type NarrationMode } fr
 import { getSceneById, pickSceneVariant } from '../story';
 import { getClassReference } from '../5e/classes';
 import { armorByName, starterCharacters, weaponsByName } from '../5e/reference';
-import { armorById, resolveArmorId, resolveWeaponId } from '../items';
+import { armorById, resolveArmorId, resolveWeaponId, weaponsById } from '../items';
 import { getNextLevelDef } from '../progression';
 import { ARCHETYPES, ArchetypeKey } from '../../app/characters';
 
 export type { GameState, LogEntry, NarrationMode };
 export { gameStateSchema };
+
+const DEFAULT_ABILITY_SCORES: Record<string, number> = {
+  str: 10,
+  dex: 10,
+  con: 10,
+  int: 10,
+  wis: 10,
+  cha: 10,
+};
+
+function isShieldItem(name: string): boolean {
+  const key = name.toLowerCase();
+  return armorByName[key]?.category?.toLowerCase() === 'shield';
+}
 
 function mapLegacyNarrationMode(mode: string | undefined): NarrationMode | undefined {
   if (!mode) return undefined;
@@ -65,24 +79,41 @@ function normalizeLegacyNarrationModes(rawState: unknown): unknown {
 }
 
 function buildInventoryFromEquipment(equipment: string[]): GameState["inventory"] {
+  let equippedWeapon = false;
+  let equippedArmor = false;
+  let equippedShield = false;
+
   return equipment.map((rawName, idx) => {
     const normalizedKey = rawName.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
     const weaponRef = weaponsByName[normalizedKey];
     const armorRef = armorByName[normalizedKey];
     const isWeapon = !!weaponRef;
     const isArmor = !!armorRef;
+    const isShield = isArmor && armorRef?.category?.toLowerCase() === 'shield';
     const type: 'weapon' | 'armor' | 'misc' = isWeapon ? 'weapon' : isArmor ? 'armor' : 'misc';
     const displayName = weaponRef?.name || armorRef?.name || rawName.replace(/_/g, ' ');
+    let equipped = false;
+    if (isWeapon && !equippedWeapon) {
+      equipped = true;
+      equippedWeapon = true;
+    } else if (isShield && !equippedShield) {
+      equipped = true;
+      equippedShield = true;
+    } else if (isArmor && !isShield && !equippedArmor) {
+      equipped = true;
+      equippedArmor = true;
+    }
     return {
       id: `eq-${idx}-${Date.now().toString(36)}`,
       name: displayName,
       type,
       quantity: 1,
+      equipped,
     };
   });
 }
 
-function computeBaseAcFromStarter(equipment: string[], abilities: Record<string, number>): number {
+function computeArmorClassFromEquipment(equipment: string[], abilities: Record<string, number>): number {
   const dexMod = Math.floor(((abilities?.dex || 10) - 10) / 2);
   let bestArmor = 10 + dexMod;
   let shieldBonus = 0;
@@ -102,6 +133,60 @@ function computeBaseAcFromStarter(equipment: string[], abilities: Record<string,
   });
 
   return bestArmor + shieldBonus;
+}
+
+export function computeArmorClassFromInventory(
+  inventory: GameState["inventory"],
+  abilities: Record<string, number>
+): number {
+  const equippedArmor = inventory.filter(item => item.type === 'armor' && item.equipped).map(item => item.name);
+  if (equippedArmor.length === 0) {
+    return computeArmorClassFromEquipment([], abilities);
+  }
+  return computeArmorClassFromEquipment(equippedArmor, abilities);
+}
+
+function normalizeEquippedItems(state: GameState): void {
+  const weaponItems = state.inventory.filter(item => item.type === 'weapon');
+  const armorItems = state.inventory.filter(item => item.type === 'armor');
+
+  let equippedWeaponName = weaponItems.find(item => item.equipped)?.name;
+  if (!equippedWeaponName && state.equippedWeaponId) {
+    equippedWeaponName = weaponsById[state.equippedWeaponId]?.name;
+  }
+  if (!equippedWeaponName && weaponItems.length > 0) {
+    equippedWeaponName = weaponItems[0].name;
+  }
+
+  let equippedArmorName = armorItems.find(item => item.equipped && !isShieldItem(item.name))?.name;
+  if (!equippedArmorName && state.equippedArmorId) {
+    equippedArmorName = armorById[state.equippedArmorId]?.name;
+  }
+  if (!equippedArmorName) {
+    const firstArmor = armorItems.find(item => !isShieldItem(item.name));
+    if (firstArmor) equippedArmorName = firstArmor.name;
+  }
+
+  let equippedShieldName = armorItems.find(item => item.equipped && isShieldItem(item.name))?.name;
+  if (!equippedShieldName) {
+    const firstShield = armorItems.find(item => isShieldItem(item.name));
+    if (firstShield) equippedShieldName = firstShield.name;
+  }
+
+  state.inventory = state.inventory.map(item => {
+    if (item.type === 'weapon') {
+      return { ...item, equipped: item.name === equippedWeaponName };
+    }
+    if (item.type === 'armor') {
+      const isShield = isShieldItem(item.name);
+      if (isShield) return { ...item, equipped: item.name === equippedShieldName };
+      return { ...item, equipped: item.name === equippedArmorName };
+    }
+    return { ...item, equipped: false };
+  });
+
+  if (equippedWeaponName) state.equippedWeaponId = resolveWeaponId(equippedWeaponName);
+  if (equippedArmorName) state.equippedArmorId = resolveArmorId(equippedArmorName);
 }
 
 export function applySceneEntry(
@@ -152,6 +237,17 @@ export function applySceneEntry(
 
 const SCENE_CACHE_MAX_BYTES = 200 * 1024 * 1024;
 const SCENE_CACHE_MAX_FILES = 250;
+const SCENE_FETCH_TIMEOUT_MS = 5000;
+
+async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 async function ensureCacheDir() {
   const cacheDir = path.join(process.cwd(), 'public', 'scene-cache');
@@ -204,7 +300,7 @@ async function cacheSceneImage(remoteUrl: string, fileName: string): Promise<str
     } catch {
       // proceed to fetch
     }
-    const res = await fetch(remoteUrl);
+    const res = await fetchWithTimeout(remoteUrl, SCENE_FETCH_TIMEOUT_MS);
     if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
     const arrayBuffer = await res.arrayBuffer();
     await fs.writeFile(filePath, Buffer.from(arrayBuffer));
@@ -276,11 +372,17 @@ export async function hydrateState(rawState: unknown): Promise<GameState> {
   state.storyFlags = state.storyFlags || [];
   state.turnCounter = state.turnCounter || 0;
   state.gold = Math.max(0, state.gold || 0);
+  if (!state.abilityScores || Object.keys(state.abilityScores).length === 0) {
+    const classKey = (state.character?.class || 'fighter').toLowerCase();
+    const starter = starterCharacters.find(c => c.class.toLowerCase() === classKey);
+    state.abilityScores = { ...DEFAULT_ABILITY_SCORES, ...(starter?.abilities || {}) };
+  }
   state.equippedWeaponId = state.equippedWeaponId || resolveWeaponId(state.inventory.find(i => i.type === 'weapon')?.name);
   state.equippedArmorId = state.equippedArmorId || resolveArmorId(state.inventory.find(i => i.type === 'armor')?.name);
-  if (state.equippedArmorId) {
-    const armorDef = armorById[state.equippedArmorId];
-    if (armorDef?.baseAC) state.ac = Math.max(state.ac, armorDef.baseAC);
+  normalizeEquippedItems(state);
+  if (state.inventory.length > 0) {
+    const computedAc = computeArmorClassFromInventory(state.inventory, state.abilityScores);
+    state.ac = Math.max(state.ac, computedAc);
   }
   if (!Number.isFinite(state.xpToNext) || state.xpToNext <= 0) {
     const next = getNextLevelDef(state.level);
@@ -322,9 +424,9 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
   let initialAc = baseAc;
   let skills = classRef.skills;
   let inventory: GameState["inventory"] = [
-    { id: '1', name: startingWeapon, type: 'weapon', quantity: 1 },
+    { id: '1', name: startingWeapon, type: 'weapon', quantity: 1, equipped: true },
     ...(startingArmor
-      ? [{ id: 'armor-1', name: startingArmor, type: 'armor' as const, quantity: 1 }]
+      ? [{ id: 'armor-1', name: startingArmor, type: 'armor' as const, quantity: 1, equipped: true }]
       : []),
   ];
   let knownSpells: string[] = [];
@@ -333,16 +435,18 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
   let spellcastingAbility = 'int';
   let spellAttackBonus = 0;
   let spellSaveDc = 0;
+  let abilityScores = { ...DEFAULT_ABILITY_SCORES };
 
   const starter = starterCharacters.find(c => c.class.toLowerCase() === (archetypeKey || 'fighter')) || starterCharacters[0];
   if (starter) {
     initialHp = starter.max_hp;
-    initialAc = computeBaseAcFromStarter(starter.equipment, starter.abilities || {});
+    initialAc = computeArmorClassFromEquipment(starter.equipment, starter.abilities || {});
+    abilityScores = { ...abilityScores, ...(starter.abilities || {}) };
     skills = starter.skills;
     inventory = buildInventoryFromEquipment(starter.equipment);
     inventory = [
       ...inventory,
-      { id: `bandage-${Date.now().toString(36)}`, name: 'Bandage', type: 'misc', quantity: 2 },
+      { id: `bandage-${Date.now().toString(36)}`, name: 'Bandage', type: 'misc', quantity: 2, equipped: false },
     ];
 
     if (starter.spells) {
@@ -391,6 +495,7 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
     spellcastingAbility,
     spellAttackBonus,
     spellSaveDc,
+    abilityScores,
     quests: [{ id: '1', title: 'The Awakening', status: 'active', description: 'Find the Iron Key.' }],
     nearbyEntities: [],
     lastActionSummary: "The gates are locked. A monster guards the path.",
@@ -412,6 +517,8 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
     turnCounter: 0,
     activeEffects: [],
   };
+
+  normalizeEquippedItems(baseState);
 
   const entrySummary: string[] = [];
   const { state: seededState } = applySceneEntry(baseState.storySceneId, baseState, entrySummary);

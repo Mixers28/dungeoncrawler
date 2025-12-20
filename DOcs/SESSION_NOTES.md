@@ -37,6 +37,31 @@
 ## Session Template (Copy/Paste for each new session)
 ## Recent Sessions (last 3-5)
 
+### 2025-12-20
+
+**Participants:** User, Codex Agent  
+**Branch:** dcv01  
+
+### Summary of work
+- Ran a stability/consistency hardening pass after the game-engine refactor.
+- Added explicit equipped item tracking and aligned AC calculations with equipped gear.
+- Added scene image fetch timeout handling and resolved lint issues.
+- Ran `npm run lint` and `npm run build` to confirm the branch is green.
+
+### Files touched
+- lib/game-schema.ts
+- lib/game/state.ts
+- lib/game/engine/index.ts
+- scripts/write-build-info.js
+- lib/build-info.ts
+- docs/PROJECT_CONTEXT.md
+- docs/NOW.md
+- docs/SESSION_NOTES.md
+
+### Decisions made
+- Track equipped gear explicitly in inventory and compute AC from equipped items only.
+- Use a bounded timeout for scene image fetches to avoid blocking turns.
+
 ### 2025-12-19
 
 **Participants:** User, Codex Agent  
@@ -114,6 +139,7 @@
 
 ### Files touched
 - 
+
 
 ### Outcomes / Decisions
 -
