@@ -1,0 +1,22 @@
+{
+  "id": "future_shrine_branch_v2",
+  "group": "future_act1_shrine",
+  "title": "Hall of Quiet Echoes",
+  "location": "Shrine",
+  "description": "Broken prayer benches line the walls. Dust hangs like incense in the still air.",
+  "entryConditions": { "flagsAll": ["courtyard_cleared"] },
+  "onEnter": {
+    "log": "A brittle chant lingers as a guardian lurches forward.",
+    "spawn": [
+      { "name": "Cultist Acolyte", "hp": 9, "ac": 12, "attackBonus": 3, "damageDice": "1d8" }
+    ]
+  },
+  "exits": [
+    { "verb": ["sanctum", "altar", "door"], "targetSceneId": "future_sanctum_side_v2", "consumeItem": "Sanctum Sigil", "log": "The door yields to the sanctum sigil." },
+    { "verb": ["back", "west", "courtyard"], "targetSceneId": "future_courtyard_hub_v2" }
+  ],
+  "onComplete": {
+    "flagsSet": ["branch_b_cleared"],
+    "reward": { "xp": 75, "lootTable": "5e_minor_cultist_treasure" }
+  }
+}

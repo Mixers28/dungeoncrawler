@@ -1,0 +1,19 @@
+{
+  "id": "future_sanctum_side_v2",
+  "group": "future_act1_sanctum",
+  "title": "Chamber of Reliquaries",
+  "location": "Sanctum",
+  "description": "Dusty reliquaries line the walls, their seals cracked but intact.",
+  "entryConditions": { "requiresItem": "Sanctum Sigil" },
+  "onEnter": {
+    "log": "A gentle vibration hums through the stone as the door shuts.",
+    "spawn": []
+  },
+  "exits": [
+    { "verb": ["back", "shrine"], "targetSceneId": "future_shrine_branch_v2" }
+  ],
+  "onComplete": {
+    "flagsSet": ["sanctum_opened"],
+    "reward": { "xp": 25, "lootTable": "5e_minor_undead_treasure", "items": ["Armory Key"] }
+  }
+}

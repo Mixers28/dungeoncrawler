@@ -26,12 +26,12 @@ Add a deterministic stunt system to resolve unusual player actions with skill ch
 - Extend `_updateGameState` flow to return stunt-based `eventSummary` and `mode`.
 
 ## Action items
-[ ] Add `lib/stunts.ts` with templates, difficulty map, and `classifyStunt`.
-[ ] Implement `resolveStunt` and helpers (`getSkillModifier`, `applyStuntEffect`, `describeStuntConsequence`).
-[ ] Wire stunt classification into `_updateGameState` after explicit command handling.
-[ ] Ensure event summaries include roll vs DC and outcomes; keep consequences factual.
-[ ] Map stunt categories to narration modes for later flavor support.
-[ ] Verify explicit commands and sheet/meta queries bypass stunts.
+[x] Add `lib/stunts.ts` with templates, difficulty map, and `classifyStunt`.
+[x] Implement `resolveStunt` and helpers (`getSkillModifier`, `applyStuntEffect`, `describeStuntConsequence`).
+[x] Wire stunt classification into `_updateGameState` after explicit command handling.
+[x] Ensure event summaries include roll vs DC and outcomes; keep consequences factual.
+[x] Map stunt categories to narration modes for later flavor support.
+[x] Verify explicit commands and sheet/meta queries bypass stunts.
 
 ## Testing and validation
 - Manual: trigger sample stunts for each category and confirm summaries and state effects.

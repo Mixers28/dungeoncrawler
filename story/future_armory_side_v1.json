@@ -1,0 +1,19 @@
+{
+  "id": "future_armory_side_v1",
+  "group": "future_act1_armory",
+  "title": "Rust-Slung Armory",
+  "location": "Armory",
+  "description": "Racks of rusted weapons lean against the walls, some still sharp beneath the decay.",
+  "entryConditions": { "requiresItem": "Armory Key" },
+  "onEnter": {
+    "log": "The armory smells of old oil and iron filings.",
+    "spawn": []
+  },
+  "exits": [
+    { "verb": ["back", "hallway"], "targetSceneId": "future_hallway_branch_v1" }
+  ],
+  "onComplete": {
+    "flagsSet": ["armory_looted"],
+    "reward": { "xp": 25, "lootTable": "5e_arms_and_armor_minor", "items": ["Hidden Map"] }
+  }
+}

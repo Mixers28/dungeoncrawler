@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { GameState } from '../lib/game-schema';
+import { getTraderAtLocation } from '../lib/traders';
 import { BUILD_SHA } from '../lib/build-info';
 import { Shield, Sword, MapPin, Coins, Scroll, Skull, ImageOff, Heart } from 'lucide-react';
 import { DiceTray } from './DiceTray';
@@ -41,6 +42,7 @@ function SidebarHeaderImage({
 export function GameSidebar({ state, onInsertCommand }: { state: GameState; onInsertCommand?: (cmd: string) => void }) {
   const hpPercent = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
   const buildSha = process.env.NEXT_PUBLIC_GIT_SHA || BUILD_SHA;
+  const trader = getTraderAtLocation(state.location);
   const handleSpellClick = (name: string) => {
     const cmd = `cast ${name.toLowerCase()}`;
     if (onInsertCommand) {
@@ -75,11 +77,17 @@ export function GameSidebar({ state, onInsertCommand }: { state: GameState; onIn
           alt={state.location}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none" />
-        <div className="absolute bottom-4 left-4 right-4 z-10">
-            <h2 className="text-xl font-bold text-amber-500 flex items-center gap-2 drop-shadow-md">
+        <div className="absolute bottom-4 left-4 right-4 z-10 space-y-2">
+          <h2 className="text-xl font-bold text-amber-500 flex items-center gap-2 drop-shadow-md">
             <MapPin size={20} />
             {state.location}
-            </h2>
+          </h2>
+          {trader && (
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-900/70 border border-amber-700 px-3 py-1 text-[11px] uppercase tracking-widest text-amber-100">
+              <Coins size={12} />
+              Trader Nearby
+            </div>
+          )}
         </div>
       </div>
 

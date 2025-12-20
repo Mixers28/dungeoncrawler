@@ -1,0 +1,19 @@
+{
+  "id": "future_cache_side_v2",
+  "group": "future_act1_cache",
+  "title": "Mapmaker's Niche",
+  "location": "Cache",
+  "description": "Faded cartography and sealed bundles hide in a narrow niche behind the stone.",
+  "entryConditions": { "requiresItem": "Hidden Map" },
+  "onEnter": {
+    "log": "Your map markings lead to a concealed stash.",
+    "spawn": []
+  },
+  "exits": [
+    { "verb": ["back", "cellar"], "targetSceneId": "future_cellar_branch_v2" }
+  ],
+  "onComplete": {
+    "flagsSet": ["cache_found"],
+    "reward": { "xp": 25, "lootTable": "5e_treasure_hoard_low", "items": ["Sanctum Sigil"] }
+  }
+}

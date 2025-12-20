@@ -7,6 +7,7 @@ import skillData from '../../data/5e/skills.json';
 import weaponData from '../../data/5e/weapons.json';
 import wizardSpellData from '../../data/5e/spells-wizard.json';
 import clericSpellData from '../../data/5e/spells-cleric.json';
+import abilityMechanicsData from '../../data/5e/ability-mechanics.json';
 import wizardStarterData from '../../data/5e/char_wizard_novice.json';
 import warriorStarterData from '../../data/5e/char_warrior_initiate.json';
 import rogueStarterData from '../../data/5e/char_rogue_cutpurse.json';
@@ -61,6 +62,60 @@ const spellSchema = z.object({
   components: z.string(),
   source: z.string(),
   url: z.string(),
+  mechanics: z.object({
+    source: z.string().optional(),
+    level: z.number().optional(),
+    castingTime: z.string().optional(),
+    range: z.string().optional(),
+    duration: z.string().optional(),
+    concentration: z.boolean().optional(),
+    ritual: z.boolean().optional(),
+    attackType: z.string().optional(),
+    classes: z.array(z.string()).optional(),
+    areaOfEffect: z.object({
+      type: z.string().optional(),
+      size: z.number().optional(),
+    }).optional(),
+    dc: z.object({
+      ability: z.string().optional(),
+      success: z.string().optional(),
+    }).optional(),
+    damage: z.object({
+      type: z.string().optional(),
+      dice: z.string().optional(),
+      atSlotLevel: z.record(z.string()).optional(),
+      atCharacterLevel: z.record(z.string()).optional(),
+    }).optional(),
+    healAtSlotLevel: z.record(z.string()).optional(),
+  }).optional(),
+});
+
+const spellMechanicsSchema = z.object({
+  name: z.string(),
+  source: z.string().optional(),
+  level: z.number().optional(),
+  castingTime: z.string().optional(),
+  range: z.string().optional(),
+  duration: z.string().optional(),
+  concentration: z.boolean().optional(),
+  ritual: z.boolean().optional(),
+  attackType: z.string().optional(),
+  classes: z.array(z.string()).optional(),
+  areaOfEffect: z.object({
+    type: z.string().optional(),
+    size: z.number().optional(),
+  }).optional(),
+  dc: z.object({
+    ability: z.string().optional(),
+    success: z.string().optional(),
+  }).optional(),
+  damage: z.object({
+    type: z.string().optional(),
+    dice: z.string().optional(),
+    atSlotLevel: z.record(z.string()).optional(),
+    atCharacterLevel: z.record(z.string()).optional(),
+  }).optional(),
+  healAtSlotLevel: z.record(z.string()).optional(),
 });
 
 const starterCharacterSchema = z.object({
@@ -113,6 +168,7 @@ type BasicActionDef = z.infer<typeof basicActionSchema>;
 type WeaponDef = z.infer<typeof weaponSchema>;
 type ArmorDef = z.infer<typeof armorSchema>;
 type ConditionDef = z.infer<typeof conditionSchema>;
+type SpellMechanicsDef = z.infer<typeof spellMechanicsSchema>;
 type SpellDef = z.infer<typeof spellSchema>;
 type StarterCharacterDef = z.infer<typeof starterCharacterSchema>;
 
@@ -154,9 +210,26 @@ export const conditions: ConditionDef[] = parseData('conditions', conditionSchem
 export const conditionsByName = indexByName(conditions);
 
 export const wizardSpells: SpellDef[] = parseData('wizard spells', spellSchema, wizardSpellData);
-export const wizardSpellsByName = indexByName(wizardSpells);
 export const clericSpells: SpellDef[] = parseData('cleric spells', spellSchema, clericSpellData);
-export const clericSpellsByName = indexByName(clericSpells);
+
+const spellMechanics: SpellMechanicsDef[] = parseData('spell mechanics', spellMechanicsSchema, abilityMechanicsData);
+const spellMechanicsByName = spellMechanics.reduce<Record<string, SpellMechanicsDef>>((acc, item) => {
+  acc[item.name.toLowerCase()] = item;
+  return acc;
+}, {});
+
+export const wizardSpellsByName = indexByName(
+  wizardSpells.map(spell => ({
+    ...spell,
+    mechanics: spellMechanicsByName[spell.name.toLowerCase()],
+  }))
+);
+export const clericSpellsByName = indexByName(
+  clericSpells.map(spell => ({
+    ...spell,
+    mechanics: spellMechanicsByName[spell.name.toLowerCase()],
+  }))
+);
 
 export const starterCharacters: StarterCharacterDef[] = parseData('starter characters', starterCharacterSchema, [
   wizardStarterData,
@@ -174,5 +247,6 @@ export type {
   ArmorDef,
   ConditionDef,
   SpellDef,
+  SpellMechanicsDef,
   StarterCharacterDef,
 };

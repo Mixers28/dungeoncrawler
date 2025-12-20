@@ -1,0 +1,22 @@
+{
+  "id": "future_cellar_branch_v1",
+  "group": "future_act1_cellar",
+  "title": "Flooded Steps",
+  "location": "Cellar",
+  "description": "Cold water laps at broken steps leading into a low, flooded chamber.",
+  "entryConditions": { "flagsAll": ["courtyard_cleared"] },
+  "onEnter": {
+    "log": "A wet scrape echoes as something stirs in the darkness.",
+    "spawn": [
+      { "name": "Zombie", "hp": 22, "ac": 8, "attackBonus": 3, "damageDice": "1d6+1" }
+    ]
+  },
+  "exits": [
+    { "verb": ["cache", "tunnel", "east"], "targetSceneId": "future_cache_side_v1", "consumeItem": "Hidden Map", "log": "You follow the map's markings into a narrow tunnel." },
+    { "verb": ["back", "up", "courtyard"], "targetSceneId": "future_courtyard_hub_v1" }
+  ],
+  "onComplete": {
+    "flagsSet": ["branch_c_cleared"],
+    "reward": { "xp": 75, "lootTable": "5e_minor_undead_treasure" }
+  }
+}

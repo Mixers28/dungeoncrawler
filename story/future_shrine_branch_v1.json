@@ -1,0 +1,22 @@
+{
+  "id": "future_shrine_branch_v1",
+  "group": "future_act1_shrine",
+  "title": "Broken Shrine",
+  "location": "Shrine",
+  "description": "Cracked altars and toppled icons litter the floor. A cold glow seeps from behind the reliefs.",
+  "entryConditions": { "flagsAll": ["courtyard_cleared"] },
+  "onEnter": {
+    "log": "A whisper of prayer dies on the air as an undead guardian rises.",
+    "spawn": [
+      { "name": "Skeleton", "hp": 13, "ac": 13, "attackBonus": 4, "damageDice": "1d6+2" }
+    ]
+  },
+  "exits": [
+    { "verb": ["sanctum", "altar", "door"], "targetSceneId": "future_sanctum_side_v1", "consumeItem": "Sanctum Sigil", "log": "The sigil flares and the sanctum door opens." },
+    { "verb": ["back", "west", "courtyard"], "targetSceneId": "future_courtyard_hub_v1" }
+  ],
+  "onComplete": {
+    "flagsSet": ["branch_b_cleared"],
+    "reward": { "xp": 75, "lootTable": "5e_minor_undead_treasure" }
+  }
+}

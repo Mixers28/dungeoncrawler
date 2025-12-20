@@ -1,0 +1,4957 @@
+[
+  {
+    "name": "Acid Splash",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "DEX",
+      "success": "none"
+    },
+    "damage": {
+      "type": "Acid",
+      "atCharacterLevel": {
+        "1": "1d6",
+        "5": "2d6",
+        "11": "3d6",
+        "17": "4d6"
+      },
+      "dice": "1d6"
+    }
+  },
+  {
+    "name": "Aid",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin"
+    ],
+    "healAtSlotLevel": {
+      "2": "5",
+      "3": "10",
+      "4": "15",
+      "5": "20",
+      "6": "25",
+      "7": "30",
+      "8": "35",
+      "9": "40"
+    }
+  },
+  {
+    "name": "Alter Self",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Animate Dead",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 minute",
+    "range": "10 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Animate Objects",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Antimagic Field",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 10
+    }
+  },
+  {
+    "name": "Antipathy/Sympathy",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 hour",
+    "range": "60 feet",
+    "duration": "10 days",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 200
+    }
+  },
+  {
+    "name": "Arcane Eye",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 30
+    }
+  },
+  {
+    "name": "Arcane Lock",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Until dispelled",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Astral Projection",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 hour",
+    "range": "10 feet",
+    "duration": "Special",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Augury",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 minute",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Bane",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric"
+    ],
+    "dc": {
+      "ability": "CHA",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Banishment",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "CHA",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Beacon of Hope",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Bestow Curse",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Blade Barrier",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "90 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "areaOfEffect": {
+      "type": "line",
+      "size": 100
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Slashing",
+      "atSlotLevel": {
+        "6": "6d10"
+      },
+      "dice": "6d10"
+    }
+  },
+  {
+    "name": "Bless",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "Blight",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Necrotic",
+      "atSlotLevel": {
+        "4": "8d8",
+        "5": "9d8",
+        "6": "10d8",
+        "7": "11d8",
+        "8": "12d8",
+        "9": "13d8"
+      },
+      "dice": "8d8"
+    }
+  },
+  {
+    "name": "Blindness/Deafness",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "CON",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Blink",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Blur",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Burning Hands",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cone",
+      "size": 15
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "1": "3d6",
+        "2": "4d6",
+        "3": "5d6",
+        "4": "6d6",
+        "5": "7d6",
+        "6": "8d6",
+        "7": "9d6",
+        "8": "10d6",
+        "9": "11d6"
+      },
+      "dice": "3d6"
+    }
+  },
+  {
+    "name": "Calm Emotions",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 20
+    },
+    "dc": {
+      "ability": "CHA",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Chain Lightning",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "150 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Lightning",
+      "atSlotLevel": {
+        "6": "10d8"
+      },
+      "dice": "10d8"
+    }
+  },
+  {
+    "name": "Charm Person",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Druid",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Chill Touch",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "1 round",
+    "concentration": false,
+    "ritual": false,
+    "attackType": "ranged",
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "damage": {
+      "type": "Necrotic",
+      "atCharacterLevel": {
+        "1": "1d8",
+        "5": "2d8",
+        "11": "3d8",
+        "17": "4d8"
+      },
+      "dice": "1d8"
+    }
+  },
+  {
+    "name": "Circle of Death",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "150 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 60
+    },
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Necrotic",
+      "atSlotLevel": {
+        "6": "8d6",
+        "7": "10d6",
+        "8": "12d6",
+        "9": "14d6"
+      },
+      "dice": "8d6"
+    }
+  },
+  {
+    "name": "Clairvoyance",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "10 minutes",
+    "range": "1 mile",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Clone",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 hour",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Cloudkill",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 20
+    },
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Poison",
+      "atSlotLevel": {
+        "5": "5d8",
+        "6": "6d8",
+        "7": "7d8",
+        "8": "8d8",
+        "9": "9d8"
+      },
+      "dice": "5d8"
+    }
+  },
+  {
+    "name": "Color Spray",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "1 round",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cone",
+      "size": 15
+    }
+  },
+  {
+    "name": "Command",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "1 round",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Commune",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 minute",
+    "range": "Self",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Cone of Cold",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cone",
+      "size": 60
+    },
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Cold",
+      "atSlotLevel": {
+        "5": "8d8",
+        "6": "9d8",
+        "7": "10d8",
+        "8": "11d8",
+        "9": "12d8"
+      },
+      "dice": "8d8"
+    }
+  },
+  {
+    "name": "Confusion",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "90 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 10
+    },
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Conjure Celestial",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 minute",
+    "range": "90 feet",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Conjure Elemental",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 minute",
+    "range": "90 feet",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 10
+    }
+  },
+  {
+    "name": "Conjure Minor Elementals",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 minute",
+    "range": "90 feet",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Contagion",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "7 days",
+    "concentration": false,
+    "ritual": false,
+    "attackType": "melee",
+    "classes": [
+      "Cleric",
+      "Druid"
+    ],
+    "dc": {
+      "ability": "CON",
+      "success": "other"
+    }
+  },
+  {
+    "name": "Contingency",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "10 minutes",
+    "range": "Self",
+    "duration": "10 days",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Continual Flame",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Until dispelled",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Control Water",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "300 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 100
+    },
+    "dc": {
+      "ability": "STR",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Bludgeoning",
+      "atSlotLevel": {
+        "4": "2d8"
+      },
+      "dice": "2d8"
+    }
+  },
+  {
+    "name": "Control Weather",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "10 minutes",
+    "range": "Self",
+    "duration": "Up to 8 hours",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Counterspell",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 reaction",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Create Food and Water",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "Create or Destroy Water",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 30
+    }
+  },
+  {
+    "name": "Create Undead",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 minute",
+    "range": "10 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Creation",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 minute",
+    "range": "30 feet",
+    "duration": "Special",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 5
+    }
+  },
+  {
+    "name": "Cure Wounds",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Ranger"
+    ],
+    "healAtSlotLevel": {
+      "1": "1d8 + MOD",
+      "2": "2d8 + MOD",
+      "3": "3d8 + MOD",
+      "4": "4d8 + MOD",
+      "5": "5d8 + MOD",
+      "6": "6d8 + MOD",
+      "7": "7d8 + MOD",
+      "8": "8d8 + MOD",
+      "9": "9d8 + MOD"
+    }
+  },
+  {
+    "name": "Dancing Lights",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Darkness",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 15
+    }
+  },
+  {
+    "name": "Darkvision",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Ranger",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Daylight",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Ranger",
+      "Sorcerer"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 60
+    }
+  },
+  {
+    "name": "Death Ward",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "Delayed Blast Fireball",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "150 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 20
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "7": "12d6",
+        "8": "13d6",
+        "9": "14d6"
+      },
+      "dice": "12d6"
+    }
+  },
+  {
+    "name": "Demiplane",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Detect Evil and Good",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 30
+    }
+  },
+  {
+    "name": "Detect Magic",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Ranger",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 30
+    }
+  },
+  {
+    "name": "Detect Poison and Disease",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Ranger"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 30
+    }
+  },
+  {
+    "name": "Detect Thoughts",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Dimension Door",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "500 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "damage": {
+      "type": "Force",
+      "atSlotLevel": {
+        "4": "4d6"
+      },
+      "dice": "4d6"
+    }
+  },
+  {
+    "name": "Disguise Self",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Disintegrate",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 10
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "none"
+    },
+    "damage": {
+      "type": "Force",
+      "atSlotLevel": {
+        "6": "10d6 + 40"
+      },
+      "dice": "10d6 + 40"
+    }
+  },
+  {
+    "name": "Dispel Evil and Good",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin"
+    ],
+    "dc": {
+      "ability": "CHA",
+      "success": "other"
+    }
+  },
+  {
+    "name": "Dispel Magic",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Divination",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Druid"
+    ]
+  },
+  {
+    "name": "Divine Word",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 bonus action",
+    "range": "30 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "dc": {
+      "ability": "CHA",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Dominate Monster",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Dominate Person",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "other"
+    }
+  },
+  {
+    "name": "Dream",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 minute",
+    "range": "Special",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    },
+    "damage": {
+      "type": "Psychic",
+      "atSlotLevel": {
+        "5": "3d6"
+      },
+      "dice": "3d6"
+    }
+  },
+  {
+    "name": "Earthquake",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 action",
+    "range": "500 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Sorcerer"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 100
+    }
+  },
+  {
+    "name": "Enhance Ability",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "Enlarge/Reduce",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "CON",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Etherealness",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Expeditious Retreat",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 bonus action",
+    "range": "Self",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Eyebite",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Fabricate",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "10 minutes",
+    "range": "120 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "False Life",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "healAtSlotLevel": {
+      "1": "1d4 + 4",
+      "2": "1d4 + 9",
+      "3": "1d4 + 14",
+      "4": "1d4 + 19",
+      "5": "1d4 + 24",
+      "6": "1d4 + 29",
+      "7": "1d4 + 34",
+      "8": "1d4 + 39",
+      "9": "1d4 + 44"
+    }
+  },
+  {
+    "name": "Fear",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cone",
+      "size": 30
+    },
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Feather Fall",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 reaction",
+    "range": "60 feet",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Feeblemind",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 action",
+    "range": "150 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Druid",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "INT",
+      "success": "other"
+    },
+    "damage": {
+      "type": "Psychic",
+      "atSlotLevel": {
+        "8": "4d6"
+      },
+      "dice": "4d6"
+    }
+  },
+  {
+    "name": "Find the Path",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 minute",
+    "range": "Self",
+    "duration": "Up to 24 hours",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid"
+    ]
+  },
+  {
+    "name": "Find Traps",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Ranger"
+    ]
+  },
+  {
+    "name": "Finger of Death",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Necrotic",
+      "atSlotLevel": {
+        "7": "7d8 + 30"
+      },
+      "dice": "7d8 + 30"
+    }
+  },
+  {
+    "name": "Fire Bolt",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": "ranged",
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "damage": {
+      "type": "Fire",
+      "atCharacterLevel": {
+        "1": "1d10",
+        "5": "2d10",
+        "11": "3d10",
+        "17": "4d10"
+      },
+      "dice": "1d10"
+    }
+  },
+  {
+    "name": "Fire Shield",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "10 minutes",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 5
+    },
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "4": "2d8"
+      },
+      "dice": "2d8"
+    }
+  },
+  {
+    "name": "Fire Storm",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "150 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Sorcerer"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 100
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "7": "7d10"
+      },
+      "dice": "7d10"
+    }
+  },
+  {
+    "name": "Fireball",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "150 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 20
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "3": "8d6",
+        "4": "9d6",
+        "5": "10d6",
+        "6": "11d6",
+        "7": "12d6",
+        "8": "13d6",
+        "9": "14d6"
+      },
+      "dice": "8d6"
+    }
+  },
+  {
+    "name": "Flame Strike",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "areaOfEffect": {
+      "type": "cylinder",
+      "size": 40
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "5": "4d6 + 4d6",
+        "6": "4d6 + 5d6",
+        "7": "4d6 + 6d6",
+        "8": "4d6 + 7d6",
+        "9": "4d6 + 8d6"
+      },
+      "dice": "4d6 + 4d6"
+    }
+  },
+  {
+    "name": "Flaming Sphere",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Wizard"
+    ],
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "2": "2d6",
+        "3": "3d6",
+        "4": "4d6",
+        "5": "5d6",
+        "6": "6d6",
+        "7": "7d6",
+        "8": "8d6",
+        "9": "9d6"
+      },
+      "dice": "2d6"
+    }
+  },
+  {
+    "name": "Flesh to Stone",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "CON",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Fly",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Fog Cloud",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Ranger",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 20
+    }
+  },
+  {
+    "name": "Forbiddance",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "10 minutes",
+    "range": "Touch",
+    "duration": "24 hours",
+    "concentration": false,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 40000
+    }
+  },
+  {
+    "name": "Forcecage",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "100 feet",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Warlock",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 20
+    }
+  },
+  {
+    "name": "Foresight",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 minute",
+    "range": "Touch",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Druid",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Freedom of Movement",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Ranger"
+    ]
+  },
+  {
+    "name": "Gaseous Form",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Gate",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Geas",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 minute",
+    "range": "60 feet",
+    "duration": "30 days",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Gentle Repose",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "10 days",
+    "concentration": false,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Globe of Invulnerability",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 10
+    }
+  },
+  {
+    "name": "Glyph of Warding",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 hour",
+    "range": "Touch",
+    "duration": "Until dispelled",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Grease",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 10
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Greater Invisibility",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Greater Restoration",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid"
+    ]
+  },
+  {
+    "name": "Guardian of Faith",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "areaOfEffect": {
+      "type": "cylinder",
+      "size": 10
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Radiant",
+      "atSlotLevel": {
+        "4": "20"
+      },
+      "dice": "20"
+    }
+  },
+  {
+    "name": "Guards and Wards",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "10 minutes",
+    "range": "Touch",
+    "duration": "24 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 2500
+    }
+  },
+  {
+    "name": "Guidance",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid"
+    ]
+  },
+  {
+    "name": "Guiding Bolt",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "1 round",
+    "concentration": false,
+    "ritual": false,
+    "attackType": "ranged",
+    "classes": [
+      "Cleric"
+    ],
+    "damage": {
+      "type": "Radiant",
+      "atSlotLevel": {
+        "1": "4d6",
+        "2": "5d6",
+        "3": "6d6",
+        "4": "7d6",
+        "5": "8d6",
+        "6": "9d6",
+        "7": "10d6",
+        "8": "11d6",
+        "9": "12d6"
+      },
+      "dice": "4d6"
+    }
+  },
+  {
+    "name": "Gust of Wind",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "line",
+      "size": 60
+    },
+    "dc": {
+      "ability": "STR",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Hallow",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "24 hours",
+    "range": "Touch",
+    "duration": "Until dispelled",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 60
+    },
+    "dc": {
+      "ability": "CHA",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Hallucinatory Terrain",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "10 minutes",
+    "range": "300 feet",
+    "duration": "24 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Druid",
+      "Warlock",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 150
+    }
+  },
+  {
+    "name": "Harm",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Necrotic",
+      "atSlotLevel": {
+        "6": "14d6"
+      },
+      "dice": "14d6"
+    }
+  },
+  {
+    "name": "Haste",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Heal",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid"
+    ],
+    "healAtSlotLevel": {
+      "6": "70",
+      "7": "80",
+      "8": "90",
+      "9": "100"
+    }
+  },
+  {
+    "name": "Healing Word",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 bonus action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid"
+    ],
+    "healAtSlotLevel": {
+      "1": "1d4 + MOD",
+      "2": "2d4 + MOD",
+      "3": "3d4 + MOD",
+      "4": "4d4 + MOD",
+      "5": "5d4 + MOD",
+      "6": "6d4 + MOD",
+      "7": "7d4 + MOD",
+      "8": "8d4 + MOD",
+      "9": "9d4 + MOD"
+    }
+  },
+  {
+    "name": "Heroes' Feast",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "10 minutes",
+    "range": "30 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid"
+    ]
+  },
+  {
+    "name": "Hold Monster",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "90 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Hold Person",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Holy Aura",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 30
+    }
+  },
+  {
+    "name": "Hypnotic Pattern",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Ice Storm",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "300 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cylinder",
+      "size": 20
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Bludgeoning",
+      "atSlotLevel": {
+        "4": "2d8 + 4d6",
+        "5": "3d8 + 4d6",
+        "6": "4d8 + 4d6",
+        "7": "5d8 + 4d6",
+        "8": "6d8 + 4d6",
+        "9": "7d8 + 4d6"
+      },
+      "dice": "2d8 + 4d6"
+    }
+  },
+  {
+    "name": "Imprisonment",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 minute",
+    "range": "30 feet",
+    "duration": "Until dispelled",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Incendiary Cloud",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 action",
+    "range": "150 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 20
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "8": "10d8"
+      },
+      "dice": "10d8"
+    }
+  },
+  {
+    "name": "Inflict Wounds",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": "melee",
+    "classes": [
+      "Cleric"
+    ],
+    "damage": {
+      "type": "Necrotic",
+      "atSlotLevel": {
+        "1": "3d10",
+        "2": "4d10",
+        "3": "5d10",
+        "4": "6d10",
+        "5": "7d10",
+        "6": "8d10",
+        "7": "9d10",
+        "8": "10d10",
+        "9": "11d10"
+      },
+      "dice": "3d10"
+    }
+  },
+  {
+    "name": "Insect Plague",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "300 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Sorcerer"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 20
+    },
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Piercing",
+      "atSlotLevel": {
+        "5": "4d10",
+        "6": "5d10",
+        "7": "6d10",
+        "8": "7d10",
+        "9": "8d10"
+      },
+      "dice": "4d10"
+    }
+  },
+  {
+    "name": "Invisibility",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Jump",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Ranger",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Knock",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Legend Lore",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "10 minutes",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Lesser Restoration",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Ranger"
+    ]
+  },
+  {
+    "name": "Levitate",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Light",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "DEX",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Lightning Bolt",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "line",
+      "size": 100
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Lightning",
+      "atSlotLevel": {
+        "3": "8d6",
+        "4": "9d6",
+        "5": "10d6",
+        "6": "11d6",
+        "7": "12d6",
+        "8": "13d6",
+        "9": "14d6"
+      },
+      "dice": "8d6"
+    }
+  },
+  {
+    "name": "Locate Creature",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Ranger",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Locate Object",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Ranger",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Longstrider",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Druid",
+      "Ranger",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Mage Armor",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Mage Hand",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Magic Circle",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 minute",
+    "range": "10 feet",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin",
+      "Warlock",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cylinder",
+      "size": 10
+    },
+    "dc": {
+      "ability": "CHA",
+      "success": "other"
+    }
+  },
+  {
+    "name": "Magic Jar",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 minute",
+    "range": "Self",
+    "duration": "Until dispelled",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "CHA",
+      "success": "other"
+    }
+  },
+  {
+    "name": "Magic Missile",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "damage": {
+      "type": "Force",
+      "atSlotLevel": {
+        "1": "1d4 + 1",
+        "2": "1d4 + 1",
+        "3": "1d4 + 1",
+        "4": "1d4 + 1",
+        "5": "1d4 + 1",
+        "6": "1d4 + 1",
+        "7": "1d4 + 1",
+        "8": "1d4 + 1",
+        "9": "1d4 + 1"
+      },
+      "dice": "1d4 + 1"
+    }
+  },
+  {
+    "name": "Magic Weapon",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 bonus action",
+    "range": "Touch",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Paladin",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Major Image",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Mass Cure Wounds",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 30
+    },
+    "healAtSlotLevel": {
+      "5": "3d8 + MOD",
+      "6": "4d8 + MOD",
+      "7": "5d8 + MOD",
+      "8": "6d8 + MOD",
+      "9": "7d8 + MOD"
+    }
+  },
+  {
+    "name": "Mass Heal",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "healAtSlotLevel": {
+      "9": "700"
+    }
+  },
+  {
+    "name": "Mass Healing Word",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 bonus action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "healAtSlotLevel": {
+      "3": "1d4 + MOD",
+      "4": "2d4 + MOD",
+      "5": "3d4 + MOD",
+      "6": "4d4 + MOD",
+      "7": "5d4 + MOD",
+      "8": "6d4 + MOD",
+      "9": "7d4 + MOD"
+    }
+  },
+  {
+    "name": "Mass Suggestion",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "24 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Maze",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Meld into Stone",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Mending",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 minute",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Bard",
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Message",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "1 round",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Meteor Swarm",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 action",
+    "range": "1 mile",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 40
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "9": "20d6 + 20d6"
+      },
+      "dice": "20d6 + 20d6"
+    }
+  },
+  {
+    "name": "Mind Blank",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "24 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Minor Illusion",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Mirage Arcane",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "10 minutes",
+    "range": "Sight",
+    "duration": "10 days",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Druid",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 5280
+    }
+  },
+  {
+    "name": "Mirror Image",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Mislead",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Misty Step",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 bonus action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Modify Memory",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Move Earth",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 2 hours",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cone",
+      "size": 40
+    }
+  },
+  {
+    "name": "Nondetection",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Ranger",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Passwall",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Phantasmal Killer",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    },
+    "damage": {
+      "type": "Psychic",
+      "atSlotLevel": {
+        "4": "4d10"
+      },
+      "dice": "4d10"
+    }
+  },
+  {
+    "name": "Planar Ally",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "10 minutes",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Planar Binding",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 hour",
+    "range": "60 feet",
+    "duration": "24 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "CHA",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Plane Shift",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": "melee",
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "CHA",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Poison Spray",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "10 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard",
+      "Druid"
+    ],
+    "dc": {
+      "ability": "CON",
+      "success": "none"
+    },
+    "damage": {
+      "type": "Poison",
+      "atCharacterLevel": {
+        "1": "1d12",
+        "5": "2d12",
+        "11": "3d12",
+        "17": "4d12"
+      },
+      "dice": "1d12"
+    }
+  },
+  {
+    "name": "Polymorph",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Prayer of Healing",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "10 minutes",
+    "range": "30 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "healAtSlotLevel": {
+      "2": "2d8 + MOD",
+      "3": "3d8 + MOD",
+      "4": "4d8 + MOD",
+      "5": "5d8 + MOD",
+      "6": "6d8 + MOD",
+      "7": "7d8 + MOD",
+      "8": "8d8 + MOD",
+      "9": "9d8 + MOD"
+    }
+  },
+  {
+    "name": "Prestidigitation",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "10 feet",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Prismatic Spray",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cone",
+      "size": 60
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "other"
+    },
+    "damage": {
+      "atSlotLevel": {
+        "7": "10d6"
+      },
+      "dice": "10d6"
+    }
+  },
+  {
+    "name": "Prismatic Wall",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "10 minutes",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "line",
+      "size": 90
+    }
+  },
+  {
+    "name": "Programmed Illusion",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Until dispelled",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 30
+    }
+  },
+  {
+    "name": "Project Image",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "500 miles",
+    "duration": "Up to 24 hours",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Protection from Energy",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Ranger",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Protection from Evil and Good",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Protection from Poison",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Ranger"
+    ]
+  },
+  {
+    "name": "Purify Food and Drink",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "10 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "Raise Dead",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 hour",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "Ray of Enfeeblement",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": "ranged",
+    "classes": [
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "CON",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Ray of Frost",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": "ranged",
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "damage": {
+      "type": "Cold",
+      "atCharacterLevel": {
+        "1": "1d8",
+        "5": "2d8",
+        "11": "3d8",
+        "17": "4d8"
+      },
+      "dice": "1d8"
+    }
+  },
+  {
+    "name": "Regenerate",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 minute",
+    "range": "Touch",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid"
+    ],
+    "healAtSlotLevel": {
+      "7": "4d8 + 15"
+    }
+  },
+  {
+    "name": "Remove Curse",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Resistance",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid"
+    ]
+  },
+  {
+    "name": "Resurrection",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 hour",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Reverse Gravity",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "100 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cylinder",
+      "size": 50
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "other"
+    }
+  },
+  {
+    "name": "Revivify",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "Rope Trick",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Sacred Flame",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "dc": {
+      "ability": "DEX",
+      "success": "none"
+    },
+    "damage": {
+      "type": "Radiant",
+      "atCharacterLevel": {
+        "1": "1d8",
+        "5": "2d8",
+        "11": "3d8",
+        "17": "4d8"
+      },
+      "dice": "1d8"
+    }
+  },
+  {
+    "name": "Sanctuary",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 bonus action",
+    "range": "30 feet",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Scorching Ray",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "2": "2d6"
+      },
+      "dice": "2d6"
+    }
+  },
+  {
+    "name": "Scrying",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "10 minutes",
+    "range": "Self",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "See Invisibility",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Seeming",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "8 hours",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Sending",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Unlimited",
+    "duration": "1 round",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Sequester",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Until dispelled",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Shapechange",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Shatter",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 10
+    },
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Thunder",
+      "atSlotLevel": {
+        "2": "3d8",
+        "3": "4d8",
+        "4": "5d8",
+        "5": "6d8",
+        "6": "7d8",
+        "7": "8d8",
+        "8": "9d8",
+        "9": "10d8"
+      },
+      "dice": "3d8"
+    }
+  },
+  {
+    "name": "Shield",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 reaction",
+    "range": "Self",
+    "duration": "1 round",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Shield of Faith",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 bonus action",
+    "range": "60 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "Shocking Grasp",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": "melee",
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "damage": {
+      "type": "Lightning",
+      "atCharacterLevel": {
+        "1": "1d8",
+        "5": "2d8",
+        "11": "3d8",
+        "17": "4d8"
+      },
+      "dice": "1d8"
+    }
+  },
+  {
+    "name": "Silence",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Ranger"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 20
+    }
+  },
+  {
+    "name": "Silent Image",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 15
+    }
+  },
+  {
+    "name": "Simulacrum",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "12 hours",
+    "range": "Touch",
+    "duration": "Until dispelled",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Sleep",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "90 feet",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 20
+    },
+    "damage": {
+      "atSlotLevel": {
+        "1": "5d8"
+      },
+      "dice": "5d8"
+    }
+  },
+  {
+    "name": "Sleet Storm",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "150 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cylinder",
+      "size": 40
+    }
+  },
+  {
+    "name": "Slow",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 40
+    },
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Spare the Dying",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Speak with Dead",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "10 feet",
+    "duration": "10 minutes",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Spider Climb",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Spirit Guardians",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Spiritual Weapon",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 bonus action",
+    "range": "60 feet",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": "melee",
+    "classes": [
+      "Cleric"
+    ],
+    "damage": {
+      "type": "Force",
+      "atSlotLevel": {
+        "2": "1d8 + MOD",
+        "3": "1d8 + MOD",
+        "4": "2d8 + MOD",
+        "5": "2d8 + MOD",
+        "6": "3d8 + MOD",
+        "7": "3d8 + MOD",
+        "8": "4d8 + MOD",
+        "9": "4d8 + MOD"
+      },
+      "dice": "1d8 + MOD"
+    }
+  },
+  {
+    "name": "Stinking Cloud",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "90 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 20
+    },
+    "dc": {
+      "ability": "CON",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Stone Shape",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Stoneskin",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Ranger",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Suggestion",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Up to 8 hours",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ],
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Sunbeam",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "line",
+      "size": 60
+    },
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Radiant",
+      "atSlotLevel": {
+        "6": "6d8"
+      },
+      "dice": "6d8"
+    }
+  },
+  {
+    "name": "Sunburst",
+    "source": "5e-bits/5e-database:2014",
+    "level": 8,
+    "castingTime": "1 action",
+    "range": "150 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cylinder",
+      "size": 60
+    },
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Radiant",
+      "atSlotLevel": {
+        "8": "12d6"
+      },
+      "dice": "12d6"
+    }
+  },
+  {
+    "name": "Symbol",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 minute",
+    "range": "Touch",
+    "duration": "Until dispelled",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 10
+    }
+  },
+  {
+    "name": "Telekinesis",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 30
+    }
+  },
+  {
+    "name": "Teleport",
+    "source": "5e-bits/5e-database:2014",
+    "level": 7,
+    "castingTime": "1 action",
+    "range": "10 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 10
+    }
+  },
+  {
+    "name": "Teleportation Circle",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 minute",
+    "range": "10 feet",
+    "duration": "1 round",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 10
+    }
+  },
+  {
+    "name": "Thaumaturgy",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "1 minute",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Thunderwave",
+    "source": "5e-bits/5e-database:2014",
+    "level": 1,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 15
+    },
+    "dc": {
+      "ability": "CON",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Thunder",
+      "atSlotLevel": {
+        "1": "2d8",
+        "2": "3d8",
+        "3": "4d8",
+        "4": "5d8",
+        "5": "6d8",
+        "6": "7d8",
+        "7": "8d8",
+        "8": "9d8",
+        "9": "10d8"
+      },
+      "dice": "2d8"
+    }
+  },
+  {
+    "name": "Time Stop",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Tongues",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "True Polymorph",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "True Resurrection",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 hour",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid"
+    ]
+  },
+  {
+    "name": "True Seeing",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "True Strike",
+    "source": "5e-bits/5e-database:2014",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "Up to 1 round",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Vampiric Touch",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": "melee",
+    "classes": [
+      "Warlock",
+      "Wizard"
+    ],
+    "damage": {
+      "type": "Necrotic",
+      "atSlotLevel": {
+        "3": "3d6",
+        "4": "4d6",
+        "5": "5d6",
+        "6": "6d6",
+        "7": "7d6",
+        "8": "8d6",
+        "9": "9d6"
+      },
+      "dice": "3d6"
+    }
+  },
+  {
+    "name": "Wall of Fire",
+    "source": "5e-bits/5e-database:2014",
+    "level": 4,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "line",
+      "size": 60
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Fire",
+      "atSlotLevel": {
+        "4": "5d8"
+      },
+      "dice": "5d8"
+    }
+  },
+  {
+    "name": "Wall of Force",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Wall of Ice",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 10
+    },
+    "dc": {
+      "ability": "DEX",
+      "success": "half"
+    },
+    "damage": {
+      "type": "Cold",
+      "atSlotLevel": {
+        "6": "10d6",
+        "7": "12d6",
+        "8": "14d6",
+        "9": "16d6"
+      },
+      "dice": "10d6"
+    }
+  },
+  {
+    "name": "Wall of Stone",
+    "source": "5e-bits/5e-database:2014",
+    "level": 5,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 10 minutes",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Warding Bond",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "Touch",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "Water Walk",
+    "source": "5e-bits/5e-database:2014",
+    "level": 3,
+    "castingTime": "1 action",
+    "range": "30 feet",
+    "duration": "1 hour",
+    "concentration": false,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Ranger",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "Web",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Up to 1 hour",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "cube",
+      "size": 20
+    }
+  },
+  {
+    "name": "Weird",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 action",
+    "range": "120 feet",
+    "duration": "Up to 1 minute",
+    "concentration": true,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Wizard"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 30
+    },
+    "dc": {
+      "ability": "WIS",
+      "success": "none"
+    }
+  },
+  {
+    "name": "Wish",
+    "source": "5e-bits/5e-database:2014",
+    "level": 9,
+    "castingTime": "1 action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "Word of Recall",
+    "source": "5e-bits/5e-database:2014",
+    "level": 6,
+    "castingTime": "1 action",
+    "range": "5 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Cleric"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 5
+    }
+  },
+  {
+    "name": "Zone of Truth",
+    "source": "5e-bits/5e-database:2014",
+    "level": 2,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "10 minutes",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Paladin"
+    ],
+    "areaOfEffect": {
+      "type": "sphere",
+      "size": 15
+    }
+  }
+]

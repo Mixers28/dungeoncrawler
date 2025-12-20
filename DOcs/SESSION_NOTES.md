@@ -43,6 +43,40 @@
 **Branch:** dcv01  
 
 ### Summary of work
+- Added mechanics overlay data from SRD spells and merged it into the 5e reference layer.
+- Began data-driven spell resolution using mechanics metadata, keeping fallback spell cases.
+- Added trader visibility cues in look summaries and the sidebar.
+- Consolidated story progression docs into a phased roadmap and drafted future branching scene JSONs.
+- Standardized documentation format for DM rules and updated sprint checklists.
+
+### Files touched
+- data/5e/ability-mechanics.json
+- lib/5e/reference.ts
+- lib/game/engine/index.ts
+- components/GameSidebar.tsx
+- DOcs/DM-rules.md
+- DOcs/phased-plan.md
+- DOcs/to-dos.md
+- DOcs/dcv01-notes.md
+- DOcs/stunt-system-sprint.md
+- DOcs/future-story-progression-sprint.md
+- DOcs/Possible_story_build.md
+- DOcs/story-progression-roadmap.md
+- story/future_*.json
+- docs/PROJECT_CONTEXT.md
+- docs/NOW.md
+- docs/SESSION_NOTES.md
+
+### Decisions made
+- Use an SRD-based mechanics overlay for spells and merge it into local 5e data.
+- Treat Phase 1 authored branching scenes as the quick win, with procedural routes as Phase 2.
+
+### 2025-12-20
+
+**Participants:** User, Codex Agent  
+**Branch:** dcv01  
+
+### Summary of work
 - Ran a stability/consistency hardening pass after the game-engine refactor.
 - Added explicit equipped item tracking and aligned AC calculations with equipped gear.
 - Added scene image fetch timeout handling and resolved lint issues.

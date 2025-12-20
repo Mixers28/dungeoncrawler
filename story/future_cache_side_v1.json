@@ -1,0 +1,19 @@
+{
+  "id": "future_cache_side_v1",
+  "group": "future_act1_cache",
+  "title": "Hidden Cache",
+  "location": "Cache",
+  "description": "A narrow cache chamber stuffed with broken crates and a dry lockbox.",
+  "entryConditions": { "requiresItem": "Hidden Map" },
+  "onEnter": {
+    "log": "The tunnel ends in a small cache of forgotten supplies.",
+    "spawn": []
+  },
+  "exits": [
+    { "verb": ["back", "cellar"], "targetSceneId": "future_cellar_branch_v1" }
+  ],
+  "onComplete": {
+    "flagsSet": ["cache_found"],
+    "reward": { "xp": 25, "lootTable": "5e_treasure_hoard_low", "items": ["Sanctum Sigil"] }
+  }
+}

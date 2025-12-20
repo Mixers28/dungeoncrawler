@@ -1,0 +1,23 @@
+{
+  "id": "future_hallway_branch_v2",
+  "group": "future_act1_hallway",
+  "title": "Runescar Passage",
+  "location": "Hallway",
+  "description": "Faded runes spiral along the corridor floor, half-covered by dust.",
+  "entryConditions": { "flagsAll": ["courtyard_cleared"] },
+  "onEnter": {
+    "log": "A bone-dry rattle echoes as shapes stir in the gloom.",
+    "spawn": [
+      { "name": "Skeleton Archer", "hp": 8, "ac": 13, "attackBonus": 4, "damageDice": "1d6" },
+      { "name": "Zombie", "hp": 22, "ac": 8, "attackBonus": 3, "damageDice": "1d6+1" }
+    ]
+  },
+  "exits": [
+    { "verb": ["armory", "east", "forward"], "targetSceneId": "future_armory_side_v2", "consumeItem": "Armory Key", "log": "The armory lock clicks open." },
+    { "verb": ["back", "south", "courtyard"], "targetSceneId": "future_courtyard_hub_v2" }
+  ],
+  "onComplete": {
+    "flagsSet": ["branch_a_cleared"],
+    "reward": { "xp": 75, "lootTable": "5e_minor_undead_treasure" }
+  }
+}

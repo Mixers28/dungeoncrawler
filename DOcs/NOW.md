@@ -5,16 +5,16 @@
 
 <!-- SUMMARY_START -->
 **Current Focus (auto-maintained by Agent):**
-- Finalize stability hardening (equip/AC consistency, image fetch timeouts, lint hygiene).
-- Validate Railway deploy from `dcv01` with the latest game-engine refactor.
-- Confirm progression/economy features behave correctly in runtime.
+- Complete mechanics overlay coverage and wire data-driven spell resolution.
+- Ship Phase 1 branching story progression and validate player choices.
+- Validate Railway deploy from `dcv01` with the latest engine changes.
 <!-- SUMMARY_END -->
 
 ---
 
 ## Current Objective
 
-Ship the latest `dcv01` build with the refactored game engine and stability fixes, and verify runtime health.
+Ship the latest `dcv01` build with mechanics overlay + branching story updates, and verify runtime health.
 
 ---
 
@@ -26,16 +26,16 @@ Ship the latest `dcv01` build with the refactored game engine and stability fixe
 
 ## What We Are Working On Right Now
 
-- [ ] Confirm Railway deploy succeeds from `dcv01` and app boots with the refactored engine.
-- [ ] Verify equipped-gear AC calculations and trader purchases in production.
-- [ ] Review Edge runtime warnings from Supabase middleware and decide on mitigation.
+- [ ] Expand mechanics overlay coverage for missing spells and add name aliases where needed.
+- [ ] Wire Phase 1 branching story scenes and validate gated side paths.
+- [ ] Confirm Railway deploy succeeds from `dcv01` and app boots with the latest changes.
 
 ---
 
 ## Next Small Deliverables
 
 - Railway deploy report (build logs + runtime notes).
-- Confirmation that equip/AC logic and trader flows behave in prod.
+- Confirmation that branching story paths and gates behave in prod.
 - Follow-up fixes for Edge warnings if required.
 
 ---

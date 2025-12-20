@@ -44,6 +44,36 @@ function isShieldName(name: string): boolean {
   return armorByName[name.toLowerCase()]?.category?.toLowerCase() === 'shield';
 }
 
+function pickDiceAtLevel(map: Record<string, string> | undefined, level: number): string | null {
+  if (!map) return null;
+  const levels = Object.keys(map).map(Number).filter(n => Number.isFinite(n)).sort((a, b) => a - b);
+  if (levels.length === 0) return null;
+  const chosen = levels.filter(l => l <= level).pop() ?? levels[0];
+  return map[String(chosen)] ?? null;
+}
+
+function pickDamageDiceFromMechanics(
+  mechanics: { damage?: { dice?: string; atSlotLevel?: Record<string, string>; atCharacterLevel?: Record<string, string> }; level?: number },
+  characterLevel: number
+): string | null {
+  if (!mechanics.damage) return null;
+  const slotLevel = mechanics.level ?? 1;
+  return (
+    pickDiceAtLevel(mechanics.damage.atCharacterLevel, characterLevel) ||
+    pickDiceAtLevel(mechanics.damage.atSlotLevel, slotLevel) ||
+    mechanics.damage.dice ||
+    null
+  );
+}
+
+function pickHealDiceFromMechanics(
+  mechanics: { healAtSlotLevel?: Record<string, string>; level?: number }
+): string | null {
+  if (!mechanics.healAtSlotLevel) return null;
+  const slotLevel = mechanics.level ?? 1;
+  return pickDiceAtLevel(mechanics.healAtSlotLevel, slotLevel);
+}
+
 function awardGold(state: GameState, amount: number) {
   if (!Number.isFinite(amount) || amount === 0) return;
   state.gold = Math.max(0, (state.gold || 0) + amount);
@@ -655,7 +685,51 @@ async function _updateGameState(
         // Resolve a minimal set of spells
         const targetName = parsedIntent.target || activeMonster?.name || 'the area';
         const lowerSpell = spell.name.toLowerCase();
-        if (lowerSpell === 'magic missile') {
+        const mechanics = spell.mechanics;
+        let handledMechanics = false;
+
+        if (mechanics) {
+          const healDice = pickHealDiceFromMechanics(mechanics);
+          if (healDice) {
+            const heal = rollDice(healDice);
+            newState.hp = Math.min(newState.maxHp, newState.hp + heal);
+            summaryParts.push(`Healing energy restores ${heal} HP.`);
+            handledMechanics = true;
+          } else if (mechanics.damage) {
+            const damageDice = pickDamageDiceFromMechanics(mechanics, newState.level);
+            if (damageDice && activeMonster) {
+              const damageType = mechanics.damage.type ? mechanics.damage.type.toLowerCase() : 'damage';
+              if (mechanics.attackType) {
+                const spellAttack = rollD20() + (newState.spellAttackBonus || 0);
+                if (spellAttack >= activeMonster.ac) {
+                  const dmg = rollDice(damageDice);
+                  applyDamageToActiveMonster(dmg);
+                  summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
+                } else {
+                  summaryParts.push(`Your ${spell.name} misses ${targetName}.`);
+                }
+              } else if (mechanics.dc?.ability) {
+                const saveRoll = rollD20();
+                if (saveRoll < (newState.spellSaveDc || 10)) {
+                  const dmg = rollDice(damageDice);
+                  applyDamageToActiveMonster(dmg);
+                  summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
+                } else {
+                  summaryParts.push(`${targetName} resists your ${spell.name}.`);
+                }
+              } else {
+                const dmg = rollDice(damageDice);
+                applyDamageToActiveMonster(dmg);
+                summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
+              }
+              handledMechanics = true;
+            }
+          }
+        }
+
+        if (handledMechanics) {
+          // Mechanics-driven resolution handled above.
+        } else if (lowerSpell === 'magic missile') {
           const dmg = rollDice("1d4+1");
           applyDamageToActiveMonster(dmg);
           summaryParts.push(`You cast Magic Missile at ${targetName}, dealing ${dmg} force damage.`);
@@ -757,6 +831,10 @@ async function _updateGameState(
         return `${verb} → ${label}`;
       }).join('; ');
       summaryParts.push(`Exits: ${exitText}.`);
+    }
+    const trader = getTraderAtLocation(newState.location);
+    if (trader) {
+      summaryParts.push(`A trader is posted here: ${trader.name}.`);
     }
   } else if (actionIntent === 'attack' && activeMonster) {
     playerAttackRoll = Math.floor(Math.random() * 20) + 1; // no bonus for now

@@ -9,6 +9,7 @@
 - Story content lives in `story/*.json` and game state stays deterministic on the server.
 - Deployment target is Railway, driven from a tracked git branch.
 - Core game logic has been modularized under `lib/game/` with economy/progression and canned narration systems.
+- A mechanics overlay for spells is sourced from SRD data and merged into the local 5e reference layer.
 <!-- SUMMARY_END -->
 
 ---
