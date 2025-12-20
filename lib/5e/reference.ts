@@ -70,7 +70,7 @@ const spellSchema = z.object({
     duration: z.string().optional(),
     concentration: z.boolean().optional(),
     ritual: z.boolean().optional(),
-    attackType: z.string().optional(),
+    attackType: z.string().nullable().optional(),
     classes: z.array(z.string()).optional(),
     areaOfEffect: z.object({
       type: z.string().optional(),
@@ -99,7 +99,7 @@ const spellMechanicsSchema = z.object({
   duration: z.string().optional(),
   concentration: z.boolean().optional(),
   ritual: z.boolean().optional(),
-  attackType: z.string().optional(),
+  attackType: z.string().nullable().optional(),
   classes: z.array(z.string()).optional(),
   areaOfEffect: z.object({
     type: z.string().optional(),
