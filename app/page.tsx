@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Skull, ArrowRight, BookOpen, Menu, X } from 'lucide-react'; // Added Menu, X
+import { Skull, ArrowRight, BookOpen, X } from 'lucide-react'; // Added X
 import type { GameState, LogEntry, NarrationMode } from '../lib/game-schema';
-import { GameSidebar } from '../components/GameSidebar';
-import { DiceTray } from '../components/DiceTray';
+import { LeftSidebar } from '../components/LeftSidebar';
+import { RightSidebar } from '../components/RightSidebar';
 import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 
@@ -41,7 +41,8 @@ export default function Home() {
   // UI STATES
   const [showIntro, setShowIntro] = useState(false);
   const [introStep, setIntroStep] = useState(0);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Toggle
+  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(false);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -261,10 +262,24 @@ async function handleStart() {
           >
             New Run
           </button>
-          <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-300">
-            <Menu size={24} />
+          <button
+            onClick={() => { setIsLeftSidebarOpen(true); setIsRightSidebarOpen(false); }}
+            className="text-xs bg-slate-800 text-slate-200 font-semibold px-3 py-1 rounded"
+          >
+            Stats
+          </button>
+          <button
+            onClick={() => { setIsRightSidebarOpen(true); setIsLeftSidebarOpen(false); }}
+            className="text-xs bg-slate-800 text-slate-200 font-semibold px-3 py-1 rounded"
+          >
+            Spells
           </button>
         </div>
+      </div>
+
+      {/* LEFT: Sidebar (Desktop) */}
+      <div className="w-[320px] hidden md:block h-full border-r border-slate-800">
+        <LeftSidebar state={gameState} />
       </div>
 
       {/* LEFT: Chat Area (Padded top for mobile header) */}
@@ -279,10 +294,6 @@ async function handleStart() {
           >
             {isLoading ? "Resetting..." : "New Run"}
           </button>
-        </div>
-
-        <div className="md:hidden px-4 pb-2">
-          <DiceTray state={gameState} variant="compact" />
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-6 p-4 scrollbar-thin scrollbar-thumb-slate-700 pb-32">
@@ -357,28 +368,37 @@ async function handleStart() {
         </div>
       </div>
 
-      {/* RIGHT: Sidebar (Responsive) */}
-      {/* 1. DESKTOP: Always visible on right */}
+      {/* RIGHT: Sidebar (Desktop) */}
       <div className="w-[350px] hidden md:block h-full border-l border-slate-800">
-        <GameSidebar state={gameState} onInsertCommand={(cmd) => { setInput(cmd); focusInput(); }} />
+        <RightSidebar state={gameState} onInsertCommand={(cmd) => { setInput(cmd); focusInput(); }} />
       </div>
 
-      {/* 2. MOBILE: Slide-over Drawer */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex justify-end">
-          {/* Backdrop (Click to close) */}
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
-          
-          {/* Drawer */}
-          <div className="relative w-[85%] max-w-[350px] h-full bg-slate-950 border-l border-slate-800 shadow-2xl animate-in slide-in-from-right duration-300">
-            <button onClick={() => setIsSidebarOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-900 p-2 rounded-full text-slate-300 border border-slate-700">
+      {/* MOBILE: Left Drawer */}
+      {isLeftSidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex justify-start">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsLeftSidebarOpen(false)} />
+          <div className="relative w-[85%] max-w-[350px] h-full bg-slate-950 border-r border-slate-800 shadow-2xl animate-in slide-in-from-left duration-300">
+            <button onClick={() => setIsLeftSidebarOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-900 p-2 rounded-full text-slate-300 border border-slate-700">
               <X size={20} />
             </button>
-            <GameSidebar
+            <LeftSidebar state={gameState} />
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE: Right Drawer */}
+      {isRightSidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex justify-end">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsRightSidebarOpen(false)} />
+          <div className="relative w-[85%] max-w-[350px] h-full bg-slate-950 border-l border-slate-800 shadow-2xl animate-in slide-in-from-right duration-300">
+            <button onClick={() => setIsRightSidebarOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-900 p-2 rounded-full text-slate-300 border border-slate-700">
+              <X size={20} />
+            </button>
+            <RightSidebar
               state={gameState}
               onInsertCommand={(cmd) => {
                 setInput(cmd);
-                setIsSidebarOpen(false);
+                setIsRightSidebarOpen(false);
                 focusInput();
               }}
             />

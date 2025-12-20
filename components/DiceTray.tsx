@@ -19,7 +19,9 @@ export function DiceTray({ state, variant = 'full' }: { state: GameState; varian
   if (!hasAnyRoll) return null;
 
   const aliveThreat = state.nearbyEntities?.find(e => e.status !== 'dead');
-  const playerHit = aliveThreat ? (rolls.playerAttack || 0) >= aliveThreat.ac : null;
+  const isSaveRoll = rolls.playerAttackIsSave;
+  const playerSaveDc = rolls.playerAttackDc || state.spellSaveDc || 10;
+  const playerHit = !isSaveRoll && aliveThreat ? (rolls.playerAttack || 0) >= aliveThreat.ac : null;
 
   const effectivePlayerAc = (state.ac || 0) + (state.tempAcBonus || 0);
   const monsterHit = (rolls.monsterAttack || 0) >= effectivePlayerAc;
@@ -38,7 +40,7 @@ export function DiceTray({ state, variant = 'full' }: { state: GameState; varian
             <span>A</span>
             <span className="font-mono text-slate-200">
               {rolls.playerAttack || 0}
-              {aliveThreat ? ` vs ${aliveThreat.ac}` : ''}
+              {isSaveRoll ? ` vs DC ${playerSaveDc}` : aliveThreat ? ` vs ${aliveThreat.ac}` : ''}
               {playerHitLabel ? ` ${playerHitLabel}` : ''}
             </span>
           </div>
@@ -78,7 +80,7 @@ export function DiceTray({ state, variant = 'full' }: { state: GameState; varian
             <span>Attack</span>
             <span className="font-mono text-slate-200">
               {rolls.playerAttack || 0}
-              {aliveThreat ? ` vs AC ${aliveThreat.ac}` : ''}
+              {isSaveRoll ? ` vs DC ${playerSaveDc}` : aliveThreat ? ` vs AC ${aliveThreat.ac}` : ''}
               {playerHitLabel ? ` (${playerHitLabel})` : ''}
             </span>
           </div>

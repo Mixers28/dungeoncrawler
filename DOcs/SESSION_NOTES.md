@@ -43,6 +43,30 @@
 **Branch:** dcv01  
 
 ### Summary of work
+- Added spell roll tracking to restore Dice Tray visibility during spell combat (attack and save).
+- Split the UI sidebar into left/right panels for stats/inventory and spells/targets/dice.
+- Added missing mechanics entry for Identify in the SRD overlay data.
+
+### Files touched
+- lib/game-schema.ts
+- lib/game/state.ts
+- lib/game/engine/index.ts
+- components/DiceTray.tsx
+- components/LeftSidebar.tsx
+- components/RightSidebar.tsx
+- app/page.tsx
+- data/5e/ability-mechanics.json
+
+### Decisions made
+- Track spell attack/save rolls in `lastRolls` to keep Dice Tray active after spell casts.
+- Split sidebar content into two panels for improved readability on desktop.
+
+### 2025-12-20
+
+**Participants:** User, Codex Agent  
+**Branch:** dcv01  
+
+### Summary of work
 - Added mechanics overlay data from SRD spells and merged it into the 5e reference layer.
 - Began data-driven spell resolution using mechanics metadata, keeping fallback spell cases.
 - Added trader visibility cues in look summaries and the sidebar.

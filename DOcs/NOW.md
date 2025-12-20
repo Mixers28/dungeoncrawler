@@ -5,8 +5,8 @@
 
 <!-- SUMMARY_START -->
 **Current Focus (auto-maintained by Agent):**
-- Complete mechanics overlay coverage and wire data-driven spell resolution.
-- Ship Phase 1 branching story progression and validate player choices.
+- Verify spell roll tracking now drives the Dice Tray after spell casts.
+- Validate the split left/right sidebar layout (desktop + mobile drawers).
 - Validate Railway deploy from `dcv01` with the latest engine changes.
 <!-- SUMMARY_END -->
 
@@ -14,7 +14,7 @@
 
 ## Current Objective
 
-Ship the latest `dcv01` build with mechanics overlay + branching story updates, and verify runtime health.
+Ship the latest `dcv01` build, verify the dice tray + sidebar UX changes, and confirm runtime health.
 
 ---
 
@@ -26,8 +26,8 @@ Ship the latest `dcv01` build with mechanics overlay + branching story updates, 
 
 ## What We Are Working On Right Now
 
-- [ ] Expand mechanics overlay coverage for missing spells and add name aliases where needed.
-- [ ] Wire Phase 1 branching story scenes and validate gated side paths.
+- [ ] Confirm Dice Tray displays spell attack/save rolls in live combat.
+- [ ] Review split sidebar layout on desktop and mobile; adjust if any crowding remains.
 - [ ] Confirm Railway deploy succeeds from `dcv01` and app boots with the latest changes.
 
 ---
@@ -35,7 +35,7 @@ Ship the latest `dcv01` build with mechanics overlay + branching story updates, 
 ## Next Small Deliverables
 
 - Railway deploy report (build logs + runtime notes).
-- Confirmation that branching story paths and gates behave in prod.
+- Dice tray + sidebar UX validation notes.
 - Follow-up fixes for Edge warnings if required.
 
 ---

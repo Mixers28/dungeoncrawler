@@ -600,6 +600,8 @@ async function _updateGameState(
   // 4. PLAYER TURN
   let playerAttackRoll = 0;
   let playerDamageRoll = 0;
+  let playerAttackIsSave = false;
+  let playerAttackDc: number | null = null;
   const summaryParts: string[] = [];
   const safeUserAction = sanitizeUserAction(userAction);
   let combatOutcome: 'hit' | 'miss' | 'kill' | null = null;
@@ -701,8 +703,12 @@ async function _updateGameState(
               const damageType = mechanics.damage.type ? mechanics.damage.type.toLowerCase() : 'damage';
               if (mechanics.attackType) {
                 const spellAttack = rollD20() + (newState.spellAttackBonus || 0);
+                playerAttackRoll = spellAttack;
+                playerAttackIsSave = false;
+                playerAttackDc = null;
                 if (spellAttack >= activeMonster.ac) {
                   const dmg = rollDice(damageDice);
+                  playerDamageRoll = dmg;
                   applyDamageToActiveMonster(dmg);
                   summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
                 } else {
@@ -710,8 +716,12 @@ async function _updateGameState(
                 }
               } else if (mechanics.dc?.ability) {
                 const saveRoll = rollD20();
+                playerAttackRoll = saveRoll;
+                playerAttackIsSave = true;
+                playerAttackDc = newState.spellSaveDc || 10;
                 if (saveRoll < (newState.spellSaveDc || 10)) {
                   const dmg = rollDice(damageDice);
+                  playerDamageRoll = dmg;
                   applyDamageToActiveMonster(dmg);
                   summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
                 } else {
@@ -719,6 +729,9 @@ async function _updateGameState(
                 }
               } else {
                 const dmg = rollDice(damageDice);
+                playerDamageRoll = dmg;
+                playerAttackIsSave = false;
+                playerAttackDc = null;
                 applyDamageToActiveMonster(dmg);
                 summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
               }
@@ -1071,6 +1084,8 @@ async function _updateGameState(
     playerDamage: playerDamageRoll,
     monsterAttack: monsterAttackRoll,
     monsterDamage: monsterDamageRoll,
+    playerAttackIsSave,
+    playerAttackDc: playerAttackDc ?? 0,
   };
 
   // 9. UPDATE ROOM + IMAGE REGISTRIES

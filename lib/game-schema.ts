@@ -105,11 +105,15 @@ export const gameStateSchema = z.object({
     playerDamage: z.coerce.number().int().default(0),
     monsterAttack: z.coerce.number().int().default(0),
     monsterDamage: z.coerce.number().int().default(0),
+    playerAttackIsSave: z.boolean().default(false),
+    playerAttackDc: z.coerce.number().int().default(0),
   }).default({
     playerAttack: 0,
     playerDamage: 0,
     monsterAttack: 0,
     monsterDamage: 0,
+    playerAttackIsSave: false,
+    playerAttackDc: 0,
   }),
   
   // NEW: COMBAT TRACKING

@@ -510,6 +510,8 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
       playerDamage: 0,
       monsterAttack: 0,
       monsterDamage: 0,
+      playerAttackIsSave: false,
+      playerAttackDc: 0,
     },
     isCombatActive: false,
     storySceneId: gateScene?.id || 'iron_gate_v1',
