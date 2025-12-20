@@ -2558,6 +2558,21 @@
     }
   },
   {
+    "name": "Identify",
+    "source": "dnd5eapi.co/2014",
+    "level": 1,
+    "castingTime": "1 minute",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": true,
+    "attackType": null,
+    "classes": [
+      "Bard",
+      "Wizard"
+    ]
+  },
+  {
     "name": "Imprisonment",
     "source": "5e-bits/5e-database:2014",
     "level": 9,
