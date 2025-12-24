@@ -38,6 +38,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDying, setIsDying] = useState(false);
+  const [deathCountdown, setDeathCountdown] = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<ArchetypeKey | null>('fighter');
   const [error, setError] = useState<string | null>(null);
   const [lastSlots, setLastSlots] = useState<string>('');
@@ -56,9 +57,24 @@ export default function Home() {
   const handleDeath = useCallback((state: GameState) => {
     if (isDying) return; // Prevent duplicate calls
     setIsDying(true);
+    setDeathCountdown(3);
     saveScore(state, 'loss');
     localStorage.removeItem('dungeon_portal_save');
+    
+    // Countdown timer
+    const countdownInterval = setInterval(() => {
+      setDeathCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          clearInterval(countdownInterval);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    // Redirect after delay
     setTimeout(() => {
+      clearInterval(countdownInterval);
       router.push('/splash');
     }, DEATH_REDIRECT_DELAY_MS);
   }, [isDying, router]);
@@ -474,7 +490,7 @@ async function handleStart() {
                 <h2 className="text-3xl font-black tracking-widest uppercase">You Died</h2>
                 <Skull size={32} />
               </div>
-              <p className="text-red-300/70 italic">Your journey ends here. Returning to main menu...</p>
+              <p className="text-red-300/70 italic">Your journey ends here. Returning to main menu{deathCountdown !== null ? ` in ${deathCountdown}...` : '...'}</p>
             </div>
           ) : (
             <form onSubmit={handleTurn} className="flex gap-2">
