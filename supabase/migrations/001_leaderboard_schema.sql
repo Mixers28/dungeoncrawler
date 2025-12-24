@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS public.leaderboard_entries (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE ON UPDATE CASCADE,
   character_name TEXT NOT NULL CONSTRAINT valid_character_name_length CHECK (length(character_name) BETWEEN 1 AND 50),
   character_class TEXT NOT NULL CONSTRAINT valid_character_class_length CHECK (length(character_class) BETWEEN 1 AND 30),
-  deepest_floor INTEGER NOT NULL DEFAULT 1 CONSTRAINT valid_floor CHECK (deepest_floor >= 0),
+  deepest_floor INTEGER NOT NULL DEFAULT 1 CONSTRAINT valid_floor CHECK (deepest_floor >= 1),
   gold_collected INTEGER NOT NULL DEFAULT 0 CONSTRAINT valid_gold CHECK (gold_collected >= 0),
   kill_count INTEGER NOT NULL DEFAULT 0 CONSTRAINT valid_kills CHECK (kill_count >= 0),
   status TEXT NOT NULL CONSTRAINT valid_status CHECK (status IN ('win', 'loss')),
@@ -44,17 +44,8 @@ CREATE POLICY "Users can insert their own entries"
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
--- Users can update their own entries (optional, for corrections)
-CREATE POLICY "Users can update their own entries"
-  ON public.leaderboard_entries
-  FOR UPDATE
-  USING (auth.uid() = user_id);
-
--- Users can delete their own entries (optional)
-CREATE POLICY "Users can delete their own entries"
-  ON public.leaderboard_entries
-  FOR DELETE
-  USING (auth.uid() = user_id);
+-- Note: UPDATE and DELETE policies intentionally omitted to prevent score manipulation
+-- Leaderboard entries are immutable after creation for competitive integrity
 
 -- RLS Policies for user_profiles
 -- Everyone can read profiles (for display names on leaderboard)
