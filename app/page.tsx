@@ -9,6 +9,7 @@ import { RightSidebar } from '../components/RightSidebar';
 import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 import { saveScore } from '../lib/leaderboard';
+import { createClient } from '@/utils/supabase/client';
 
 type UserMessage = { role: 'user'; content: string };
 type AssistantMessage = { role: 'assistant'; summary: string; flavor?: string; mode?: NarrationMode; createdAt?: string };
@@ -42,6 +43,7 @@ export default function Home() {
   const [selectedClass, setSelectedClass] = useState<ArchetypeKey | null>('fighter');
   const [error, setError] = useState<string | null>(null);
   const [lastSlots, setLastSlots] = useState<string>('');
+  const [userId, setUserId] = useState<string | null>(null);
   
   // UI STATES
   const [showIntro, setShowIntro] = useState(false);
@@ -53,13 +55,14 @@ export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
+  const supabase = createClient();
   const focusInput = () => inputRef.current?.focus();
 
   const handleDeath = useCallback((state: GameState) => {
     if (isDying) return; // Prevent duplicate calls
     setIsDying(true);
     setDeathCountdown(3);
-    saveScore(state, 'loss');
+    saveScore(state, 'loss', userId || undefined);
     localStorage.removeItem('dungeon_portal_save');
     
     // Countdown timer
@@ -80,9 +83,19 @@ export default function Home() {
       }
       router.push('/splash');
     }, DEATH_REDIRECT_DELAY_MS);
-  }, [isDying, router]);
+  }, [isDying, router, userId]);
 
   // Auto-load saved game on mount
+  useEffect(() => {
+    // Get current user session
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserId(user.id)
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     const characterName = localStorage.getItem('dungeon_portal_character');
     if (!characterName) {

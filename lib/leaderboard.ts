@@ -1,4 +1,8 @@
 import { GameState } from './game-schema'
+import { saveScoreToSupabase } from './supabase/leaderboard'
+
+// Feature flag - set to false to disable Supabase leaderboard
+const ENABLE_GLOBAL_LEADERBOARD = process.env.NEXT_PUBLIC_ENABLE_GLOBAL_LEADERBOARD !== 'false'
 
 export interface LeaderboardEntry {
   id: string
@@ -33,7 +37,19 @@ function extractDeepestFloor(locationHistory: string[] | undefined): number {
   return floors.length > 0 ? Math.max(...floors) : 0
 }
 
-export function saveScore(gameState: GameState, status: 'win' | 'loss'): void {
+export function saveScore(gameState: GameState, status: 'win' | 'loss', userId?: string): void {
+  // Save to localStorage (always, as fallback)
+  saveScoreToLocalStorage(gameState, status)
+  
+  // Save to Supabase if enabled and userId provided
+  if (ENABLE_GLOBAL_LEADERBOARD && userId) {
+    saveScoreToSupabase(gameState, status, userId).catch(error => {
+      console.error('Failed to save to Supabase, localStorage fallback active:', error)
+    })
+  }
+}
+
+function saveScoreToLocalStorage(gameState: GameState, status: 'win' | 'loss'): void {
   // Count kills from nearbyEntities that have status 'dead'
   const killCount = gameState.nearbyEntities?.filter(e => e.status === 'dead').length || 0
   
@@ -106,3 +122,7 @@ export function getCharacterStats(characterName: string): LeaderboardEntry[] {
     return []
   }
 }
+
+// Re-export Supabase leaderboard functions for global access
+export { getGlobalLeaderboard, getUserLeaderboard } from './supabase/leaderboard'
+export { ENABLE_GLOBAL_LEADERBOARD }
