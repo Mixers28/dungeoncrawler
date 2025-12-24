@@ -1,29 +1,31 @@
 -- Create leaderboard_entries table
+-- Note: CASCADE DELETE removes all user leaderboard entries when account is deleted
 CREATE TABLE IF NOT EXISTS public.leaderboard_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  character_name TEXT NOT NULL,
-  character_class TEXT NOT NULL,
-  deepest_floor INTEGER NOT NULL DEFAULT 1,
-  gold_collected INTEGER NOT NULL DEFAULT 0,
-  kill_count INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL CHECK (status IN ('win', 'loss')),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  character_name TEXT NOT NULL CONSTRAINT valid_character_name_length CHECK (length(character_name) BETWEEN 1 AND 50),
+  character_class TEXT NOT NULL CONSTRAINT valid_character_class_length CHECK (length(character_class) BETWEEN 1 AND 30),
+  deepest_floor INTEGER NOT NULL DEFAULT 1 CONSTRAINT valid_floor CHECK (deepest_floor >= 0),
+  gold_collected INTEGER NOT NULL DEFAULT 0 CONSTRAINT valid_gold CHECK (gold_collected >= 0),
+  kill_count INTEGER NOT NULL DEFAULT 0 CONSTRAINT valid_kills CHECK (kill_count >= 0),
+  status TEXT NOT NULL CONSTRAINT valid_status CHECK (status IN ('win', 'loss')),
   completed_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT unique_run_entry UNIQUE (user_id, completed_at)
 );
 
 -- Create user_profiles table for display names
 CREATE TABLE IF NOT EXISTS public.user_profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  display_name TEXT,
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  display_name TEXT CONSTRAINT valid_display_name_length CHECK (display_name IS NULL OR length(display_name) BETWEEN 1 AND 50),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_leaderboard_entries_user_id ON public.leaderboard_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_leaderboard_entries_ranking ON public.leaderboard_entries(deepest_floor DESC, gold_collected DESC, kill_count DESC);
-CREATE INDEX IF NOT EXISTS idx_leaderboard_entries_completed_at ON public.leaderboard_entries(user_id, completed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_entries_user_completed ON public.leaderboard_entries(user_id, completed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_entries_user_best ON public.leaderboard_entries(user_id, deepest_floor DESC, gold_collected DESC, kill_count DESC);
 
 -- Enable Row Level Security
 ALTER TABLE public.leaderboard_entries ENABLE ROW LEVEL SECURITY;

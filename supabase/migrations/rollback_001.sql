@@ -17,9 +17,9 @@ DROP POLICY IF EXISTS "Users can insert their own profile" ON public.user_profil
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.user_profiles;
 
 -- Drop indexes
-DROP INDEX IF EXISTS public.idx_leaderboard_entries_user_id;
 DROP INDEX IF EXISTS public.idx_leaderboard_entries_ranking;
-DROP INDEX IF EXISTS public.idx_leaderboard_entries_completed_at;
+DROP INDEX IF EXISTS public.idx_leaderboard_entries_user_completed;
+DROP INDEX IF EXISTS public.idx_leaderboard_entries_user_best;
 
 -- Drop tables
 DROP TABLE IF EXISTS public.leaderboard_entries CASCADE;
