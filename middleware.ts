@@ -1,23 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { updateSession } from './utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  const { response, user } = await updateSession(request)
-  const { pathname } = request.nextUrl
-
-  if (pathname === '/splash' && user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
-  }
-
-  if (pathname === '/' && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/splash'
-    return NextResponse.redirect(url)
-  }
-
-  return response
+  // No authentication required - allow all requests through
+  return NextResponse.next()
 }
 
 export const config = {

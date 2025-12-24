@@ -49,6 +49,45 @@ export default function Home() {
   const router = useRouter();
   const focusInput = () => inputRef.current?.focus();
 
+  // Auto-load saved game on mount
+  useEffect(() => {
+    const characterName = localStorage.getItem('dungeon_portal_character');
+    if (!characterName) {
+      // No character name, redirect to login
+      router.push('/login');
+      return;
+    }
+
+    // Try to load existing save
+    const savedGameJson = localStorage.getItem('dungeon_portal_save');
+    if (savedGameJson) {
+      try {
+        const savedState = JSON.parse(savedGameJson);
+        setGameState(savedState);
+        
+        // Restore messages from log
+        const restoredLog: Message[] = (savedState.log || []).map((entry: LogEntry) => ({
+          role: 'assistant',
+          summary: entry.summary,
+          flavor: entry.flavor,
+          mode: entry.mode,
+          createdAt: entry.createdAt,
+        }));
+        
+        if (restoredLog.length > 0) {
+          setMessages(restoredLog);
+        }
+        
+        // Set the selected class from saved state
+        if (savedState.character?.class) {
+          setSelectedClass(savedState.character.class.toLowerCase() as ArchetypeKey);
+        }
+      } catch (e) {
+        console.error('Failed to load saved game:', e);
+      }
+    }
+  }, [router]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -75,8 +114,27 @@ async function handleStart() {
         setIsLoading(false);
         return;
       }
-      const initialState = await createNewGame({ archetypeKey: selectedClass as ArchetypeKey, forceNew: true });
+
+      // Try to load existing save from localStorage
+      const savedGameJson = localStorage.getItem('dungeon_portal_save');
+      let existingSave = null;
+      if (savedGameJson) {
+        try {
+          existingSave = JSON.parse(savedGameJson);
+        } catch (e) {
+          console.error('Failed to parse saved game:', e);
+        }
+      }
+
+      const initialState = await createNewGame({ 
+        archetypeKey: selectedClass as ArchetypeKey, 
+        forceNew: !existingSave,
+        existingSave: existingSave 
+      });
       setGameState(initialState);
+      
+      // Save to localStorage
+      localStorage.setItem('dungeon_portal_save', JSON.stringify(initialState));
       
       // LOGIC FIX: Restore the Chat History from the Database
       const restoredLog: Message[] = (initialState.log || []).map((entry: LogEntry) => ({
@@ -108,7 +166,7 @@ async function handleStart() {
 
     } catch (error) {
       console.error("Failed to start game:", error);
-      router.push('/login');
+      setError("Failed to start game. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -125,10 +183,15 @@ async function handleStart() {
       setSelectedClass(preferredClass);
       const freshState = await resetGame(preferredClass);
       setGameState(freshState);
+      
+      // Save to localStorage
+      localStorage.setItem('dungeon_portal_save', JSON.stringify(freshState));
+      
       setShowIntro(true);
       setIntroStep(0);
     } catch (error) {
       console.error("Restart failed", error);
+      setError("Failed to restart game. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -148,6 +211,10 @@ async function handleStart() {
     try {
       const { newState, logEntry } = await processTurn(gameState, userAction);
       setGameState(newState);
+      
+      // Save to localStorage
+      localStorage.setItem('dungeon_portal_save', JSON.stringify(newState));
+      
       if (newState?.spellSlots) {
         const slotText = Object.entries(newState.spellSlots)
           .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
@@ -166,7 +233,7 @@ async function handleStart() {
       ]);
     } catch (error) {
       console.error("Turn Error:", error);
-      router.push('/login');
+      setError("Failed to process turn. Please try again.");
     } finally {
       setIsLoading(false);
       focusInput();
