@@ -1,17 +1,20 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Skull, ArrowRight, BookOpen, X } from 'lucide-react'; // Added X
+import { Skull, ArrowRight, BookOpen, X } from 'lucide-react';
 import type { GameState, LogEntry, NarrationMode } from '../lib/game-schema';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { RightSidebar } from '../components/RightSidebar';
 import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
+import { saveScore } from '../lib/leaderboard';
 
 type UserMessage = { role: 'user'; content: string };
 type AssistantMessage = { role: 'assistant'; summary: string; flavor?: string; mode?: NarrationMode; createdAt?: string };
 type Message = UserMessage | AssistantMessage;
+
+const DEATH_REDIRECT_DELAY_MS = 3000;
 
 // --- PROLOGUE CONTENT (Local Static Assets) ---
 const PROLOGUE_STEPS = [
@@ -34,6 +37,7 @@ export default function Home() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDying, setIsDying] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ArchetypeKey | null>('fighter');
   const [error, setError] = useState<string | null>(null);
   const [lastSlots, setLastSlots] = useState<string>('');
@@ -49,12 +53,22 @@ export default function Home() {
   const router = useRouter();
   const focusInput = () => inputRef.current?.focus();
 
+  const handleDeath = useCallback((state: GameState) => {
+    if (isDying) return; // Prevent duplicate calls
+    setIsDying(true);
+    saveScore(state, 'loss');
+    localStorage.removeItem('dungeon_portal_save');
+    setTimeout(() => {
+      router.push('/splash');
+    }, DEATH_REDIRECT_DELAY_MS);
+  }, [isDying, router]);
+
   // Auto-load saved game on mount
   useEffect(() => {
     const characterName = localStorage.getItem('dungeon_portal_character');
     if (!characterName) {
-      // No character name, redirect to login
-      router.push('/login');
+      // No character name, redirect to splash
+      router.push('/splash');
       return;
     }
 
@@ -63,6 +77,13 @@ export default function Home() {
     if (savedGameJson) {
       try {
         const savedState = JSON.parse(savedGameJson);
+        
+        // Check if player is dead - redirect to splash
+        if (savedState.hp <= 0) {
+          handleDeath(savedState);
+          return;
+        }
+        
         setGameState(savedState);
         
         // Restore messages from log
@@ -86,7 +107,7 @@ export default function Home() {
         console.error('Failed to load saved game:', e);
       }
     }
-  }, [router]);
+  }, [router, handleDeath]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -212,8 +233,29 @@ async function handleStart() {
       const { newState, logEntry } = await processTurn(gameState, userAction);
       setGameState(newState);
       
-      // Save to localStorage
-      localStorage.setItem('dungeon_portal_save', JSON.stringify(newState));
+      // Check if player just died
+      if (newState.hp <= 0 && gameState.hp > 0) {
+        // Show death message then handle death
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            summary: logEntry.summary,
+            flavor: logEntry.flavor,
+            mode: logEntry.mode,
+            createdAt: logEntry.createdAt,
+          }
+        ]);
+        
+        handleDeath(newState);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Save to localStorage if still alive
+      if (newState.hp > 0) {
+        localStorage.setItem('dungeon_portal_save', JSON.stringify(newState));
+      }
       
       if (newState?.spellSlots) {
         const slotText = Object.entries(newState.spellSlots)
@@ -315,6 +357,15 @@ async function handleStart() {
 
   const isDead = gameState.hp <= 0;
 
+  const handleMainMenu = () => {
+    // Save current game state if alive
+    if (gameState.hp > 0) {
+      localStorage.setItem('dungeon_portal_save', JSON.stringify(gameState));
+    }
+    // Redirect to splash
+    router.push('/splash');
+  };
+
   return (
     <main className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden relative">
       
@@ -323,20 +374,31 @@ async function handleStart() {
         <span className="font-bold text-amber-500">Dungeon Portal</span>
         <div className="flex items-center gap-2">
           <button
+            onClick={handleMainMenu}
+            disabled={isLoading}
+            aria-label="Return to main menu"
+            className="text-xs bg-slate-700 text-slate-200 font-bold px-3 py-1 rounded disabled:opacity-50"
+          >
+            Menu
+          </button>
+          <button
             onClick={handleRestart}
             disabled={isLoading}
+            aria-label="Start a new run"
             className="text-xs bg-amber-700 text-slate-900 font-bold px-3 py-1 rounded disabled:opacity-50"
           >
             New Run
           </button>
           <button
             onClick={() => { setIsLeftSidebarOpen(true); setIsRightSidebarOpen(false); }}
+            aria-label="Open character stats sidebar"
             className="text-xs bg-slate-800 text-slate-200 font-semibold px-3 py-1 rounded"
           >
             Stats
           </button>
           <button
             onClick={() => { setIsRightSidebarOpen(true); setIsLeftSidebarOpen(false); }}
+            aria-label="Open spells sidebar"
             className="text-xs bg-slate-800 text-slate-200 font-semibold px-3 py-1 rounded"
           >
             Spells
@@ -354,13 +416,24 @@ async function handleStart() {
         {/* Desktop top bar */}
         <div className="hidden md:flex items-center justify-between mb-2 text-sm text-slate-400">
           <span className="font-semibold text-amber-500">Dungeon Portal</span>
-          <button
-            onClick={handleRestart}
-            disabled={isLoading}
-            className="bg-amber-700 hover:bg-amber-600 text-slate-900 font-semibold px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? "Resetting..." : "New Run"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleMainMenu}
+              disabled={isLoading}
+              aria-label="Return to main menu and save progress"
+              className="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Main Menu
+            </button>
+            <button
+              onClick={handleRestart}
+              disabled={isLoading}
+              aria-label="Start a new run with same character"
+              className="bg-amber-700 hover:bg-amber-600 text-slate-900 font-semibold px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? "Resetting..." : "New Run"}
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-6 p-4 scrollbar-thin scrollbar-thumb-slate-700 pb-32">
@@ -401,10 +474,7 @@ async function handleStart() {
                 <h2 className="text-3xl font-black tracking-widest uppercase">You Died</h2>
                 <Skull size={32} />
               </div>
-              <p className="text-red-300/70 italic">Your journey ends here.</p>
-              <button onClick={handleRestart} disabled={isLoading} className="bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-8 rounded transition-colors shadow-lg shadow-red-900/50">
-                {isLoading ? "Resurrecting..." : "Start New Run"}
-              </button>
+              <p className="text-red-300/70 italic">Your journey ends here. Returning to main menu...</p>
             </div>
           ) : (
             <form onSubmit={handleTurn} className="flex gap-2">

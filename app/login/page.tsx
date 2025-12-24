@@ -19,10 +19,13 @@ export default function LoginPage() {
     
     setLoading(true)
     
-    // Store character name in localStorage
+    // Clear any existing save (new run starts fresh)
+    localStorage.removeItem('dungeon_portal_save')
+    
+    // Store new character name in localStorage
     localStorage.setItem('dungeon_portal_character', trimmedName)
     
-    // Redirect to game
+    // Redirect to game (will trigger character class selection)
     router.push('/')
     router.refresh()
   }
@@ -31,7 +34,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 text-slate-200">
       <form onSubmit={handleLogin} className="w-full max-w-md space-y-4 p-8 bg-slate-900 rounded-lg border border-slate-800">
         <h1 className="text-2xl font-bold text-amber-500 mb-6">Dungeon Portal</h1>
-        <p className="text-slate-400 text-sm mb-4">Enter your character name to begin or continue your adventure.</p>
+        <p className="text-slate-400 text-sm mb-4">Enter your character name to start a new adventure.</p>
         
         <div>
           <label className="block text-sm font-medium mb-1">Character Name</label>
@@ -50,9 +53,9 @@ export default function LoginPage() {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-amber-600 hover:bg-amber-700 p-2 rounded font-bold transition-all"
+            className="w-full bg-amber-600 hover:bg-amber-700 p-2 rounded font-bold transition-all disabled:opacity-50"
           >
-            {loading ? '...' : 'Enter the Dungeon'}
+            {loading ? 'Starting...' : 'Start New Run'}
           </button>
         </div>
       </form>

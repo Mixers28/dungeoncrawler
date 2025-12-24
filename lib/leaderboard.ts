@@ -15,7 +15,7 @@ const LEADERBOARD_KEY = 'dungeon_portal_leaderboard'
 const DEFAULT_LEADERBOARD_LIMIT = 10
 const MAX_STORED_ENTRIES = 100
 
-function sanitizeString(input: string): string {
+export function sanitizeString(input: string): string {
   // Remove HTML tags and limit length
   return input.replace(/<[^>]*>/g, '').trim().slice(0, 50)
 }
