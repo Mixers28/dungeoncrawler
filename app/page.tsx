@@ -51,6 +51,7 @@ export default function Home() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
   const focusInput = () => inputRef.current?.focus();
 
@@ -62,10 +63,9 @@ export default function Home() {
     localStorage.removeItem('dungeon_portal_save');
     
     // Countdown timer
-    const countdownInterval = setInterval(() => {
+    countdownIntervalRef.current = setInterval(() => {
       setDeathCountdown(prev => {
         if (prev === null || prev <= 1) {
-          clearInterval(countdownInterval);
           return null;
         }
         return prev - 1;
@@ -74,7 +74,10 @@ export default function Home() {
     
     // Redirect after delay
     setTimeout(() => {
-      clearInterval(countdownInterval);
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
       router.push('/splash');
     }, DEATH_REDIRECT_DELAY_MS);
   }, [isDying, router]);
@@ -128,6 +131,15 @@ export default function Home() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Cleanup countdown interval on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Keep the input active whenever we finish loading or messages change.
   useEffect(() => {
@@ -490,7 +502,7 @@ async function handleStart() {
                 <h2 className="text-3xl font-black tracking-widest uppercase">You Died</h2>
                 <Skull size={32} />
               </div>
-              <p className="text-red-300/70 italic">Your journey ends here. Returning to main menu{deathCountdown !== null ? ` in ${deathCountdown}...` : '...'}</p>
+              <p className="text-red-300/70 italic">Your journey ends here. {deathCountdown !== null && deathCountdown > 0 ? `Redirecting in: ${deathCountdown}` : 'Redirecting...'}</p>
             </div>
           ) : (
             <form onSubmit={handleTurn} className="flex gap-2">
