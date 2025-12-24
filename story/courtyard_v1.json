@@ -2,21 +2,21 @@
   "id": "courtyard_v1",
   "group": "act1_courtyard",
   "title": "Bone-Fountain Court",
-  "location": "Courtyard",
+  "location": "Floor 1 - Entry Hall",
   "description": "Broken statues lean at odd angles across a mossed-over courtyard. A dried fountain sits at the centre, its basin filled with brittle bones.",
   "entryConditions": { "flagsAll": ["gate_opened"] },
   "onEnter": {
-    "log": "You step into the courtyard; something rattles in the fountain and the bones begin to shift.",
+    "log": "You step into the entry hall of the dungeon's first floor; something rattles in the fountain and the bones begin to shift.",
     "spawn": [
       { "name": "Skeleton", "hp": 13, "ac": 13, "attackBonus": 4, "damageDice": "1d6+2" },
       { "name": "Skeleton", "hp": 13, "ac": 13, "attackBonus": 4, "damageDice": "1d6+2" }
     ]
   },
   "exits": [
-    { "verb": ["north", "hall", "hallway", "exit", "leave", "forward", "ahead", "proceed"], "targetSceneId": "hallway_v1" }
+    { "verb": ["forward", "ahead", "north", "proceed", "continue"], "targetSceneId": "hallway_v1" }
   ],
   "onComplete": {
-    "flagsSet": ["courtyard_cleared"],
+    "flagsSet": ["courtyard_cleared", "floor1_entry_cleared"],
     "reward": {
       "xp": 75,
       "lootTable": "5e_minor_undead_treasure"

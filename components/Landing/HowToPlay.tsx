@@ -42,18 +42,19 @@ export function HowToPlay() {
                 <li>Type commands like &quot;attack skeleton&quot; or &quot;cast magic missile&quot;</li>
                 <li>Your AC (Armor Class) and HP determine your survivability</li>
                 <li>Defeated enemies may drop loot and always grant gold/XP</li>
-                <li>Spellcasters have limited spell slots that refresh on rest</li>
+                <li>Spellcasters have limited spell slots that restore on level up</li>
               </ul>
             </section>
 
             <section>
               <h3 className="text-lg font-bold text-amber-500 mb-2">🗺️ Exploration & Loot</h3>
               <ul className="list-disc list-inside space-y-1 text-sm">
-                <li>Navigate using commands like &quot;go north&quot;, &quot;enter door&quot;, or &quot;descend stairs&quot;</li>
+                <li>The dungeon is organized by floors - each floor has a central hub with multiple passages to explore</li>
+                <li>Navigate using commands like &quot;explore door&quot;, &quot;investigate passage&quot;, or &quot;descend stairs&quot;</li>
+                <li>Explore all side rooms on a floor to unlock the stairs down to deeper levels</li>
                 <li>Search rooms with &quot;search&quot; or &quot;look around&quot; to find hidden items</li>
                 <li>Manage inventory with &quot;use potion&quot;, &quot;equip sword&quot;, or &quot;drop item&quot;</li>
                 <li>Visit traders to buy potions, gear, and upgrades</li>
-                <li>Rest at safe locations to restore HP and spell slots</li>
               </ul>
             </section>
 
@@ -74,7 +75,7 @@ export function HowToPlay() {
                 <li>Keep healing potions for emergencies during tough fights</li>
                 <li>Upgrade armor first for better survivability</li>
                 <li>Rogues excel at stealth, Fighters at melee, Clerics at healing, Wizards at burst damage</li>
-                <li>Rest strategically - don&apos;t waste it when already at full HP</li>
+                <li>Explore thoroughly - some side rooms contain valuable loot or easier encounters</li>
                 <li>Try creative actions! The AI DM rewards clever tactics with &quot;stunts&quot;</li>
               </ul>
             </section>

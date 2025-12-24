@@ -97,6 +97,7 @@ export const gameStateSchema = z.object({
   sceneRegistry: z.record(z.string()).default({}), 
   roomRegistry: z.record(z.string()).default({}), 
   storyAct: z.coerce.number().int().default(0),
+  currentFloor: z.coerce.number().int().default(1), // Track dungeon depth
   currentImage: z.string().optional(),
   locationHistory: z.array(z.string()).default([]),
   inventoryChangeLog: z.array(z.string()).default([]),

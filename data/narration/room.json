@@ -6,6 +6,12 @@
     "text": "The air hangs heavy in {location}, the silence broken only by your measured breath."
   },
   {
+    "id": "room_intro_default_2",
+    "modes": ["ROOM_INTRO"],
+    "tags": ["default"],
+    "text": "Descending into {location}, you feel the weight of stone above and darkness below."
+  },
+  {
     "id": "investigate_default_1",
     "modes": ["INVESTIGATE"],
     "tags": ["default"],
@@ -15,6 +21,12 @@
     "id": "general_default_1",
     "modes": ["GENERAL"],
     "tags": ["default"],
-    "text": "The moment passes in {location}, the dungeon watching as you decide your next move."
+    "text": "The moment passes in {location}, the dungeon depths waiting for your next move."
+  },
+  {
+    "id": "general_default_2",
+    "modes": ["GENERAL"],
+    "tags": ["default"],
+    "text": "You stand in {location}, deeper in the dungeon than most dare to venture."
   }
 ]

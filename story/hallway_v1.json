@@ -1,26 +1,25 @@
 {
   "id": "hallway_v1",
   "group": "act1_hallway",
-  "title": "Torchgrave Corridor",
-  "location": "Hallway",
-  "description": "Blackened torch brackets line the walls, most smashed or bent. The remaining flames sputter weakly as if starved of air.",
-  "entryConditions": { "flagsAll": ["courtyard_cleared"] },
+  "title": "Floor 1 - Central Hub",
+  "location": "Floor 1 - Hub",
+  "description": "Four passages branch from this central chamber. Blackened torch brackets line the walls, most smashed or bent. The remaining flames sputter weakly.",
+  "entryConditions": { "flagsAll": ["floor1_entry_cleared"] },
   "onEnter": {
-    "log": "Your shadow stretches and fractures along the walls as movement stirs ahead in the flickering light.",
-    "spawn": [
-      { "name": "Cultist Acolyte", "hp": 9, "ac": 12, "attackBonus": 3, "damageDice": "1d8" },
-      { "name": "Skeleton", "hp": 13, "ac": 13, "attackBonus": 4, "damageDice": "1d6+2" }
-    ]
+    "log": "You reach the hub of the first floor. Four dark passages await exploration.",
+    "spawn": []
   },
   "exits": [
-    { "verb": ["forward", "east", "antechamber"], "targetSceneId": "antechamber_v1" },
-    { "verb": ["back", "south", "courtyard"], "targetSceneId": "courtyard_v1" }
+    { "verb": ["west", "left", "passage", "door 1", "broken shrine"], "targetSceneId": "side_broken_shrine", "log": "You enter a passage marked by faded religious symbols." },
+    { "verb": ["east", "right", "alcove", "door 2", "storage"], "targetSceneId": "side_storage_niche", "log": "You investigate a cramped storage alcove." },
+    { "verb": ["north", "ahead", "archive", "door 3", "library"], "targetSceneId": "side_collapsed_archive", "log": "You push through to a collapsed archive." },
+    { "verb": ["south", "barricade", "door 4", "fortified"], "targetSceneId": "side_barricaded_room", "log": "You approach a barricaded doorway." },
+    { "verb": ["descend", "down", "stairs", "deeper"], "targetSceneId": "antechamber_v1", "consumeItem": "Floor1Complete", "log": "Having explored all branches, you descend the stairs to Floor 2." }
   ],
   "onComplete": {
-    "flagsSet": ["hallway_seen"],
+    "flagsSet": ["hallway_seen", "floor1_hub_reached"],
     "reward": {
-      "xp": 75,
-      "lootTable": "5e_minor_cultist_treasure"
+      "xp": 50
     }
   }
 }

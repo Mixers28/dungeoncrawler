@@ -502,7 +502,7 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
     worldSeed,
     narrativeHistory: [],
     log: [],
-    sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentImage: "",
+    sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentFloor: 1, currentImage: "",
     locationHistory: [],
     inventoryChangeLog: [],
     lastRolls: {

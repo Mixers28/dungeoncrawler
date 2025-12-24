@@ -1,10 +1,10 @@
 {
   "id": "bossroom_v1",
   "group": "act1_bossroom",
-  "title": "The Flooded Reliquary",
-  "location": "Sunken Throne",
+  "title": "Floor 2 - Flooded Reliquary",
+  "location": "Floor 2 - Boss Chamber",
   "description": "Ripples spread across the ankle-deep water as you approach the raised platform. Ancient relics jut from the pool like broken teeth.",
-  "entryConditions": { "flagsAll": ["antechamber_cleared"] },
+  "entryConditions": { "flagsAll": ["floor2_entry_cleared"] },
   "onEnter": {
     "log": "A hulking knight of corroded iron lifts its greatsword, water streaming from its armour plates.",
     "spawn": [
@@ -13,10 +13,10 @@
     ]
   },
   "exits": [
-    { "verb": ["forward", "treasury", "north"], "targetSceneId": "treasury_v1", "log": "You cross the flooded chamber toward the vault door." }
+    { "verb": ["forward", "treasury", "north", "vault"], "targetSceneId": "treasury_v1", "log": "You cross the flooded chamber toward the vault door." }
   ],
   "onComplete": {
-    "flagsSet": ["fallen_knight_slain", "boss1_cleared"],
+    "flagsSet": ["fallen_knight_slain", "boss1_cleared", "floor2_boss_cleared"],
     "reward": {
       "xp": 350,
       "lootTable": "5e_major_undead_boss_treasure",
