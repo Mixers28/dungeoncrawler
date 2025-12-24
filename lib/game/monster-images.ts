@@ -32,32 +32,13 @@ export function normalizeMonsterType(monsterName: string): string {
 }
 
 /**
- * Get the cached image URL for a monster type
- * Returns null if not in cache
- */
-export function getCachedMonsterImageUrl(monsterType: string): string | null {
-  const normalized = normalizeMonsterType(monsterType);
-  const cachePath = `/monster-cache/${normalized}.png`;
-  
-  // Note: We can't check file existence in browser context
-  // Pre-generation script ensures these files exist
-  // Client-side validation happens via image onError handler
-  return cachePath;
-}
-
-/**
- * Get the monster image URL with fallback
- * Primary: cached image
- * Fallback: placeholder silhouette
+ * Get the monster image URL
+ * Returns path to cached image. Client-side validation via image onError handler.
+ * Fallback to placeholder handled by component logic.
  */
 export function getMonsterImageUrl(monsterType: string): string {
-  const cached = getCachedMonsterImageUrl(monsterType);
-  if (cached) {
-    return cached;
-  }
-  
-  // Fallback to generic placeholder
-  return '/monster-cache/placeholder.png';
+  const normalized = normalizeMonsterType(monsterType);
+  return `/monster-cache/${normalized}.png`;
 }
 
 /**
@@ -87,20 +68,28 @@ export function getMonsterPrompt(monsterType: string): string {
   return specialCases[normalized] || basePrompt;
 }
 
+let manifestCache: MonsterCacheManifest | null | undefined = undefined;
+
 /**
  * Load the monster cache manifest
- * Returns null if not found or invalid
+ * Returns null if not found or invalid. Cached after first successful load.
  */
 export async function loadMonsterCacheManifest(): Promise<MonsterCacheManifest | null> {
+  if (manifestCache !== undefined) {
+    return manifestCache;
+  }
+  
   try {
     const response = await fetch('/monster-cache/manifest.json');
     if (!response.ok) {
+      manifestCache = null;
       return null;
     }
-    const manifest = await response.json() as MonsterCacheManifest;
-    return manifest;
+    manifestCache = await response.json() as MonsterCacheManifest;
+    return manifestCache;
   } catch (error) {
     console.warn('Failed to load monster cache manifest:', error);
+    manifestCache = null;
     return null;
   }
 }

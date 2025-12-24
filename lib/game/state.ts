@@ -212,34 +212,50 @@ export function applySceneEntry(
     }
     if (scene.onEnter?.spawn) {
       // Import monster image service at runtime to avoid circular dependencies
-      const { getMonsterImageUrl } = await import('./monster-images');
-      
-      nextState.nearbyEntities = scene.onEnter.spawn.map(sp => ({
-        name: sp.name,
-        status: 'alive',
-        description: sp.name,
-        hp: sp.hp,
-        maxHp: sp.maxHp || sp.hp,
-        ac: sp.ac,
-        attackBonus: sp.attackBonus,
-        damageDice: sp.damageDice,
-        effects: [],
-        imageUrl: getMonsterImageUrl(sp.name),
-        position: undefined, // Will be assigned by battlefield view
-      }));
-      
-      // Register monsters in monsterRegistry for tracking
-      for (const sp of scene.onEnter.spawn) {
-        const normalizedName = sp.name.toLowerCase().replace(/\s+/g, '_');
-        const existing = nextState.monsterRegistry?.[normalizedName];
-        nextState.monsterRegistry = {
-          ...(nextState.monsterRegistry || {}),
-          [normalizedName]: {
+      try {
+        const { getMonsterImageUrl, normalizeMonsterType } = await import('./monster-images');
+        
+        nextState.nearbyEntities = scene.onEnter.spawn.map(sp => ({
+          name: sp.name,
+          status: 'alive',
+          description: sp.name,
+          hp: sp.hp,
+          maxHp: sp.maxHp || sp.hp,
+          ac: sp.ac,
+          attackBonus: sp.attackBonus,
+          damageDice: sp.damageDice,
+          effects: [],
+          imageUrl: getMonsterImageUrl(sp.name),
+          position: { x: 0, y: 0 }, // Default position, assigned by battlefield view
+        }));
+        
+        // Register monsters in monsterRegistry for tracking
+        nextState.monsterRegistry = nextState.monsterRegistry || {};
+        for (const sp of scene.onEnter.spawn) {
+          const normalizedName = normalizeMonsterType(sp.name);
+          const existing = nextState.monsterRegistry[normalizedName];
+          nextState.monsterRegistry[normalizedName] = {
             imageUrl: getMonsterImageUrl(sp.name),
             lastSeenFloor: nextState.currentFloor,
             encounterCount: (existing?.encounterCount || 0) + 1,
-          },
-        };
+          };
+        }
+      } catch (error) {
+        console.error('Failed to load monster images:', error);
+        // Fallback: spawn without images
+        nextState.nearbyEntities = scene.onEnter.spawn.map(sp => ({
+          name: sp.name,
+          status: 'alive',
+          description: sp.name,
+          hp: sp.hp,
+          maxHp: sp.maxHp || sp.hp,
+          ac: sp.ac,
+          attackBonus: sp.attackBonus,
+          damageDice: sp.damageDice,
+          effects: [],
+          imageUrl: undefined,
+          position: { x: 0, y: 0 },
+        }));
       }
     } else {
       nextState.nearbyEntities = [];

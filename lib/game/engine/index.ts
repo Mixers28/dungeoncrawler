@@ -21,6 +21,8 @@ function expireEffects(state: GameState) {
   state.nearbyEntities = (state.nearbyEntities || []).map(ent => ({
     ...ent,
     effects: (ent.effects || []).filter(e => !e.expiresAtTurn || e.expiresAtTurn > turn),
+    imageUrl: ent.imageUrl,
+    position: ent.position,
   }));
 }
 

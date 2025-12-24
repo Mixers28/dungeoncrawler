@@ -103,9 +103,9 @@ export const gameStateSchema = z.object({
   sceneRegistry: z.record(z.string()).default({}), 
   roomRegistry: z.record(z.string()).default({}), 
   monsterRegistry: z.record(z.object({
-    imageUrl: z.string(),
-    lastSeenFloor: z.number(),
-    encounterCount: z.number(),
+    imageUrl: z.string().startsWith('/monster-cache/'),
+    lastSeenFloor: z.number().int().positive(),
+    encounterCount: z.number().int().nonnegative(),
   })).default({}),
   storyAct: z.coerce.number().int().default(0),
   currentFloor: z.coerce.number().int().default(1), // Track dungeon depth
@@ -150,6 +150,7 @@ export const gameStateSchema = z.object({
   log: z.array(logEntrySchema).default([]),
 });
 
+export type Entity = z.infer<typeof entitySchema>;
 export type GameState = z.infer<typeof gameStateSchema>;
 export type LogEntry = z.infer<typeof logEntrySchema>;
 export type NarrationMode = z.infer<typeof narrationModeEnum>;
