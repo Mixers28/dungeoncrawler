@@ -30,18 +30,25 @@ export default function LoginPage() {
     setError(null)
     
     try {
-      // Sign in anonymously
+      // Try anonymous sign-in
       const { data, error: authError } = await supabase.auth.signInAnonymously()
       
       if (authError) {
         console.error('Anonymous sign-in error:', authError)
-        setError('Failed to sign in. Please try again.')
+        
+        // Check if it's a configuration issue
+        if (authError.message?.includes('Anonymous sign-ins are disabled') || 
+            authError.message?.includes('not enabled')) {
+          setError('Anonymous auth is not configured. Please use Named Character instead or enable anonymous auth in Supabase.')
+        } else {
+          setError(`Authentication failed: ${authError.message}`)
+        }
         setLoading(false)
         return
       }
 
       if (!data.user) {
-        setError('Authentication failed. Please try again.')
+        setError('Authentication failed. Please try Named Character instead.')
         setLoading(false)
         return
       }
@@ -60,7 +67,7 @@ export default function LoginPage() {
       router.refresh()
     } catch (error) {
       console.error('Unexpected error during anonymous sign-in:', error)
-      setError('An unexpected error occurred')
+      setError('Anonymous auth unavailable. Please use Named Character instead.')
       setLoading(false)
     }
   }
@@ -78,19 +85,18 @@ export default function LoginPage() {
     setError(null)
     
     try {
-      // Check if user is already authenticated
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        // No user session, sign in anonymously
-        const { error: authError } = await supabase.auth.signInAnonymously()
+      // Try to get or create anonymous session for leaderboard tracking
+      // This is optional - game works without it using localStorage fallback
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
         
-        if (authError) {
-          console.error('Auto anonymous sign-in error:', authError)
-          setError('Failed to initialize session. Please try again.')
-          setLoading(false)
-          return
+        if (!user) {
+          // Attempt anonymous sign-in (will fail gracefully if not configured)
+          await supabase.auth.signInAnonymously()
         }
+      } catch (authError) {
+        // Anonymous auth not configured or failed - continue without it
+        console.warn('Anonymous auth unavailable, using localStorage only:', authError)
       }
       
       // Clear any existing save (new run starts fresh)
