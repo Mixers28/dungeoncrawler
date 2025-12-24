@@ -1,0 +1,204 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2025-12-24T14:50:18.744Z",
+  "monsters": [
+    {
+      "monsterType": "Giant Rat",
+      "imageUrl": "/monster-cache/giant_rat.png",
+      "cachedAt": "2025-12-24T14:50:18.738Z",
+      "prompt": "A massive rat creature with glowing red eyes in a damp dungeon, fantasy art, dramatic shadows, menacing pose, top-down perspective"
+    },
+    {
+      "monsterType": "Skeleton",
+      "imageUrl": "/monster-cache/skeleton.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "An animated skeleton warrior with rusted sword in a crypt, fantasy art, eerie blue glow, top-down perspective"
+    },
+    {
+      "monsterType": "Skeleton Archer",
+      "imageUrl": "/monster-cache/skeleton_archer.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "An undead skeleton archer with ancient bow in dark ruins, fantasy art, spectral arrows, top-down perspective"
+    },
+    {
+      "monsterType": "Skeleton Spearman",
+      "imageUrl": "/monster-cache/skeleton_spearman.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A skeletal warrior wielding a spear and shield in crypt, fantasy art, bone armor, top-down perspective"
+    },
+    {
+      "monsterType": "Zombie",
+      "imageUrl": "/monster-cache/zombie.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A rotting zombie with tattered clothes shambling through dungeon, fantasy art, horror atmosphere, top-down perspective"
+    },
+    {
+      "monsterType": "Armoured Zombie",
+      "imageUrl": "/monster-cache/armoured_zombie.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A heavily armored undead knight with rusted plate mail, fantasy art, dreadful, top-down perspective"
+    },
+    {
+      "monsterType": "Cultist Acolyte",
+      "imageUrl": "/monster-cache/cultist_acolyte.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A robed cultist with ritual dagger and dark symbols, fantasy art, ominous purple glow, top-down perspective"
+    },
+    {
+      "monsterType": "Fallen Knight",
+      "imageUrl": "/monster-cache/fallen_knight.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A corrupted knight in black armor with cursed greatsword, fantasy art, dark energy aura, boss monster, top-down perspective"
+    },
+    {
+      "monsterType": "Goblin",
+      "imageUrl": "/monster-cache/goblin.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A cunning goblin with crude dagger in a dark cave, fantasy art, menacing grin, top-down perspective"
+    },
+    {
+      "monsterType": "Goblin Archer",
+      "imageUrl": "/monster-cache/goblin_archer.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A goblin archer with makeshift bow in shadows, fantasy art, sneaky pose, top-down perspective"
+    },
+    {
+      "monsterType": "Orc",
+      "imageUrl": "/monster-cache/orc.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A hulking orc warrior with battle scars and crude axe, fantasy art, aggressive stance, top-down perspective"
+    },
+    {
+      "monsterType": "Orc Warrior",
+      "imageUrl": "/monster-cache/orc_warrior.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "An orc berserker with dual axes and war paint, fantasy art, savage, top-down perspective"
+    },
+    {
+      "monsterType": "Wolf",
+      "imageUrl": "/monster-cache/wolf.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A feral wolf with glowing eyes stalking through dark forest, fantasy art, predatory, top-down perspective"
+    },
+    {
+      "monsterType": "Dire Wolf",
+      "imageUrl": "/monster-cache/dire_wolf.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A massive dire wolf with silver fur in moonlit clearing, fantasy art, alpha predator, top-down perspective"
+    },
+    {
+      "monsterType": "Giant Spider",
+      "imageUrl": "/monster-cache/giant_spider.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A giant spider with dripping fangs in web-covered lair, fantasy art, menacing, top-down perspective"
+    },
+    {
+      "monsterType": "Phase Spider",
+      "imageUrl": "/monster-cache/phase_spider.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "An ethereal spider phasing between dimensions, fantasy art, magical shimmer, top-down perspective"
+    },
+    {
+      "monsterType": "Bandit",
+      "imageUrl": "/monster-cache/bandit.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A ruthless bandit with mask and daggers in shadowy corridor, fantasy art, stealthy, top-down perspective"
+    },
+    {
+      "monsterType": "Bandit Captain",
+      "imageUrl": "/monster-cache/bandit_captain.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A scarred bandit leader with fine rapier and stolen armor, fantasy art, commanding presence, top-down perspective"
+    },
+    {
+      "monsterType": "Cultist",
+      "imageUrl": "/monster-cache/cultist.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A hooded cultist in dark robes with unholy symbol, fantasy art, sinister, top-down perspective"
+    },
+    {
+      "monsterType": "Cult Fanatic",
+      "imageUrl": "/monster-cache/cult_fanatic.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A wild-eyed cult leader with sacrificial blade, fantasy art, manic energy, eldritch symbols, top-down perspective"
+    },
+    {
+      "monsterType": "Ghost",
+      "imageUrl": "/monster-cache/ghost.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A translucent ghost with ethereal glow in abandoned room, fantasy art, supernatural, mournful, top-down perspective"
+    },
+    {
+      "monsterType": "Specter",
+      "imageUrl": "/monster-cache/specter.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A spectral wraith with wispy form in haunted corridor, fantasy art, life-draining aura, top-down perspective"
+    },
+    {
+      "monsterType": "Shadow",
+      "imageUrl": "/monster-cache/shadow.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A living shadow with barely visible form in darkness, fantasy art, creeping horror, top-down perspective"
+    },
+    {
+      "monsterType": "Wraith",
+      "imageUrl": "/monster-cache/wraith.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A terrifying wraith with hollow eyes and spectral chains, fantasy art, soul-stealing, top-down perspective"
+    },
+    {
+      "monsterType": "Ghoul",
+      "imageUrl": "/monster-cache/ghoul.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A flesh-eating ghoul with elongated claws in graveyard, fantasy art, feral hunger, top-down perspective"
+    },
+    {
+      "monsterType": "Ghast",
+      "imageUrl": "/monster-cache/ghast.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A paralytic ghast with rotting flesh and sharp teeth, fantasy art, nauseating, top-down perspective"
+    },
+    {
+      "monsterType": "Kobold",
+      "imageUrl": "/monster-cache/kobold.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A small kobold with crude spear in trapped tunnel, fantasy art, crafty expression, top-down perspective"
+    },
+    {
+      "monsterType": "Kobold Inventor",
+      "imageUrl": "/monster-cache/kobold_inventor.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A kobold tinkerer with explosive device and goggles, fantasy art, manic grin, top-down perspective"
+    },
+    {
+      "monsterType": "Stirge",
+      "imageUrl": "/monster-cache/stirge.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A bat-like stirge with long proboscis in dark cave, fantasy art, blood-sucking pest, top-down perspective"
+    },
+    {
+      "monsterType": "Swarm of Rats",
+      "imageUrl": "/monster-cache/swarm_of_rats.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A writhing swarm of rats with glowing eyes, fantasy art, overwhelming numbers, top-down perspective"
+    },
+    {
+      "monsterType": "Animated Armor",
+      "imageUrl": "/monster-cache/animated_armor.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "An empty suit of armor animated by magic in armory, fantasy art, glowing runes, top-down perspective"
+    },
+    {
+      "monsterType": "Flying Sword",
+      "imageUrl": "/monster-cache/flying_sword.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A levitating longsword wreathed in magical energy, fantasy art, spinning blade, top-down perspective"
+    },
+    {
+      "monsterType": "Mimic",
+      "imageUrl": "/monster-cache/mimic.png",
+      "cachedAt": "2025-12-24T14:50:18.744Z",
+      "prompt": "A shapeshifting mimic disguised as treasure chest with teeth, fantasy art, deceptive trap, top-down perspective"
+    }
+  ]
+}

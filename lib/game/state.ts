@@ -211,6 +211,9 @@ export function applySceneEntry(
       summaryParts.push(scene.onEnter.log);
     }
     if (scene.onEnter?.spawn) {
+      // Import monster image service at runtime to avoid circular dependencies
+      const { getMonsterImageUrl } = await import('./monster-images');
+      
       nextState.nearbyEntities = scene.onEnter.spawn.map(sp => ({
         name: sp.name,
         status: 'alive',
@@ -221,7 +224,23 @@ export function applySceneEntry(
         attackBonus: sp.attackBonus,
         damageDice: sp.damageDice,
         effects: [],
+        imageUrl: getMonsterImageUrl(sp.name),
+        position: undefined, // Will be assigned by battlefield view
       }));
+      
+      // Register monsters in monsterRegistry for tracking
+      for (const sp of scene.onEnter.spawn) {
+        const normalizedName = sp.name.toLowerCase().replace(/\s+/g, '_');
+        const existing = nextState.monsterRegistry?.[normalizedName];
+        nextState.monsterRegistry = {
+          ...(nextState.monsterRegistry || {}),
+          [normalizedName]: {
+            imageUrl: getMonsterImageUrl(sp.name),
+            lastSeenFloor: nextState.currentFloor,
+            encounterCount: (existing?.encounterCount || 0) + 1,
+          },
+        };
+      }
     } else {
       nextState.nearbyEntities = [];
     }

@@ -36,6 +36,12 @@ export const entitySchema = z.object({
     type: z.enum(['debuff', 'buff']).default('debuff'),
     expiresAtTurn: z.number().optional(),
   })).default([]),
+  // Visual positioning for battlefield view
+  imageUrl: z.string().optional(),
+  position: z.object({
+    x: z.number(),
+    y: z.number(),
+  }).optional(),
 });
 
 export const narrationModeEnum = z.enum([
@@ -96,6 +102,11 @@ export const gameStateSchema = z.object({
   narrativeHistory: z.array(z.string()).default([]),
   sceneRegistry: z.record(z.string()).default({}), 
   roomRegistry: z.record(z.string()).default({}), 
+  monsterRegistry: z.record(z.object({
+    imageUrl: z.string(),
+    lastSeenFloor: z.number(),
+    encounterCount: z.number(),
+  })).default({}),
   storyAct: z.coerce.number().int().default(0),
   currentFloor: z.coerce.number().int().default(1), // Track dungeon depth
   currentImage: z.string().optional(),
