@@ -7,6 +7,7 @@ import { armorByName, starterCharacters, weaponsByName } from '../5e/reference';
 import { armorById, normalizeWeaponName, resolveArmorId, resolveWeaponId, weaponsById } from '../items';
 import { getNextLevelDef } from '../progression';
 import { ARCHETYPES, ArchetypeKey } from '../../app/characters';
+import { getMonsterImageUrl, normalizeMonsterType } from './monster-images';
 
 export type { GameState, LogEntry, NarrationMode };
 export { gameStateSchema };
@@ -211,10 +212,8 @@ export function applySceneEntry(
       summaryParts.push(scene.onEnter.log);
     }
     if (scene.onEnter?.spawn) {
-      // Import monster image service at runtime to avoid circular dependencies
+      // Use monster image service for visual representation
       try {
-        const { getMonsterImageUrl, normalizeMonsterType } = await import('./monster-images');
-        
         nextState.nearbyEntities = scene.onEnter.spawn.map(sp => ({
           name: sp.name,
           status: 'alive',
