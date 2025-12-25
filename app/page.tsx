@@ -10,6 +10,7 @@ import { BattlefieldView } from '../components/BattlefieldView';
 import { ActionBar } from '../components/ActionBar';
 import { NarrationLog } from '../components/NarrationLog';
 import { VisualGameBar } from '../components/VisualGameBar';
+import { InventoryModal } from '../components/InventoryModal';
 import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 import { saveScore } from '../lib/leaderboard';
@@ -177,6 +178,22 @@ export default function Home() {
     setViewMode(newMode);
     localStorage.setItem('dungeon_portal_view_mode', newMode);
   }, [viewMode]);
+
+  // Action handlers for VisualGameBar dropdowns
+  const handleSpellCast = useCallback((spell: string) => {
+    if (gameState) executeTurn(`cast ${spell}`, gameState);
+  }, [gameState, executeTurn]);
+
+  const handleWeaponAttack = useCallback((weapon?: string) => {
+    if (gameState) {
+      const command = weapon ? `attack with ${weapon}` : 'attack';
+      executeTurn(command, gameState);
+    }
+  }, [gameState, executeTurn]);
+
+  const handleItemUse = useCallback((item: string) => {
+    if (gameState) executeTurn(`use ${item}`, gameState);
+  }, [gameState, executeTurn]);
 
   // Auto-load saved game on mount
   useEffect(() => {
@@ -581,6 +598,9 @@ async function handleStart() {
               <VisualGameBar
                 gameState={gameState}
                 onInventoryOpen={() => setIsInventoryOpen(true)}
+                onSpellCast={handleSpellCast}
+                onWeaponAttack={handleWeaponAttack}
+                onItemUse={handleItemUse}
                 isProcessing={isLoading}
               />
               
@@ -701,6 +721,26 @@ async function handleStart() {
           </div>
         </div>
       )}
+
+      {/* Inventory Modal */}
+      <InventoryModal
+        gameState={gameState}
+        isOpen={isInventoryOpen}
+        onClose={() => setIsInventoryOpen(false)}
+        onAction={(command) => {
+          setInput(command);
+          setIsInventoryOpen(false);
+          focusInput();
+          // Optionally execute immediately for equipment changes
+          setTimeout(() => {
+            const input = command;
+            if (input.trim() && gameState) {
+              executeTurn(input, gameState).catch(console.error);
+            }
+          }, 100);
+        }}
+        isProcessing={isLoading}
+      />
     </main>
   );
 }

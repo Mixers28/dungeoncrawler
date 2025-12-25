@@ -3,10 +3,17 @@
 import { useState } from 'react';
 import { type GameState } from '../lib/game-schema';
 import { Heart, Shield, Zap, Sword, Package, X } from 'lucide-react';
+import { SpellBookDropdown } from './SpellBookDropdown';
+import { WeaponDropdown } from './WeaponDropdown';
+import { ItemsDropdown } from './ItemsDropdown';
 
 interface VisualGameBarProps {
   gameState: GameState;
   onInventoryOpen: () => void;
+  onSpellCast: (spell: string) => void;
+  onWeaponAttack: (weapon?: string) => void;
+  onWeaponEquip?: (weaponId: string) => void;
+  onItemUse: (item: string) => void;
   isProcessing: boolean;
 }
 
@@ -23,9 +30,17 @@ interface VisualGameBarProps {
 export function VisualGameBar({
   gameState,
   onInventoryOpen,
+  onSpellCast,
+  onWeaponAttack,
+  onWeaponEquip,
+  onItemUse,
   isProcessing,
 }: VisualGameBarProps) {
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  
+  const handleMenuSelect = (menu: string | null) => {
+    setExpandedMenu(expandedMenu === menu ? null : menu);
+  };
   
   const hpPercent = (gameState.hp / gameState.maxHp) * 100;
   const xpPercent = (gameState.xp / gameState.xpToNext) * 100;
@@ -124,7 +139,7 @@ export function VisualGameBar({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {/* Spells Button */}
         <button
-          onClick={() => setExpandedMenu(expandedMenu === 'spells' ? null : 'spells')}
+          onClick={() => handleMenuSelect('spells')}
           disabled={isProcessing || (gameState.knownSpells?.length || 0) === 0}
           className={`relative py-2 px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 transition-all ${
             expandedMenu === 'spells'
@@ -138,7 +153,7 @@ export function VisualGameBar({
 
         {/* Weapons Button */}
         <button
-          onClick={() => setExpandedMenu(expandedMenu === 'weapons' ? null : 'weapons')}
+          onClick={() => handleMenuSelect('weapons')}
           disabled={isProcessing}
           className={`relative py-2 px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 transition-all ${
             expandedMenu === 'weapons'
@@ -152,7 +167,7 @@ export function VisualGameBar({
 
         {/* Items Button */}
         <button
-          onClick={() => setExpandedMenu(expandedMenu === 'items' ? null : 'items')}
+          onClick={() => handleMenuSelect('items')}
           disabled={isProcessing || gameState.inventory.filter(i => ['potion', 'scroll', 'food'].includes(i.type)).length === 0}
           className={`relative py-2 px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 transition-all ${
             expandedMenu === 'items'
@@ -166,7 +181,10 @@ export function VisualGameBar({
 
         {/* Inventory Button */}
         <button
-          onClick={onInventoryOpen}
+          onClick={() => {
+            onInventoryOpen();
+            setExpandedMenu(null);
+          }}
           disabled={isProcessing}
           className="py-2 px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 bg-slate-800 border border-slate-700 text-slate-200 hover:border-slate-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -175,10 +193,10 @@ export function VisualGameBar({
         </button>
       </div>
 
-      {/* Menu Placeholder (dropdowns will be implemented in Phase 3-5) */}
+      {/* Dropdown Content */}
       {expandedMenu && (
         <div className="p-3 bg-slate-800 border border-slate-700 rounded space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-slate-300 capitalize">{expandedMenu}</span>
             <button
               onClick={() => setExpandedMenu(null)}
@@ -187,9 +205,40 @@ export function VisualGameBar({
               <X size={16} />
             </button>
           </div>
-          <div className="text-xs text-slate-500 p-2 bg-slate-900 rounded">
-            [{expandedMenu} dropdown coming in next phase]
-          </div>
+
+          {expandedMenu === 'spells' && (
+            <SpellBookDropdown
+              gameState={gameState}
+              onSpellCast={(spell) => {
+                onSpellCast(spell);
+                setExpandedMenu(null);
+              }}
+              isProcessing={isProcessing}
+            />
+          )}
+
+          {expandedMenu === 'weapons' && (
+            <WeaponDropdown
+              gameState={gameState}
+              onWeaponAttack={(weapon?) => {
+                onWeaponAttack(weapon);
+                setExpandedMenu(null);
+              }}
+              onWeaponEquip={onWeaponEquip || (() => {})}
+              isProcessing={isProcessing}
+            />
+          )}
+
+          {expandedMenu === 'items' && (
+            <ItemsDropdown
+              gameState={gameState}
+              onItemUse={(item) => {
+                onItemUse(item);
+                setExpandedMenu(null);
+              }}
+              isProcessing={isProcessing}
+            />
+          )}
         </div>
       )}
     </div>
