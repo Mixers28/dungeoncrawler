@@ -54,9 +54,9 @@ export function VisualGameBar({
     : '';
 
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 space-y-4">
+    <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
       {/* Top Row: Character Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
         {/* HP Bar */}
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs font-semibold">
@@ -136,12 +136,12 @@ export function VisualGameBar({
       )}
 
       {/* Action Buttons Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2">
         {/* Spells Button */}
         <button
           onClick={() => handleMenuSelect('spells')}
           disabled={isProcessing || (gameState.knownSpells?.length || 0) === 0}
-          className={`relative py-2 px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 transition-all ${
+          className={`relative py-2 sm:py-2 px-2 sm:px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 transition-all min-h-[44px] sm:min-h-auto ${
             expandedMenu === 'spells'
               ? 'bg-blue-600 border border-blue-500 text-white'
               : 'bg-slate-800 border border-slate-700 text-slate-200 hover:border-blue-600 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -155,7 +155,7 @@ export function VisualGameBar({
         <button
           onClick={() => handleMenuSelect('weapons')}
           disabled={isProcessing}
-          className={`relative py-2 px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 transition-all ${
+          className={`relative py-2 sm:py-2 px-2 sm:px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 transition-all min-h-[44px] sm:min-h-auto ${
             expandedMenu === 'weapons'
               ? 'bg-orange-600 border border-orange-500 text-white'
               : 'bg-slate-800 border border-slate-700 text-slate-200 hover:border-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -169,7 +169,7 @@ export function VisualGameBar({
         <button
           onClick={() => handleMenuSelect('items')}
           disabled={isProcessing || gameState.inventory.filter(i => ['potion', 'scroll', 'food'].includes(i.type)).length === 0}
-          className={`relative py-2 px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 transition-all ${
+          className={`relative py-2 sm:py-2 px-2 sm:px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 transition-all min-h-[44px] sm:min-h-auto ${
             expandedMenu === 'items'
               ? 'bg-green-600 border border-green-500 text-white'
               : 'bg-slate-800 border border-slate-700 text-slate-200 hover:border-green-600 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -186,7 +186,7 @@ export function VisualGameBar({
             setExpandedMenu(null);
           }}
           disabled={isProcessing}
-          className="py-2 px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 bg-slate-800 border border-slate-700 text-slate-200 hover:border-slate-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="py-2 sm:py-2 px-2 sm:px-3 rounded font-semibold text-sm flex items-center justify-center gap-1 bg-slate-800 border border-slate-700 text-slate-200 hover:border-slate-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-auto"
         >
           <Package size={16} />
           <span className="hidden sm:inline">Backpack</span>
@@ -195,7 +195,7 @@ export function VisualGameBar({
 
       {/* Dropdown Content */}
       {expandedMenu && (
-        <div className="p-3 bg-slate-800 border border-slate-700 rounded space-y-2">
+        <div className="p-3 bg-slate-800 border border-slate-700 rounded space-y-2 animate-slide-down">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-slate-300 capitalize">{expandedMenu}</span>
             <button
