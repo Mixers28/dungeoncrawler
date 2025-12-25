@@ -13,6 +13,7 @@ interface BattlefieldViewProps {
   playerName: string;
   onEntityClick?: (entity: Entity) => void;
   isCombatActive: boolean;
+  isProcessing?: boolean;
 }
 
 /**
@@ -29,6 +30,7 @@ export function BattlefieldView({
   playerName,
   onEntityClick,
   isCombatActive,
+  isProcessing = false,
 }: BattlefieldViewProps) {
   const aliveMonsters = entities.filter(e => e.status === 'alive');
   const deadMonsters = entities.filter(e => e.status === 'dead');
@@ -84,9 +86,10 @@ export function BattlefieldView({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {aliveMonsters.map((entity, idx) => (
             <MonsterCard
-              key={`${entity.name}-${idx}`}
+              key={`${entity.name}-${entity.hp}-${idx}`}
               entity={entity}
               onClick={() => onEntityClick?.(entity)}
+              disabled={false}
             />
           ))}
         </div>

@@ -7,6 +7,7 @@ import { Shield, Sword, Heart, Skull, ImageOff } from 'lucide-react';
 interface MonsterCardProps {
   entity: Entity;
   onClick?: () => void;
+  disabled?: boolean;
 }
 
 /**
@@ -19,12 +20,13 @@ interface MonsterCardProps {
  * - Status effects
  * - Click interaction for targeting
  */
-export function MonsterCard({ entity, onClick }: MonsterCardProps) {
+export function MonsterCard({ entity, onClick, disabled = false }: MonsterCardProps) {
   const [imageError, setImageError] = useState(false);
   
   const hpPercent = Math.max(0, Math.min(100, (entity.hp / entity.maxHp) * 100));
   const isAlive = entity.status === 'alive';
   const isDead = entity.status === 'dead';
+  const isDisabled = !isAlive || disabled;
   
   // HP color based on percentage
   const getHpColor = () => {
@@ -36,10 +38,10 @@ export function MonsterCard({ entity, onClick }: MonsterCardProps) {
   return (
     <button
       onClick={onClick}
-      disabled={!isAlive}
+      disabled={isDisabled}
       className={`
         relative group rounded-lg border overflow-hidden transition-all duration-200
-        ${isAlive 
+        ${!isDisabled
           ? 'bg-slate-800/80 border-slate-700 hover:border-amber-700 hover:shadow-lg hover:shadow-amber-900/20 hover:scale-105 cursor-pointer' 
           : 'bg-slate-900/50 border-slate-800 opacity-60 cursor-not-allowed'}
       `}
@@ -132,7 +134,7 @@ export function MonsterCard({ entity, onClick }: MonsterCardProps) {
       </div>
 
       {/* Hover Indicator */}
-      {isAlive && (
+      {!isDisabled && (
         <div className="absolute inset-0 border-2 border-amber-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
       )}
     </button>

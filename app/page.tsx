@@ -58,9 +58,15 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const gameStateRef = useRef<GameState | null>(null);
   const router = useRouter();
   const supabase = createClient();
   const focusInput = useCallback(() => inputRef.current?.focus(), []);
+
+  // Keep gameStateRef in sync
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
 
   const handleDeath = useCallback((state: GameState) => {
     if (isDying) return; // Prevent duplicate calls
@@ -89,9 +95,67 @@ export default function Home() {
     }, DEATH_REDIRECT_DELAY_MS);
   }, [isDying, router, userId]);
 
+  // Shared turn execution logic
+  const executeTurn = useCallback(async (command: string, currentGameState: GameState) => {
+    setInput('');
+    focusInput();
+    setIsLoading(true);
+    setMessages(prev => [...prev, { role: 'user', content: command }]);
+    
+    try {
+      const { newState, logEntry } = await processTurn(currentGameState, command);
+      setGameState(newState);
+      
+      if (newState.hp <= 0 && currentGameState.hp > 0) {
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            summary: logEntry.summary,
+            flavor: logEntry.flavor,
+            mode: logEntry.mode,
+            createdAt: logEntry.createdAt,
+          }
+        ]);
+        localStorage.setItem('dungeon_portal_save', JSON.stringify(newState));
+        setTimeout(() => handleDeath(newState), 500);
+        return;
+      }
+      
+      localStorage.setItem('dungeon_portal_save', JSON.stringify(newState));
+      if (newState?.spellSlots) {
+        const slotText = Object.entries(newState.spellSlots)
+          .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
+          .join(' · ');
+        setLastSlots(slotText);
+      }
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          summary: logEntry.summary,
+          flavor: logEntry.flavor,
+          mode: logEntry.mode,
+          createdAt: logEntry.createdAt,
+        }
+      ]);
+    } catch (error) {
+      console.error("Turn Error:", error);
+      setError("Failed to process turn. Please try again.");
+    } finally {
+      setIsLoading(false);
+      focusInput();
+    }
+  }, [handleDeath, focusInput]);
+
   // Quick action handler for ActionBar
   const handleQuickAction = useCallback((action: string) => {
+    // Prevent execution if already processing or invalid state
     if (isLoading || !gameState || isDying) return;
+    
+    // Validate action is allowed
+    const validActions = ['attack', 'cast', 'item', 'run'] as const;
+    if (!validActions.includes(action as any)) return;
     
     const commandMap: Record<string, string> = {
       attack: 'attack',
@@ -102,63 +166,9 @@ export default function Home() {
     
     const command = commandMap[action];
     if (command) {
-      setInput(command);
-      // Trigger form submission after a brief delay
-      setTimeout(async () => {
-        if (!command.trim() || isLoading || !gameState) return;
-        const userAction = command;
-        setInput('');
-        focusInput();
-        setIsLoading(true);
-        setMessages(prev => [...prev, { role: 'user', content: userAction }]);
-        
-        try {
-          const { newState, logEntry } = await processTurn(gameState, userAction);
-          setGameState(newState);
-          
-          if (newState.hp <= 0 && gameState.hp > 0) {
-            setMessages(prev => [
-              ...prev,
-              {
-                role: 'assistant',
-                summary: logEntry.summary,
-                flavor: logEntry.flavor,
-                mode: logEntry.mode,
-                createdAt: logEntry.createdAt,
-              }
-            ]);
-            localStorage.setItem('dungeon_portal_save', JSON.stringify(newState));
-            setTimeout(() => handleDeath(newState), 500);
-            return;
-          }
-          
-          localStorage.setItem('dungeon_portal_save', JSON.stringify(newState));
-          if (newState?.spellSlots) {
-            const slotText = Object.entries(newState.spellSlots)
-              .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
-              .join(' · ');
-            setLastSlots(slotText);
-          }
-          setMessages(prev => [
-            ...prev,
-            {
-              role: 'assistant',
-              summary: logEntry.summary,
-              flavor: logEntry.flavor,
-              mode: logEntry.mode,
-              createdAt: logEntry.createdAt,
-            }
-          ]);
-        } catch (error) {
-          console.error("Turn Error:", error);
-          setError("Failed to process turn. Please try again.");
-        } finally {
-          setIsLoading(false);
-          focusInput();
-        }
-      }, 50);
+      executeTurn(command, gameState);
     }
-  }, [isLoading, gameState, isDying, handleDeath, focusInput]);
+  }, [isLoading, gameState, isDying, executeTurn]);
 
   const toggleViewMode = useCallback(() => {
     const newMode = viewMode === 'text' ? 'visual' : 'text';
@@ -188,7 +198,8 @@ export default function Home() {
     const handleKeyPress = (e: KeyboardEvent) => {
       // Only trigger if not typing in input and combat is active
       if (document.activeElement === inputRef.current) return;
-      if (!gameState?.isCombatActive) return;
+      const currentState = gameStateRef.current;
+      if (!currentState?.isCombatActive) return;
       if (isLoading || isDying) return;
       
       const key = e.key.toLowerCase();
@@ -200,7 +211,7 @@ export default function Home() {
     
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameState?.isCombatActive, isLoading, isDying, handleQuickAction]);
+  }, [isLoading, isDying, handleQuickAction]);
 
   useEffect(() => {
     const characterName = localStorage.getItem('dungeon_portal_character');
@@ -370,63 +381,7 @@ async function handleStart() {
     if (!input.trim() || isLoading || !gameState) return;
 
     const userAction = input;
-    setInput('');
-    focusInput();
-    setIsLoading(true);
-
-    setMessages(prev => [...prev, { role: 'user', content: userAction }]);
-
-    try {
-      const { newState, logEntry } = await processTurn(gameState, userAction);
-      setGameState(newState);
-      
-      // Check if player just died
-      if (newState.hp <= 0 && gameState.hp > 0) {
-        // Show death message then handle death
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            summary: logEntry.summary,
-            flavor: logEntry.flavor,
-            mode: logEntry.mode,
-            createdAt: logEntry.createdAt,
-          }
-        ]);
-        
-        handleDeath(newState);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Save to localStorage if still alive
-      if (newState.hp > 0) {
-        localStorage.setItem('dungeon_portal_save', JSON.stringify(newState));
-      }
-      
-      if (newState?.spellSlots) {
-        const slotText = Object.entries(newState.spellSlots)
-          .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
-          .join(' · ');
-        setLastSlots(slotText);
-      }
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          summary: logEntry.summary,
-          flavor: logEntry.flavor,
-          mode: logEntry.mode,
-          createdAt: logEntry.createdAt,
-        }
-      ]);
-    } catch (error) {
-      console.error("Turn Error:", error);
-      setError("Failed to process turn. Please try again.");
-    } finally {
-      setIsLoading(false);
-      focusInput();
-    }
+    await executeTurn(userAction, gameState);
   }
 
   // 1. LOADING SCREEN
@@ -602,9 +557,12 @@ async function handleStart() {
                 playerAc={gameState.ac}
                 playerName={gameState.character.name}
                 isCombatActive={gameState.isCombatActive}
+                isProcessing={isLoading}
                 onEntityClick={(entity) => {
-                  if (entity.status === 'alive') {
-                    setInput(`attack ${entity.name.toLowerCase()}`);
+                  if (entity.status === 'alive' && !isLoading) {
+                    // Sanitize entity name to prevent command injection
+                    const safeName = entity.name.replace(/[^a-zA-Z0-9\s-]/g, '').toLowerCase();
+                    setInput(`attack ${safeName}`);
                     focusInput();
                   }
                 }}
