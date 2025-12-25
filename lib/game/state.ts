@@ -353,12 +353,30 @@ export async function resolveSceneImage(state: GameState): Promise<{ url: string
   if (state.sceneRegistry && state.sceneRegistry[sceneKey]) {
     return { url: state.sceneRegistry[sceneKey], registry: state.sceneRegistry };
   }
+  
+  // Add visual caches and environmental details for depth and visual richness
+  const CACHE_DETAILS = [
+    "with visible treasure chests and scattered gold coins",
+    "with ornate shelves holding ancient artifacts",
+    "with barrels, crates, and mysterious locked boxes",
+    "filled with tattered tapestries and jeweled urns",
+    "with stone pedestals holding glowing crystals",
+    "with weapon racks and armor displays"
+  ];
+  const cacheDetailHash = (state.location.charCodeAt(0) || 0) * (state.worldSeed || 1);
+  const cacheDetail = CACHE_DETAILS[Math.abs(cacheDetailHash) % CACHE_DETAILS.length];
+  
   let visualPrompt = state.location;
-  if (activeThreat) visualPrompt = `A terrifying ${activeThreat.name} inside ${state.location}`;
+  if (activeThreat) {
+    visualPrompt = `A terrifying ${activeThreat.name} inside ${state.location}, ${cacheDetail}`;
+  } else {
+    visualPrompt = `${state.location} ${cacheDetail}, abandoned dungeon chamber`;
+  }
+  
   const subjectHash = visualPrompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const variantIndex = Math.abs((state.worldSeed || 0) % VARIANT_POOL);
   const stableSeed = subjectHash + variantIndex * 9973;
-  const encodedPrompt = encodeURIComponent(visualPrompt + " fantasy oil painting style dark gritty 8k");
+  const encodedPrompt = encodeURIComponent(visualPrompt + " fantasy oil painting style dark gritty atmospheric 8k");
   const remoteUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=300&nologo=true&seed=${stableSeed}`;
   const fileName = `${sceneKey.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_v${variantIndex}.jpg`;
   const cachedPath = await cacheSceneImage(remoteUrl, fileName);
