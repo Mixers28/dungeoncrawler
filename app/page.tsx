@@ -9,6 +9,7 @@ import { RightSidebar } from '../components/RightSidebar';
 import { BattlefieldView } from '../components/BattlefieldView';
 import { ActionBar } from '../components/ActionBar';
 import { NarrationLog } from '../components/NarrationLog';
+import { VisualGameBar } from '../components/VisualGameBar';
 import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 import { saveScore } from '../lib/leaderboard';
@@ -54,6 +55,7 @@ export default function Home() {
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'text' | 'visual'>('text');
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -576,10 +578,11 @@ async function handleStart() {
                 }}
               />
               
-              {/* VisualGameBar will be inserted here in Phase 2 */}
-              <div className="p-4 bg-slate-800 border border-slate-700 rounded text-slate-300 text-center">
-                [Visual Game Bar coming soon]
-              </div>
+              <VisualGameBar
+                gameState={gameState}
+                onInventoryOpen={() => setIsInventoryOpen(true)}
+                isProcessing={isLoading}
+              />
               
               <NarrationLog
                 entries={gameState.log}
