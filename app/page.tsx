@@ -2,10 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Skull, ArrowRight, BookOpen, X } from 'lucide-react';
+import { Skull, ArrowRight, BookOpen, X, Eye, EyeOff } from 'lucide-react';
 import type { GameState, LogEntry, NarrationMode } from '../lib/game-schema';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { RightSidebar } from '../components/RightSidebar';
+import { BattlefieldView } from '../components/BattlefieldView';
+import { ActionBar } from '../components/ActionBar';
+import { NarrationLog } from '../components/NarrationLog';
 import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 import { saveScore } from '../lib/leaderboard';
@@ -50,13 +53,14 @@ export default function Home() {
   const [introStep, setIntroStep] = useState(0);
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'text' | 'visual'>('text');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
   const supabase = createClient();
-  const focusInput = () => inputRef.current?.focus();
+  const focusInput = useCallback(() => inputRef.current?.focus(), []);
 
   const handleDeath = useCallback((state: GameState) => {
     if (isDying) return; // Prevent duplicate calls
@@ -85,6 +89,83 @@ export default function Home() {
     }, DEATH_REDIRECT_DELAY_MS);
   }, [isDying, router, userId]);
 
+  // Quick action handler for ActionBar
+  const handleQuickAction = useCallback((action: string) => {
+    if (isLoading || !gameState || isDying) return;
+    
+    const commandMap: Record<string, string> = {
+      attack: 'attack',
+      cast: 'cast',
+      item: 'use potion',
+      run: 'run away',
+    };
+    
+    const command = commandMap[action];
+    if (command) {
+      setInput(command);
+      // Trigger form submission after a brief delay
+      setTimeout(async () => {
+        if (!command.trim() || isLoading || !gameState) return;
+        const userAction = command;
+        setInput('');
+        focusInput();
+        setIsLoading(true);
+        setMessages(prev => [...prev, { role: 'user', content: userAction }]);
+        
+        try {
+          const { newState, logEntry } = await processTurn(gameState, userAction);
+          setGameState(newState);
+          
+          if (newState.hp <= 0 && gameState.hp > 0) {
+            setMessages(prev => [
+              ...prev,
+              {
+                role: 'assistant',
+                summary: logEntry.summary,
+                flavor: logEntry.flavor,
+                mode: logEntry.mode,
+                createdAt: logEntry.createdAt,
+              }
+            ]);
+            localStorage.setItem('dungeon_portal_save', JSON.stringify(newState));
+            setTimeout(() => handleDeath(newState), 500);
+            return;
+          }
+          
+          localStorage.setItem('dungeon_portal_save', JSON.stringify(newState));
+          if (newState?.spellSlots) {
+            const slotText = Object.entries(newState.spellSlots)
+              .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
+              .join(' · ');
+            setLastSlots(slotText);
+          }
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              summary: logEntry.summary,
+              flavor: logEntry.flavor,
+              mode: logEntry.mode,
+              createdAt: logEntry.createdAt,
+            }
+          ]);
+        } catch (error) {
+          console.error("Turn Error:", error);
+          setError("Failed to process turn. Please try again.");
+        } finally {
+          setIsLoading(false);
+          focusInput();
+        }
+      }, 50);
+    }
+  }, [isLoading, gameState, isDying, handleDeath, focusInput]);
+
+  const toggleViewMode = useCallback(() => {
+    const newMode = viewMode === 'text' ? 'visual' : 'text';
+    setViewMode(newMode);
+    localStorage.setItem('dungeon_portal_view_mode', newMode);
+  }, [viewMode]);
+
   // Auto-load saved game on mount
   useEffect(() => {
     // Get current user session
@@ -93,8 +174,33 @@ export default function Home() {
         setUserId(user.id)
       }
     })
+    
+    // Load view mode preference
+    const savedViewMode = localStorage.getItem('dungeon_portal_view_mode');
+    if (savedViewMode === 'visual' || savedViewMode === 'text') {
+      setViewMode(savedViewMode);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Keyboard shortcuts for combat actions
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Only trigger if not typing in input and combat is active
+      if (document.activeElement === inputRef.current) return;
+      if (!gameState?.isCombatActive) return;
+      if (isLoading || isDying) return;
+      
+      const key = e.key.toLowerCase();
+      if (key === 'a') handleQuickAction('attack');
+      else if (key === 'c') handleQuickAction('cast');
+      else if (key === 'i') handleQuickAction('item');
+      else if (key === 'r') handleQuickAction('run');
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameState?.isCombatActive, isLoading, isDying, handleQuickAction]);
 
   useEffect(() => {
     const characterName = localStorage.getItem('dungeon_portal_character');
@@ -157,7 +263,7 @@ export default function Home() {
   // Keep the input active whenever we finish loading or messages change.
   useEffect(() => {
     if (!isLoading) focusInput();
-  }, [isLoading, messages.length]);
+  }, [isLoading, messages.length, focusInput]);
 
   useEffect(() => {
     if (gameState?.spellSlots) {
@@ -459,6 +565,14 @@ async function handleStart() {
           <span className="font-semibold text-amber-500">Dungeon Portal</span>
           <div className="flex items-center gap-2">
             <button
+              onClick={toggleViewMode}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-3 py-2 rounded flex items-center gap-2 transition-colors"
+              title={`Switch to ${viewMode === 'text' ? 'visual' : 'text'} mode`}
+            >
+              {viewMode === 'visual' ? <EyeOff size={16} /> : <Eye size={16} />}
+              <span className="hidden lg:inline">{viewMode === 'text' ? 'Visual' : 'Text'}</span>
+            </button>
+            <button
               onClick={handleMainMenu}
               disabled={isLoading}
               aria-label="Return to main menu and save progress"
@@ -478,7 +592,43 @@ async function handleStart() {
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-6 p-4 scrollbar-thin scrollbar-thumb-slate-700 pb-32">
-          {messages.map((m, i) => {
+          {/* Visual Combat Mode */}
+          {viewMode === 'visual' && gameState?.isCombatActive && (
+            <div className="space-y-4">
+              <BattlefieldView
+                entities={gameState.nearbyEntities}
+                playerHp={gameState.hp}
+                playerMaxHp={gameState.maxHp}
+                playerAc={gameState.ac}
+                playerName={gameState.character.name}
+                isCombatActive={gameState.isCombatActive}
+                onEntityClick={(entity) => {
+                  if (entity.status === 'alive') {
+                    setInput(`attack ${entity.name.toLowerCase()}`);
+                    focusInput();
+                  }
+                }}
+              />
+              
+              <ActionBar
+                onAction={handleQuickAction}
+                disabled={isDead || isDying}
+                isProcessing={isLoading}
+                canCastSpell={(gameState.knownSpells?.length || 0) > 0}
+                hasItems={gameState.inventory.some(i => i.type === 'potion')}
+              />
+              
+              <NarrationLog
+                entries={gameState.log}
+                maxEntries={8}
+                showMode
+                compact
+              />
+            </div>
+          )}
+          
+          {/* Text Mode Messages */}
+          {(viewMode === 'text' || !gameState?.isCombatActive) && messages.map((m, i) => {
             if (m.role === 'user') {
               return (
                 <div key={i} className="flex justify-end">
