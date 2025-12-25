@@ -471,50 +471,58 @@ async function handleStart() {
   return (
     <main className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden relative">
       
-      {/* MOBILE HEADER (Visible only on small screens) */}
-      <div className="md:hidden absolute top-0 left-0 right-0 h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 z-10">
-        <span className="font-bold text-amber-500">Dungeon Portal</span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleMainMenu}
-            disabled={isLoading}
-            aria-label="Return to main menu"
-            className="text-xs bg-slate-700 text-slate-200 font-bold px-3 py-1 rounded disabled:opacity-50"
-          >
-            Menu
-          </button>
-          <button
-            onClick={handleRestart}
-            disabled={isLoading}
-            aria-label="Start a new run"
-            className="text-xs bg-amber-700 text-slate-900 font-bold px-3 py-1 rounded disabled:opacity-50"
-          >
-            New Run
-          </button>
-          <button
-            onClick={() => { setIsLeftSidebarOpen(true); setIsRightSidebarOpen(false); }}
-            aria-label="Open character stats sidebar"
-            className="text-xs bg-slate-800 text-slate-200 font-semibold px-3 py-1 rounded"
-          >
-            Stats
-          </button>
-          <button
-            onClick={() => { setIsRightSidebarOpen(true); setIsLeftSidebarOpen(false); }}
-            aria-label="Open spells sidebar"
-            className="text-xs bg-slate-800 text-slate-200 font-semibold px-3 py-1 rounded"
-          >
-            Spells
-          </button>
+      {/* MOBILE HEADER (Visible only on small screens, hidden in visual combat) */}
+      {(viewMode === 'text' || !gameState?.isCombatActive) && (
+        <div className="md:hidden absolute top-0 left-0 right-0 h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 z-10">
+          <span className="font-bold text-amber-500">Dungeon Portal</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleMainMenu}
+              disabled={isLoading}
+              aria-label="Return to main menu"
+              className="text-xs bg-slate-700 text-slate-200 font-bold px-3 py-1 rounded disabled:opacity-50"
+            >
+              Menu
+            </button>
+            <button
+              onClick={handleRestart}
+              disabled={isLoading}
+              aria-label="Start a new run"
+              className="text-xs bg-amber-700 text-slate-900 font-bold px-3 py-1 rounded disabled:opacity-50"
+            >
+              New Run
+            </button>
+            <button
+              onClick={() => { setIsLeftSidebarOpen(true); setIsRightSidebarOpen(false); }}
+              aria-label="Open character stats sidebar"
+              className="text-xs bg-slate-800 text-slate-200 font-semibold px-3 py-1 rounded"
+            >
+              Stats
+            </button>
+            <button
+              onClick={() => { setIsRightSidebarOpen(true); setIsLeftSidebarOpen(false); }}
+              aria-label="Open spells sidebar"
+              className="text-xs bg-slate-800 text-slate-200 font-semibold px-3 py-1 rounded"
+            >
+              Spells
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* LEFT: Sidebar (Desktop) */}
-      <div className="w-[320px] hidden md:block h-full border-r border-slate-800">
-        <LeftSidebar state={gameState} />
-      </div>
+      {/* LEFT: Sidebar (Desktop, hidden in visual combat) */}
+      {(viewMode === 'text' || !gameState?.isCombatActive) && (
+        <div className="w-[320px] hidden md:block h-full border-r border-slate-800">
+          <LeftSidebar state={gameState} />
+        </div>
+      )}
 
       {/* LEFT: Chat Area (Padded top for mobile header) */}
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-4 pt-16 md:pt-4 relative h-full">
+      <div className={`flex-1 flex flex-col w-full p-4 pt-16 md:pt-4 relative h-full ${
+        viewMode === 'visual' && gameState?.isCombatActive 
+          ? 'max-w-full' 
+          : 'max-w-4xl mx-auto'
+      }`}>
         {/* Desktop top bar */}
         <div className="hidden md:flex items-center justify-between mb-2 text-sm text-slate-400">
           <span className="font-semibold text-amber-500">Dungeon Portal</span>
@@ -568,13 +576,10 @@ async function handleStart() {
                 }}
               />
               
-              <ActionBar
-                onAction={handleQuickAction}
-                disabled={isDead || isDying}
-                isProcessing={isLoading}
-                canCastSpell={(gameState.knownSpells?.length || 0) > 0}
-                hasItems={gameState.inventory.some(i => i.type === 'potion')}
-              />
+              {/* VisualGameBar will be inserted here in Phase 2 */}
+              <div className="p-4 bg-slate-800 border border-slate-700 rounded text-slate-300 text-center">
+                [Visual Game Bar coming soon]
+              </div>
               
               <NarrationLog
                 entries={gameState.log}
@@ -654,10 +659,12 @@ async function handleStart() {
         </div>
       </div>
 
-      {/* RIGHT: Sidebar (Desktop) */}
-      <div className="w-[350px] hidden md:block h-full border-l border-slate-800">
-        <RightSidebar state={gameState} onInsertCommand={(cmd) => { setInput(cmd); focusInput(); }} />
-      </div>
+      {/* RIGHT: Sidebar (Desktop, hidden in visual combat) */}
+      {(viewMode === 'text' || !gameState?.isCombatActive) && (
+        <div className="w-[350px] hidden md:block h-full border-l border-slate-800">
+          <RightSidebar state={gameState} onInsertCommand={(cmd) => { setInput(cmd); focusInput(); }} />
+        </div>
+      )}
 
       {/* MOBILE: Left Drawer */}
       {isLeftSidebarOpen && (
