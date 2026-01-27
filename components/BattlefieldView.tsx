@@ -13,7 +13,6 @@ interface BattlefieldViewProps {
   playerName: string;
   onEntityClick?: (entity: Entity) => void;
   isCombatActive: boolean;
-  isProcessing?: boolean;
 }
 
 /**
@@ -30,7 +29,6 @@ export function BattlefieldView({
   playerName,
   onEntityClick,
   isCombatActive,
-  isProcessing = false,
 }: BattlefieldViewProps) {
   const aliveMonsters = entities.filter(e => e.status === 'alive');
   const deadMonsters = entities.filter(e => e.status === 'dead');

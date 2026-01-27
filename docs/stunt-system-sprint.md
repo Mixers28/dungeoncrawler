@@ -3,6 +3,8 @@ name: stunt-system-sprint
 description: Sprint plan for adding a generic stunt system
 ---
 
+> Status: Supplemental detail only. Canonical branch roadmap is `docs/phased-plan.md`.
+
 # Plan
 
 Add a deterministic stunt system to resolve unusual player actions with skill checks, generic effects, and factual log summaries, while preserving existing command flows and narration integration.
@@ -15,7 +17,7 @@ Add a deterministic stunt system to resolve unusual player actions with skill ch
 
 ## Scope
 - In: new stunt module, `_updateGameState` integration, basic effect/summary helpers.
-- Out: LLM usage, complex 5e skill modeling, bespoke per-action rules.
+- Out: model-based resolution, complex 5e skill modeling, bespoke per-action rules.
 
 ## Files and entry points
 - lib/stunts.ts

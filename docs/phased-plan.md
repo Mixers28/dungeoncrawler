@@ -1,11 +1,23 @@
 ---
 name: phased-plan
-description: Source of truth for 5e reference integration and dcv01 scope
+description: Source of truth for dcv01 branch scope and roadmap
 ---
 
-# Plan
+# dcv01 Branch Plan (Source of Truth)
 
 Unify the 5e reference integration work, current dcv01 behaviors, and remaining gaps into a single source-of-truth document. This plan tracks what is already wired, what remains, and how to validate changes.
+
+Note: This is the canonical roadmap for dcv01. Other planning docs are supplemental only.
+
+## Branch scope (current reality)
+- Facts-first logs: `LogEntry.summary` is canonical; optional canned flavor comes from `data/narration/*.json`.
+- Structured intents for attack/defend/run/look/check-sheet/cast-ability with quick-insert buttons in the sidebar.
+- 5e reference layer (`data/5e/*.json`) for weapons/armor/skills/spells/loot; starter prefabs in `data/5e/char_*.json`.
+- Story graph from `story/*.json` with exits, spawns, rewards, and location history.
+- Combat + spells resolve deterministically with slot/prepared checks and a small set of modeled effects.
+- UI: dice tray for last rolls and image fallback for scene art.
+- Loot: scene rewards and corpse looting via `data/5e/loot/*.json`.
+- Saves: localStorage with hydration/backfill; Supabase used for auth/leaderboard if configured.
 
 ## Requirements
 - Drive abilities, skills, weapons, armor, and basic actions from `data/5e/*.json` via typed reference helpers.
@@ -22,7 +34,7 @@ Unify the 5e reference integration work, current dcv01 behaviors, and remaining 
 
 ## Scope
 - In: 5e reference wiring, intent parsing, deterministic resolution, sheet outputs, narration guardrails.
-- Out: LLM-based mechanics, bespoke per-action rules, non-deterministic systems.
+- Out: model-based mechanics, bespoke per-action rules, non-deterministic systems.
 
 ## Files and entry points
 - `lib/5e/reference.ts`
@@ -43,7 +55,7 @@ Unify the 5e reference integration work, current dcv01 behaviors, and remaining 
 - Ability resolution only covers a starter subset; higher-level abilities are unmodeled.
 - Class proficiency mapping is partially hardcoded; not fully derived from 5e JSON.
 - Sheet outputs are not fully driven by the reference layer.
-- Narration guardrails are enforced via canned flavor, but prompt-level constraints should remain explicit.
+- Narration guardrails are enforced via canned flavor and state-derived context.
 
 ## Action items
 [ ] Complete data-driven ability resolution using `abilitiesById` and reference metadata (damage, cost, requirements).
@@ -51,6 +63,33 @@ Unify the 5e reference integration work, current dcv01 behaviors, and remaining 
 [ ] Update sheet outputs to use reference data for skills/abilities/equipment descriptions.
 [ ] Add deterministic tests/fixtures for intent parsing and ability resolution.
 [ ] Find or author mechanics data for the 195 missing non-SRD spells and merge into the overlay.
+
+## Story progression roadmap (supplemental details in `docs/story-progression-roadmap.md`)
+- Phase 1 (authored branches): add mid-branch scenes with gated exits, key/map/sigil loop, and deterministic variants.
+- Phase 2 (procedural routes): introduce route modules, seeded junctions, and deterministic segment generation.
+
+Action items (Phase 1):
+[ ] Wire exit gating for `entryConditions` and `consumeItem` in the engine.
+[ ] Add seed + visit-index selection for `future_*` group variants.
+[ ] Add discovery chances for keys/maps via search/investigate rewards.
+[ ] Wire Act 1 entry to the new hub scenes and convergence conditions.
+
+Validation:
+- Manual: hub offers 3 distinct exits.
+- Manual: keys/maps gate optional areas correctly.
+- Manual: boss unlocks after all three branches cleared.
+- Manual: different seeds yield different variants with the same arc.
+
+## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
+- Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.
+- Follow-ups: add deterministic tests for `resolveStunt` and decide where temporary effects should live on `GameState`.
+
+## UI/UX and tests (forward work)
+- UI: surface HP/slots/effects clearly; add quick-use for consumables.
+- Loot/gear: broaden monster->loot mapping, add display names/types, and support potions/scrolls from inventory.
+- Spells: expand effects (buffs/conditions/AoE) and add rest/slot recovery.
+- Level-up: grant class-based benefits (slots/spells/features), not just +HP; surface a level-up notice.
+- Tests: add smoke coverage for loot mapping, spell casting, and scene transitions.
 
 ## Testing and validation
 - `npm run lint`

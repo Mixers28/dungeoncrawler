@@ -7,7 +7,6 @@ import type { GameState, LogEntry, NarrationMode } from '../lib/game-schema';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { RightSidebar } from '../components/RightSidebar';
 import { BattlefieldView } from '../components/BattlefieldView';
-import { ActionBar } from '../components/ActionBar';
 import { NarrationLog } from '../components/NarrationLog';
 import { VisualGameBar } from '../components/VisualGameBar';
 import { InventoryModal } from '../components/InventoryModal';
@@ -19,6 +18,11 @@ import { createClient } from '@/utils/supabase/client';
 type UserMessage = { role: 'user'; content: string };
 type AssistantMessage = { role: 'assistant'; summary: string; flavor?: string; mode?: NarrationMode; createdAt?: string };
 type Message = UserMessage | AssistantMessage;
+
+const VALID_QUICK_ACTIONS = ['attack', 'cast', 'item', 'run'] as const;
+type QuickAction = typeof VALID_QUICK_ACTIONS[number];
+const isQuickAction = (value: string): value is QuickAction =>
+  (VALID_QUICK_ACTIONS as readonly string[]).includes(value);
 
 const DEATH_REDIRECT_DELAY_MS = 3000;
 
@@ -157,10 +161,9 @@ export default function Home() {
     if (isLoading || !gameState || isDying) return;
     
     // Validate action is allowed
-    const validActions = ['attack', 'cast', 'item', 'run'] as const;
-    if (!validActions.includes(action as any)) return;
+    if (!isQuickAction(action)) return;
     
-    const commandMap: Record<string, string> = {
+    const commandMap: Record<QuickAction, string> = {
       attack: 'attack',
       cast: 'cast',
       item: 'use potion',
@@ -584,7 +587,6 @@ async function handleStart() {
                 playerAc={gameState.ac}
                 playerName={gameState.character.name}
                 isCombatActive={gameState.isCombatActive}
-                isProcessing={isLoading}
                 onEntityClick={(entity) => {
                   if (entity.status === 'alive' && !isLoading) {
                     // Sanitize entity name to prevent command injection

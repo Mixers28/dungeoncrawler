@@ -6,7 +6,6 @@ import { Sword, CheckCircle2, ChevronRight } from 'lucide-react';
 interface WeaponDropdownProps {
   gameState: GameState;
   onWeaponAttack: (weapon?: string) => void;
-  onWeaponEquip: (weaponId: string) => void;
   isProcessing: boolean;
 }
 
@@ -20,7 +19,6 @@ interface WeaponDropdownProps {
 export function WeaponDropdown({
   gameState,
   onWeaponAttack,
-  onWeaponEquip,
   isProcessing,
 }: WeaponDropdownProps) {
   const weapons = gameState.inventory.filter(i => i.type === 'weapon');

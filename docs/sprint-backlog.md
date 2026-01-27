@@ -51,6 +51,5 @@
 - As a release owner, I can follow a deploy validation checklist.  
 - Acceptance: Checklist covers build, login flow, combat/dice, story navigation.
 
-## Coder Tip: docs/ vs docs/ normalization
-- Audit and standardize references to `docs/` vs `docs/`.
-- If consolidating to `docs/`, update references in `README.md`, `Project_README.md`, `PROJECT_STATUS.md`, `SMOKE.md`, and any `docs/*.md` backlinks.
+## Coder Tip: docs/ vs DOcs/ normalization
+- Standardize on `docs/` (lowercase) and update references in `README.md`, `Project_README.md`, `PROJECT_STATUS.md`, `SMOKE.md`, and any `docs/*.md` backlinks.

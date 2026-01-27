@@ -13,6 +13,14 @@ interface InventoryModalProps {
 }
 
 type InventoryTab = 'all' | 'weapons' | 'armor' | 'items' | 'quest';
+type InventoryItem = GameState['inventory'][number];
+type ItemAction = {
+  label: string;
+  onClick: () => void;
+  color: 'orange' | 'green' | 'blue' | 'red';
+  disabled?: boolean;
+  icon?: JSX.Element;
+};
 
 /**
  * InventoryModal Component
@@ -54,7 +62,7 @@ export function InventoryModal({
   const items = getFilteredItems();
 
   // Get item icon based on type
-  const getItemIcon = (type: string) => {
+  const getItemIcon = (type: InventoryItem['type']) => {
     switch (type) {
       case 'weapon':
         return <Sword size={18} />;
@@ -72,8 +80,8 @@ export function InventoryModal({
   };
 
   // Determine available actions for an item
-  const getItemActions = (item: any) => {
-    const actions = [];
+  const getItemActions = (item: InventoryItem): ItemAction[] => {
+    const actions: ItemAction[] = [];
     if (item.type === 'weapon') {
       if (!item.equipped) {
         actions.push({

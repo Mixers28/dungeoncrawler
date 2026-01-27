@@ -110,7 +110,7 @@ export default function SplashPage() {
         </div>
 
         <div className="mt-8 pt-6 border-t border-slate-800/50 text-center text-xs text-slate-500 animate-in fade-in duration-500 delay-500">
-          <p>A dark dungeon crawler powered by AI narration</p>
+          <p>A dark dungeon crawler with deterministic mechanics and lore-rich flavor</p>
         </div>
       </div>
     </div>

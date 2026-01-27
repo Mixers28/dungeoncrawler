@@ -12,7 +12,6 @@ interface VisualGameBarProps {
   onInventoryOpen: () => void;
   onSpellCast: (spell: string) => void;
   onWeaponAttack: (weapon?: string) => void;
-  onWeaponEquip?: (weaponId: string) => void;
   onItemUse: (item: string) => void;
   isProcessing: boolean;
 }
@@ -32,7 +31,6 @@ export function VisualGameBar({
   onInventoryOpen,
   onSpellCast,
   onWeaponAttack,
-  onWeaponEquip,
   onItemUse,
   isProcessing,
 }: VisualGameBarProps) {
@@ -48,7 +46,7 @@ export function VisualGameBar({
   // Get spell slot summary
   const spellSlotSummary = gameState.spellSlots
     ? Object.entries(gameState.spellSlots)
-        .filter(([_, data]) => data.max > 0)
+        .filter(([, data]) => data.max > 0)
         .map(([level, data]) => `${level.replace('_', ' ')}: ${data.current}/${data.max}`)
         .join(' • ')
     : '';
@@ -224,7 +222,6 @@ export function VisualGameBar({
                 onWeaponAttack(weapon);
                 setExpandedMenu(null);
               }}
-              onWeaponEquip={onWeaponEquip || (() => {})}
               isProcessing={isProcessing}
             />
           )}

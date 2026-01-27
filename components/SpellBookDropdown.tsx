@@ -1,7 +1,7 @@
 'use client';
 
 import { type GameState } from '../lib/game-schema';
-import { ChevronRight, Zap } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 interface SpellBookDropdownProps {
   gameState: GameState;

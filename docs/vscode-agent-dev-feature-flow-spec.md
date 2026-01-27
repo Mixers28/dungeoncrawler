@@ -14,9 +14,8 @@ Your job is to:
 - Required env vars for full functionality:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - `GROQ_API_KEY`
 
-If keys are missing, continue with static refactors and UI changes, but call out that runtime flows (auth/save/narrator) can’t be verified.
+If keys are missing, continue with static refactors and UI changes, but call out that runtime flows (auth/leaderboard) can’t be verified.
 
 ## 1. Context Hydration Order
 
@@ -26,7 +25,7 @@ Read these first:
 - Recent `docs/SESSION_NOTES.md`
 - `README.md`
 - `PROJECT_STATUS.md`
-- Task-specific docs as relevant (`Flavor.md`, `SMOKE.md`)
+- Task-specific docs as relevant (`SMOKE.md`)
 
 ## 2. Implementation Rules
 
@@ -52,4 +51,3 @@ When behavior changes, update:
 - `README.md` (if it affects “What’s in this branch” or quick checks)
 - `Project_README.md` (if setup/env/persistence requirements changed)
 - `docs/NOW.md` and `docs/SESSION_NOTES.md` (if it changes priorities or records decisions)
-

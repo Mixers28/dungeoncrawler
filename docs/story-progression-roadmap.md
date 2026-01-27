@@ -3,6 +3,8 @@ name: story-progression-roadmap
 description: Phased roadmap for branching story progression and procedural routes
 ---
 
+> Status: Supplemental detail only. Canonical branch roadmap is `docs/phased-plan.md`.
+
 # Plan
 
 Create a two-phase roadmap for story progression: Phase 1 delivers authored branching scenes for immediate player choice; Phase 2 upgrades to procedural junctions and route modules for long-term replayability.

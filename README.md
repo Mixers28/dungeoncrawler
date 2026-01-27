@@ -2,8 +2,8 @@
 
 Branch `dcv01` focuses on hybrid facts+flavor, deterministic mechanics, a prefab story graph, and 5e reference data wiring for Dungeon Portal.
 
-## What’s in this branch
-- Facts-first logs: Accountant writes `LogEntry.summary`; Narrator adds at most one short flavor line with strict bans on numbers/items/skills (now on a small model for speed).
+## What's in this branch
+- Facts-first logs: Accountant writes `LogEntry.summary`; optional canned flavor line pulled from `data/narration/*.json`.
 - Structured intents: user text parsed into attack/defend/run/look/check-sheet/cast-ability, with class weapon proficiencies applied; quick-insert buttons for spells/skills/weapons in the sidebar; input auto-refocuses.
 - 5e reference layer: typed loaders for weapons, armor, skills, basic actions, conditions, wizard + cleric spell lists (`data/5e/spells-wizard.json`, `data/5e/spells-cleric.json`), and starter prefabs in `data/5e/char_*.json`.
 - Story graph: scenes loaded from `story/*.json` with gated exits, spawns, rewards (XP + loot tables), and location history; narrator modes expanded but flavor stays on a leash.
@@ -14,7 +14,7 @@ Branch `dcv01` focuses on hybrid facts+flavor, deterministic mechanics, a prefab
 
 ## Run
 1) Install: `npm install`
-2) Env: set Supabase + Groq keys in `.env.local` (see `Project_README.md` for details).
+2) Env: set Supabase keys in `.env.local` (see `Project_README.md` for details). Gameplay saves to localStorage; Supabase is for auth/leaderboard.
 3) Dev server: `npm run dev` then open http://localhost:3000.
 
 ## Quick checks
@@ -25,15 +25,10 @@ Branch `dcv01` focuses on hybrid facts+flavor, deterministic mechanics, a prefab
 See `SMOKE.md` for a fuller manual runbook.
 
 ## Docs & references
-- Branch notes: `docs/dcv01-notes.md`
-- Flavor/Narrator task context: `Flavor.md`
+- Branch source of truth (scope + roadmap): `docs/phased-plan.md`
+- Flavor lines: `data/narration/*.json`
 - 5e data: `data/5e/*.json` (weapons/armor/skills/spells; loot tables in `data/5e/loot`)
 - Original overview: `Project_README.md`
 
 ## Next/Planned
-- Level-up: grant class-based benefits (slots/spells/features), not just +HP; surface a level-up notice.
-- Spells: expand effects (buffs/conditions/AoE) and add rest/slot recovery.
-- Loot/gear: broaden monster→loot mapping, add display names/types for drops, and support using potions/scrolls from inventory.
-- Story: tighten act gating and exits across all scenes; enrich per-scene flavor hooks.
-- UI: surface HP/slots/effects clearly; add quick-use for consumables.
-- Tests: add smoke coverage for loot mapping, spell casting, and scene transitions to prevent regressions.
+See `docs/phased-plan.md` for the canonical roadmap and validation checklist.

@@ -2,10 +2,11 @@
 
 ## Current Setup
 - Next.js 14 App Router with Tailwind styling (`app/`), Supabase auth/session middleware (`middleware.ts`, `utils/supabase/*`).
-- AI-backed game logic and narration in `app/actions.ts` using Groq-hosted models; game schema/types in `lib/`.
+- Deterministic game logic in `lib/game/engine` (invoked by `app/actions.ts`), canned narration in `lib/narrationEngine.ts`, and schema/types in `lib/`.
 - Client gameplay UI in `app/page.tsx` with sidebar component `components/GameSidebar.tsx`; login flow at `app/login/page.tsx`.
 
 ## Changes Made (this pass)
+Note: gameplay logic now lives in `lib/game/engine` and `lib/game/state`; older entries referencing `app/actions.ts` are legacy paths.
 - Fixed combat damage rolls with a dice parser that supports modifiers and multiple dice terms (`app/actions.ts`).
 - Added saved-game hydration/validation to backfill defaults and rebuild derived fields like images/room registry when loading existing saves (`app/actions.ts`).
 - Hardened Supabase persistence: upserts now check and surface errors during create, turn processing, and reset flows (`app/actions.ts`).

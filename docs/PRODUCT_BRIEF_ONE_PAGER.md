@@ -6,7 +6,7 @@ Dungeon Portal is a **text-first dungeon crawler** built on Next.js where gamepl
 
 It uses a hybrid loop:
 - **Accountant (TypeScript):** parses intent and resolves mechanics (rolls, damage, HP, loot, XP, story progression).
-- **Narrator (LLM):** adds **optional** flavor-only text that must never introduce new facts, numbers, items, or mechanics.
+- **Narrator (canned lines):** adds **optional** flavor-only text sourced from `data/narration/*.json` and constrained to existing state.
 
 ## 2. Who it’s for
 
@@ -20,7 +20,7 @@ Players who:
 1. Player enters an action (`look around`, `attack with longsword`, `cast healing word`).
 2. Accountant resolves the turn deterministically and produces a factual `eventSummary`.
 3. Narrator may add a single mood line constrained by strict bans.
-4. UI renders state + log and persists to Supabase.
+4. UI renders state + log and persists to localStorage (leaderboard uses Supabase if configured).
 
 ## 4. Pillars
 
@@ -34,7 +34,7 @@ Players who:
 - Quick-start archetypes (Fighter/Rogue/Cleric/Wizard)
 - Story graph from `story/*.json` (exits/spawns/rewards)
 - 5e reference layer (`data/5e/*`) for weapons/armor/skills/spells/loot
-- Save/load via Supabase table `saved_games`
+- Save/load via localStorage with schema hydration/backfill
 - Scene image caching (`public/scene-cache`) and resilient UI fallback when images fail
 
 ## 6. Success criteria
