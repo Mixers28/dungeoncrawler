@@ -35,7 +35,7 @@ Players who:
 - Story graph from `story/*.json` (exits/spawns/rewards)
 - 5e reference layer (`data/5e/*`) for weapons/armor/skills/spells/loot
 - Save/load via localStorage with schema hydration/backfill
-- Scene image caching (`public/scene-cache`) and resilient UI fallback when images fail
+- Scene images loaded from `public/scene-cache` (curated assets) with UI fallbacks when missing
 
 ## 6. Success criteria
 

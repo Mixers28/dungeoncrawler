@@ -18,7 +18,7 @@ Note: gameplay logic now lives in `lib/game/engine` and `lib/game/state`; older 
 - Included last roll values in narrator context and instructed it to never contradict HP/roll/entity data (`app/actions.ts`).
 - Start-of-run is neutral (combat off) and monsters act only after hostile/defensive actions; “look” no longer triggers surprise damage (`app/actions.ts`).
 - Narrator now uses provided roll values and HP delta and must not claim pending rolls or damage when none occurred (`app/actions.ts`).
-- Scene images are cached locally in `public/scene-cache` keyed by scene+seed; repeat visits reuse cached files instead of re-calling the generator (`app/actions.ts`).
+- Scene images are loaded from `public/scene-cache` keyed by scene+seed; no remote generation (`lib/game/state.ts`).
 - Narrator prompt updated to mirror DM principles: concise (≤1 sentence), telegraph threats, no surprise damage without triggers, and must use provided rolls/HP/entity data faithfully (`app/actions.ts`).
 - Added 5e reference snippets (abilities, conditions, basic actions) and fed them to the narrator for grounded descriptions (`data/5e/*`, `lib/refs.ts`, `app/actions.ts`).
 - Expanded 5e references with skills-to-abilities, weapon table, armor table, and fuller conditions for future rule grounding (`data/5e/*`, `lib/refs.ts`).

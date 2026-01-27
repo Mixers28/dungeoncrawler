@@ -21,7 +21,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ## Content References
 - PHB/DMG sources: `docs/DM-rules.md` (PDFs are not tracked in this repo).
 - Curated snippets: `data/5e/*` (abilities, skills, actions, conditions, weapons, armor).
-- Image cache: `public/scene-cache` per scene key with 3 variants.
+- Scene images: curated assets in `public/scene-cache` per scene key (optional variants via `_v0/_v1/_v2`).
 
 ## Repo Notes
 - Core logic/actions: `app/actions.ts`

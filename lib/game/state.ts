@@ -269,81 +269,26 @@ export function applySceneEntry(
   return { state: nextState, roomDesc };
 }
 
-const SCENE_CACHE_MAX_BYTES = 200 * 1024 * 1024;
-const SCENE_CACHE_MAX_FILES = 250;
-const SCENE_FETCH_TIMEOUT_MS = 5000;
+const SCENE_CACHE_DIR = path.join(process.cwd(), 'public', 'scene-cache');
+const SCENE_IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
 
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
+async function findSceneImage(sceneKey: string, variantIndex: number): Promise<string | null> {
+  const slug = sceneKey.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const candidates = [`${slug}_v${variantIndex}`, slug];
 
-async function ensureCacheDir() {
-  const cacheDir = path.join(process.cwd(), 'public', 'scene-cache');
-  try {
-    await fs.mkdir(cacheDir, { recursive: true });
-  } catch (err) {
-    console.error("Failed to ensure cache dir", err);
-  }
-  return cacheDir;
-}
-
-async function pruneSceneCache(cacheDir: string) {
-  try {
-    const entries = await fs.readdir(cacheDir, { withFileTypes: true });
-    const files = entries.filter(entry => entry.isFile());
-    if (files.length === 0) return;
-
-    const stats = await Promise.all(files.map(async entry => {
-      const fullPath = path.join(cacheDir, entry.name);
-      const info = await fs.stat(fullPath);
-      return { path: fullPath, mtimeMs: info.mtimeMs, size: info.size };
-    }));
-
-    stats.sort((a, b) => a.mtimeMs - b.mtimeMs);
-    let totalBytes = stats.reduce((sum, file) => sum + file.size, 0);
-
-    while (stats.length > SCENE_CACHE_MAX_FILES || totalBytes > SCENE_CACHE_MAX_BYTES) {
-      const oldest = stats.shift();
-      if (!oldest) break;
+  for (const base of candidates) {
+    for (const ext of SCENE_IMAGE_EXTS) {
+      const fileName = `${base}${ext}`;
+      const filePath = path.join(SCENE_CACHE_DIR, fileName);
       try {
-        await fs.unlink(oldest.path);
-        totalBytes -= oldest.size;
-      } catch (err) {
-        console.error("Failed to prune cache file", oldest.path, err);
-        break;
+        await fs.access(filePath);
+        return `/scene-cache/${fileName}`;
+      } catch {
+        // continue
       }
     }
-  } catch (err) {
-    console.error("Failed to prune scene cache", err);
   }
-}
-
-async function cacheSceneImage(remoteUrl: string, fileName: string): Promise<string | null> {
-  try {
-    const cacheDir = await ensureCacheDir();
-    const filePath = path.join(cacheDir, fileName);
-    try {
-      await fs.access(filePath);
-      return `/scene-cache/${fileName}`;
-    } catch {
-      // proceed to fetch
-    }
-    const res = await fetchWithTimeout(remoteUrl, SCENE_FETCH_TIMEOUT_MS);
-    if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
-    const arrayBuffer = await res.arrayBuffer();
-    await fs.writeFile(filePath, Buffer.from(arrayBuffer));
-    await pruneSceneCache(cacheDir);
-    return `/scene-cache/${fileName}`;
-  } catch (err) {
-    console.error("Image cache fetch failed, using remote URL", err);
-    return null;
-  }
+  return null;
 }
 
 export async function resolveSceneImage(state: GameState): Promise<{ url: string; registry: Record<string, string> }> {
@@ -354,34 +299,12 @@ export async function resolveSceneImage(state: GameState): Promise<{ url: string
     return { url: state.sceneRegistry[sceneKey], registry: state.sceneRegistry };
   }
   
-  // Add visual caches and environmental details for depth and visual richness
-  const CACHE_DETAILS = [
-    "with visible treasure chests and scattered gold coins",
-    "with ornate shelves holding ancient artifacts",
-    "with barrels, crates, and mysterious locked boxes",
-    "filled with tattered tapestries and jeweled urns",
-    "with stone pedestals holding glowing crystals",
-    "with weapon racks and armor displays"
-  ];
-  const cacheDetailHash = (state.location.charCodeAt(0) || 0) * (state.worldSeed || 1);
-  const cacheDetail = CACHE_DETAILS[Math.abs(cacheDetailHash) % CACHE_DETAILS.length];
-  
-  let visualPrompt = state.location;
-  if (activeThreat) {
-    visualPrompt = `A terrifying ${activeThreat.name} inside ${state.location}, ${cacheDetail}`;
-  } else {
-    visualPrompt = `${state.location} ${cacheDetail}, abandoned dungeon chamber`;
-  }
-  
-  const subjectHash = visualPrompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const variantIndex = Math.abs((state.worldSeed || 0) % VARIANT_POOL);
-  const stableSeed = subjectHash + variantIndex * 9973;
-  const encodedPrompt = encodeURIComponent(visualPrompt + " fantasy oil painting style dark gritty atmospheric 8k");
-  const remoteUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=300&nologo=true&seed=${stableSeed}`;
-  const fileName = `${sceneKey.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_v${variantIndex}.jpg`;
-  const cachedPath = await cacheSceneImage(remoteUrl, fileName);
-  const finalUrl = cachedPath || remoteUrl;
-  return { url: finalUrl, registry: { ...state.sceneRegistry, [sceneKey]: finalUrl } };
+  const cachedPath = await findSceneImage(sceneKey, variantIndex);
+  if (cachedPath) {
+    return { url: cachedPath, registry: { ...state.sceneRegistry, [sceneKey]: cachedPath } };
+  }
+  return { url: "", registry: state.sceneRegistry || {} };
 }
 
 export async function resolveRoomDescription(state: GameState): Promise<{ desc: string, registry: Record<string, string> }> {
