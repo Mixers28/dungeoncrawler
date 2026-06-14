@@ -6,7 +6,7 @@
   "subclass": "school_of_evocation",
   "race": "human",
   "hit_die": "d6",
-  "max_hp": 8,
+  "max_hp": 12,
   "current_hp": 8,
   "proficiency_bonus": 2,
   "abilities": {
@@ -25,7 +25,11 @@
   ],
   "proficiencies": {
     "armor": [],
-    "weapons": ["Dagger", "Quarterstaff", "Light Crossbow"],
+    "weapons": [
+      "Dagger",
+      "Quarterstaff",
+      "Light Crossbow"
+    ],
     "tools": []
   },
   "equipment": [
@@ -69,5 +73,9 @@
       }
     }
   },
-  "tags": ["wizard", "blaster", "evocation_starter"]
+  "tags": [
+    "wizard",
+    "blaster",
+    "evocation_starter"
+  ]
 }

@@ -6,7 +6,7 @@
   "subclass": "thief",
   "race": "human",
   "hit_die": "d8",
-  "max_hp": 10,
+  "max_hp": 14,
   "current_hp": 10,
   "proficiency_bonus": 2,
   "abilities": {
@@ -29,9 +29,19 @@
     "thieves_tools"
   ],
   "proficiencies": {
-    "armor": ["light"],
-    "weapons": ["simple", "hand crossbow", "longsword", "rapier", "shortsword"],
-    "tools": ["thieves_tools"]
+    "armor": [
+      "light"
+    ],
+    "weapons": [
+      "simple",
+      "hand crossbow",
+      "longsword",
+      "rapier",
+      "shortsword"
+    ],
+    "tools": [
+      "thieves_tools"
+    ]
   },
   "equipment": [
     "leather_armor",
@@ -45,5 +55,10 @@
   ],
   "spells": null,
   "casting": null,
-  "tags": ["rogue", "skirmisher", "dex_striker", "skill_monkey"]
+  "tags": [
+    "rogue",
+    "skirmisher",
+    "dex_striker",
+    "skill_monkey"
+  ]
 }

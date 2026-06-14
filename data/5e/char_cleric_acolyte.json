@@ -6,7 +6,7 @@
   "subclass": "life_domain",
   "race": "human",
   "hit_die": "d8",
-  "max_hp": 10,
+  "max_hp": 16,
   "current_hp": 10,
   "proficiency_bonus": 2,
   "abilities": {
@@ -23,8 +23,15 @@
     "religion"
   ],
   "proficiencies": {
-    "armor": ["light", "medium", "shields", "heavy"],
-    "weapons": ["simple"],
+    "armor": [
+      "light",
+      "medium",
+      "shields",
+      "heavy"
+    ],
+    "weapons": [
+      "simple"
+    ],
     "tools": []
   },
   "equipment": [
@@ -71,5 +78,11 @@
       }
     }
   },
-  "tags": ["cleric", "life_domain", "healer", "support", "frontliner"]
+  "tags": [
+    "cleric",
+    "life_domain",
+    "healer",
+    "support",
+    "frontliner"
+  ]
 }

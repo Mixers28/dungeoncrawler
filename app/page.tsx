@@ -13,6 +13,7 @@ import { InventoryModal } from '../components/InventoryModal';
 import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 import { saveScore } from '../lib/leaderboard';
+import { CommandHints } from '../components/CommandHints';
 
 type UserMessage = { role: 'user'; content: string };
 type AssistantMessage = { role: 'assistant'; summary: string; flavor?: string; mode?: NarrationMode; createdAt?: string };
@@ -536,7 +537,13 @@ export default function Home() {
               </p>
             </div>
           ) : (
-            <form onSubmit={handleTurn} className="flex gap-2">
+            <>
+              <CommandHints
+                gameState={gameState}
+                onCommand={(cmd) => executeTurn(cmd, gameState)}
+                isLoading={isLoading}
+              />
+              <form onSubmit={handleTurn} className="flex gap-2">
               <input
                 ref={inputRef}
                 className="flex-1 bg-slate-900 border border-slate-700 rounded p-4 focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-600"
@@ -560,6 +567,7 @@ export default function Home() {
                 ✕
               </button>
             </form>
+            </>
           )}
         </div>
       </div>

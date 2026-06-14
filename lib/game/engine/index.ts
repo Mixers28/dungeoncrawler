@@ -628,9 +628,10 @@ async function _updateGameState(
   attemptedSearch = wantsSearch;
   attemptedInvestigate = wantsInvestigate;
 
-  // Quick-use consumables (bandages, potions)
+  // Quick-use consumables (bandages, potions) and short rest
   const wantsBandage = /bandage/i.test(userAction);
   const wantsPotion = /(potion|elixir|draught|draft)/i.test(userAction);
+  const wantsRest = !wantsBandage && !wantsPotion && /\b(rest|camp|sleep|recover|take a break|sit down)\b/i.test(userAction);
   const bandageIdx = newState.inventory.findIndex(i => i.name.toLowerCase().includes('bandage') && i.quantity > 0);
   const potionIdx = wantsPotion
     ? newState.inventory.findIndex(i => i.name.toLowerCase().includes('potion') && i.quantity > 0)
@@ -656,6 +657,18 @@ async function _updateGameState(
       summaryParts.push(`You drink ${item.name}, recovering ${heal} HP.`);
     } else {
       summaryParts.push("You fumble for a potion, but you have none left.");
+    }
+  } else if (wantsRest) {
+    handledConsumable = true;
+    const enemiesNearby = newState.nearbyEntities.some(e => e.status === 'alive');
+    if (enemiesNearby || newState.isCombatActive) {
+      summaryParts.push("You cannot rest while enemies are nearby.");
+    } else if (newState.hp >= newState.maxHp) {
+      summaryParts.push("You are already at full health. There is no need to rest.");
+    } else {
+      const healAmount = Math.ceil(newState.maxHp * 0.25);
+      newState.hp = Math.min(newState.maxHp, newState.hp + healAmount);
+      summaryParts.push(`You take a short rest and tend your wounds, recovering ${healAmount} HP. (${newState.hp}/${newState.maxHp} HP)`);
     }
   } else if (wantsBandage) {
     handledConsumable = true;

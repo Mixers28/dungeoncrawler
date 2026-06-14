@@ -6,7 +6,7 @@
   "subclass": "champion",
   "race": "human",
   "hit_die": "d10",
-  "max_hp": 12,
+  "max_hp": 18,
   "current_hp": 12,
   "proficiency_bonus": 2,
   "abilities": {
@@ -24,8 +24,16 @@
     "survival"
   ],
   "proficiencies": {
-    "armor": ["all light", "all medium", "all heavy", "shields"],
-    "weapons": ["simple", "martial"],
+    "armor": [
+      "all light",
+      "all medium",
+      "all heavy",
+      "shields"
+    ],
+    "weapons": [
+      "simple",
+      "martial"
+    ],
     "tools": []
   },
   "equipment": [
@@ -38,5 +46,11 @@
   ],
   "spells": null,
   "casting": null,
-  "tags": ["fighter", "warrior", "frontline", "tank", "martial"]
+  "tags": [
+    "fighter",
+    "warrior",
+    "frontline",
+    "tank",
+    "martial"
+  ]
 }

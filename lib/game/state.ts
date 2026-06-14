@@ -434,6 +434,7 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
     inventory = [
       ...inventory,
       { id: `bandage-${Date.now().toString(36)}`, name: 'Bandage', type: 'misc', quantity: 2, equipped: false },
+      { id: `potion-${Date.now().toString(36)}`, name: 'Healing Potion', type: 'potion', quantity: 1, equipped: false },
     ];
 
     if (starter.spells) {
