@@ -356,8 +356,7 @@ export async function hydrateState(rawState: unknown): Promise<GameState> {
   state.equippedArmorId = state.equippedArmorId || resolveArmorId(state.inventory.find(i => i.type === 'armor')?.name);
   normalizeEquippedItems(state);
   if (state.inventory.length > 0) {
-    const computedAc = computeArmorClassFromInventory(state.inventory, state.abilityScores);
-    state.ac = Math.max(state.ac, computedAc);
+    state.ac = computeArmorClassFromInventory(state.inventory, state.abilityScores);
   }
   if (!Number.isFinite(state.xpToNext) || state.xpToNext <= 0) {
     const next = getNextLevelDef(state.level);

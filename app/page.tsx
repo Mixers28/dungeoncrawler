@@ -99,7 +99,7 @@ export default function Home() {
     setMessages(prev => [...prev, { role: 'user', content: command }]);
 
     try {
-      const { newState, logEntry } = await processTurn(currentGameState, command);
+      const { newState, logEntry } = await processTurn(command);
       setGameState(newState);
 
       setMessages(prev => [

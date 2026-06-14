@@ -19,6 +19,9 @@ export async function loginAction(email: string, password: string): Promise<{ er
 }
 
 export async function signUpAction(email: string, password: string): Promise<{ error: string } | void> {
+  if (!email || !password) return { error: 'Email and password are required.' };
+  if (password.length < 8) return { error: 'Password must be at least 8 characters.' };
+  if (password.length > 128) return { error: 'Password too long.' };
   try {
     const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
     if (existing) return { error: 'Email already registered.' };

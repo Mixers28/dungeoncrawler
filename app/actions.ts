@@ -21,7 +21,9 @@ async function getUserId(): Promise<string> {
 
 async function loadSave(userId: string): Promise<GameState | null> {
   const [row] = await db.select().from(savedGames).where(eq(savedGames.userId, userId)).limit(1);
-  return row ? (row.gameState as unknown as GameState) : null;
+  if (!row) return null;
+  // Always validate and migrate the JSONB through Zod before returning
+  return hydrateState(row.gameState);
 }
 
 async function persistSave(userId: string, state: GameState): Promise<void> {
@@ -41,9 +43,8 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
   if (!forceNew) {
     const existing = await loadSave(userId);
     if (existing) {
-      const hydrated = await hydrateState(existing);
-      await persistSave(userId, hydrated);
-      return hydrated;
+      await persistSave(userId, existing);
+      return existing;
     }
   }
 
@@ -52,12 +53,21 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
   return newState;
 }
 
+// currentState is intentionally NOT accepted from the client — we load from DB
+// to prevent client-side tampering with hp, gold, inventory, etc.
 export async function processTurn(
-  currentState: GameState,
   userAction: string
 ): Promise<{ newState: GameState; logEntry: LogEntry }> {
+  if (typeof userAction !== 'string' || userAction.length > 1000) {
+    throw new Error('Invalid action.');
+  }
+  const sanitized = userAction.trim().slice(0, 500);
+
   const userId = await getUserId();
-  const intent = parseIntent(userAction, currentState);
+  const currentState = await loadSave(userId);
+  if (!currentState) throw new Error('No active game found. Start a new game first.');
+
+  const intent = parseIntent(sanitized, currentState);
   const { newState, logEntry } = await runGameTurn(currentState, intent);
   await persistSave(userId, newState);
   return { newState, logEntry };

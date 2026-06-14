@@ -343,8 +343,7 @@ function getEquippedWeaponDamageDice(state: GameState, fallbackName: string): st
 function getBaseAcFromEquipped(state: GameState): number {
   if (!state.inventory || state.inventory.length === 0) return state.ac;
   const abilityScores = state.abilityScores || {};
-  const computed = computeArmorClassFromInventory(state.inventory, abilityScores);
-  return Math.max(state.ac, computed);
+  return computeArmorClassFromInventory(state.inventory, abilityScores);
 }
 
 function resolveTradeIntent(
@@ -412,7 +411,7 @@ function resolveTradeIntent(
         return itemIsShield ? item : { ...item, equipped: item.name.toLowerCase() === displayName.toLowerCase() };
       });
       if (!buyingShield) state.equippedArmorId = resolveArmorId(displayName);
-      state.ac = Math.max(state.ac, computeArmorClassFromInventory(state.inventory, state.abilityScores || {}));
+      state.ac = computeArmorClassFromInventory(state.inventory, state.abilityScores || {});
     }
 
     const eventSummary = `You buy ${displayName} from ${trader.name} for ${invEntry.price} gold. You now have ${state.gold} gold.`;
@@ -697,7 +696,8 @@ async function _updateGameState(
       canCast = false;
     } else {
       const isCantrip = spell.level.toLowerCase().includes('cantrip');
-      const slotKey = 'level_1';
+      const spellLevelNum = spell.level.match(/\d+/)?.[0] ?? '1';
+      const slotKey = `level_${spellLevelNum}`;
       const slots = newState.spellSlots || {};
       if (!isCantrip) {
         const slot = slots[slotKey];
@@ -877,7 +877,7 @@ async function _updateGameState(
       summaryParts.push(`A trader is posted here: ${trader.name}.`);
     }
   } else if (actionIntent === 'attack' && activeMonster) {
-    playerAttackRoll = Math.floor(Math.random() * 20) + 1; // no bonus for now
+    playerAttackRoll = rollD20() + (currentState.character?.attackBonus ?? 0);
     if (playerAttackRoll >= activeMonster.ac) {
       playerDamageRoll = rollDice(playerDmgDice);
       applyDamageToActiveMonster(playerDamageRoll);
