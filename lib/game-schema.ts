@@ -92,7 +92,7 @@ export const gameStateSchema = z.object({
     archetypeKey: 'fighter',
   }),
   location: z.string(),
-  inventory: z.array(itemSchema).default([]),
+  inventory: z.array(itemSchema).max(100).default([]),
   equippedWeaponId: z.string().optional(),
   equippedArmorId: z.string().optional(),
   quests: z.array(questSchema).default([]),
@@ -145,6 +145,7 @@ export const gameStateSchema = z.object({
   storySceneId: z.string().default('iron_gate_v1'),
   storyFlags: z.array(z.string()).default([]),
   turnCounter: z.number().default(0),
+  totalKills: z.number().int().default(0),
   log: z.array(logEntrySchema).default([]),
 });
 

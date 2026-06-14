@@ -180,10 +180,7 @@ function sanitizeForNarrator(text: string): string {
 }
 
 function sanitizeUserAction(text: string): string {
-  const cleaned = sanitizeForNarrator(text);
-  const injectionPattern = /(ignore|disregard|override|bypass|forget).{0,40}(instruction|system|rule|previous)/i;
-  if (injectionPattern.test(cleaned)) return "act cautiously";
-  return cleaned || "act";
+  return sanitizeForNarrator(text) || "act";
 }
 
 function summarizeInventory(inventory: GameState["inventory"]): { summary: string; items: string[] } {
@@ -986,17 +983,30 @@ async function _updateGameState(
     newState.locationHistory = updatedHistory;
   }
 
-  // 7. STORY ACT BOUNDS
-  const maxAct = Math.max(...Object.keys(STORY_ACTS).map(Number));
-  newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
-
-  // 8. XP & LEVEL
+  // 7. XP, KILLS & STORY ACT PROGRESSION
   const monsterNow = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
   const monsterKilled = monsterWasAlive && monsterNow && monsterNow.status === 'dead';
   if (monsterKilled) {
+    newState.totalKills = (newState.totalKills || 0) + 1;
     const xpAward = MONSTER_MANUAL[activeMonster!.name]?.hp ? Math.max(25, MONSTER_MANUAL[activeMonster!.name].hp * 5) : 50;
     applyXpAndCheckLevelUp(newState, xpAward, summaryParts);
   }
+
+  // Advance story act based on key item possession and boss kills
+  const maxAct = Math.max(...Object.keys(STORY_ACTS).map(Number));
+  if (newState.storyAct === 0 && newState.inventory.some(i => i.name === 'Iron Key')) {
+    newState.storyAct = 1;
+    summaryParts.push("You hold the Iron Key. The inner sanctum's gate can be breached.");
+  }
+  if (newState.storyAct === 1 && newState.inventory.some(i => i.name === 'Cursed Crown')) {
+    newState.storyAct = 2;
+    summaryParts.push("The Cursed Crown is yours. One foe remains — face the Iron King.");
+  }
+  if (newState.storyAct >= 2 && monsterKilled && activeMonster?.name === 'Iron King') {
+    newState.storyFlags = [...(newState.storyFlags || []), 'iron_king_defeated'];
+    summaryParts.push("The Iron King falls. The curse shatters. Aethelgard breathes again.");
+  }
+  newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
 
   // Scene completion rewards
   const sceneForReward = getSceneById(newState.storySceneId);

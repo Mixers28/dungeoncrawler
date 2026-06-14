@@ -31,7 +31,7 @@ function extractDeepestFloor(locationHistory: string[] | undefined): number {
 }
 
 export function saveScore(gameState: GameState, status: 'win' | 'loss'): void {
-  const killCount = gameState.nearbyEntities?.filter(e => e.status === 'dead').length || 0
+  const killCount = gameState.totalKills ?? 0
   const entry: LeaderboardEntry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     characterName: sanitizeString(gameState.character?.name || 'Unknown'),

@@ -256,8 +256,10 @@ export function applySceneEntry(
           position: { x: 0, y: 0 },
         }));
       }
+      nextState.isCombatActive = true;
     } else {
       nextState.nearbyEntities = [];
+      nextState.isCombatActive = false;
     }
   }
 
@@ -272,20 +274,28 @@ export function applySceneEntry(
 const SCENE_CACHE_DIR = path.join(process.cwd(), 'public', 'scene-cache');
 const SCENE_IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
 
+// Cached directory listing — built once on first call, avoids per-turn fs.access probes
+let sceneDirCache: Set<string> | null = null;
+async function getSceneDirCache(): Promise<Set<string>> {
+  if (sceneDirCache) return sceneDirCache;
+  try {
+    const files = await fs.readdir(SCENE_CACHE_DIR);
+    sceneDirCache = new Set(files);
+  } catch {
+    sceneDirCache = new Set();
+  }
+  return sceneDirCache;
+}
+
 async function findSceneImage(sceneKey: string, variantIndex: number): Promise<string | null> {
+  const cache = await getSceneDirCache();
   const slug = sceneKey.replace(/[^a-z0-9]/gi, '_').toLowerCase();
   const candidates = [`${slug}_v${variantIndex}`, slug];
 
   for (const base of candidates) {
     for (const ext of SCENE_IMAGE_EXTS) {
       const fileName = `${base}${ext}`;
-      const filePath = path.join(SCENE_CACHE_DIR, fileName);
-      try {
-        await fs.access(filePath);
-        return `/scene-cache/${fileName}`;
-      } catch {
-        // continue
-      }
+      if (cache.has(fileName)) return `/scene-cache/${fileName}`;
     }
   }
   return null;
@@ -323,6 +333,9 @@ export async function hydrateState(rawState: unknown): Promise<GameState> {
   const normalizedRawState = normalizeLegacyNarrationModes(rawState);
   const parsed = gameStateSchema.safeParse(normalizedRawState);
   if (!parsed.success) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('hydrateState: schema parse failure', parsed.error.issues);
+    }
     throw new Error("Saved game is incompatible with the current version.");
   }
   const state = parsed.data;
@@ -493,6 +506,7 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
     storySceneId: gateScene?.id || 'iron_gate_v1',
     storyFlags: [],
     turnCounter: 0,
+    totalKills: 0,
     activeEffects: [],
   };
 

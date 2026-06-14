@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Skull, ArrowRight, BookOpen, X, Eye, EyeOff } from 'lucide-react';
 import type { GameState, LogEntry, NarrationMode } from '../lib/game-schema';
 import { LeftSidebar } from '../components/LeftSidebar';
@@ -64,6 +64,8 @@ export default function Home() {
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isNewRun = searchParams.has('newRun');
   const focusInput = useCallback(() => inputRef.current?.focus(), []);
 
   useEffect(() => {
@@ -228,8 +230,8 @@ export default function Home() {
         return;
       }
 
-      // createNewGame loads existing save from DB or creates new one
-      const initialState = await createNewGame({ archetypeKey: selectedClass });
+      // createNewGame loads existing save from DB, or starts fresh if ?newRun=1
+      const initialState = await createNewGame({ archetypeKey: selectedClass, forceNew: isNewRun });
       setGameState(initialState);
 
       const restoredLog: Message[] = (initialState.log || []).map((entry: LogEntry) => ({
