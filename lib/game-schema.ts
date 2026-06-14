@@ -6,6 +6,7 @@ export const itemSchema = z.object({
   name: z.string(),
   type: z.enum(['weapon', 'armor', 'potion', 'scroll', 'misc', 'food', 'material', 'key']),
   quantity: z.coerce.number().int(),
+  effect: z.string().optional(),
 });
 
 // 2. QUESTS
@@ -19,22 +20,21 @@ export const questSchema = z.object({
 // 3. ENTITIES
 export const entitySchema = z.object({
   name: z.string(),
-  status: z.string().default('alive'), 
+  status: z.string().default('alive'),
   description: z.string().optional(),
   hp: z.coerce.number().int().default(10),
   maxHp: z.coerce.number().int().default(10),
   ac: z.coerce.number().int().default(10),
-  // New: Attack stats for the monster
-  attackBonus: z.coerce.number().int().default(2), 
-  damageDice: z.string().default("1d4"),
+  attackBonus: z.coerce.number().int().default(2),
+  damageDice: z.string().default('1d4'),
 });
 
 // 4. MASTER STATE
 export const gameStateSchema = z.object({
   hp: z.coerce.number().int(),
   maxHp: z.coerce.number().int(),
-  ac: z.coerce.number().int(), // Base AC
-  tempAcBonus: z.coerce.number().int().default(0), // For Defensive Stance
+  ac: z.coerce.number().int(),
+  tempAcBonus: z.coerce.number().int().default(0),
   gold: z.coerce.number().int(),
   level: z.coerce.number().int().default(1),
   xp: z.coerce.number().int().default(0),
@@ -45,26 +45,30 @@ export const gameStateSchema = z.object({
     background: z.string().default('Wanderer'),
     acBonus: z.coerce.number().int().default(0),
     hpBonus: z.coerce.number().int().default(0),
+    attackBonus: z.coerce.number().int().default(0),
     startingWeapon: z.string().default('Rusty Dagger'),
     startingArmor: z.string().optional(),
+    archetypeKey: z.string().default('fighter'),
   }).default({
     name: 'Adventurer',
     class: 'Fighter',
     background: 'Wanderer',
     acBonus: 0,
     hpBonus: 0,
+    attackBonus: 0,
     startingWeapon: 'Rusty Dagger',
     startingArmor: undefined,
+    archetypeKey: 'fighter',
   }),
   location: z.string(),
-  inventory: z.array(itemSchema).default([]), 
+  inventory: z.array(itemSchema).default([]),
   quests: z.array(questSchema).default([]),
   nearbyEntities: z.array(entitySchema).default([]),
   lastActionSummary: z.string(),
   worldSeed: z.coerce.number().int().default(0),
   narrativeHistory: z.array(z.string()).default([]),
-  sceneRegistry: z.record(z.string()).default({}), 
-  roomRegistry: z.record(z.string()).default({}), 
+  sceneRegistry: z.record(z.string()).default({}),
+  roomRegistry: z.record(z.string()).default({}),
   storyAct: z.coerce.number().int().default(0),
   currentImage: z.string().optional(),
   locationHistory: z.array(z.string()).default([]),
@@ -80,8 +84,6 @@ export const gameStateSchema = z.object({
     monsterAttack: 0,
     monsterDamage: 0,
   }),
-  
-  // NEW: COMBAT TRACKING
   isCombatActive: z.boolean().default(false),
 });
 

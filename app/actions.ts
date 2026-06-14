@@ -2,11 +2,14 @@
 
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
-import { z } from 'zod';
 import fs from 'fs/promises';
 import path from 'path';
-import { createClient } from '../utils/supabase/server';
-import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../lib/rules';
+import { auth } from '@/auth';
+import { db } from '@/lib/db';
+import { savedGames } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { gameStateSchema, type GameState } from '../lib/game-schema';
+import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS, EASY_MOBS } from '../lib/rules';
 import { buildRulesReferenceSnippet } from '../lib/refs';
 import { ARCHETYPES } from './characters';
 
@@ -15,12 +18,10 @@ const groq = createOpenAI({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const MODEL_LOGIC = 'meta-llama/llama-4-scout-17b-16e-instruct';
-const MODEL_NARRATOR = 'llama-3.3-70b-versatile'; 
+const MODEL_NARRATOR = 'llama-3.3-70b-versatile';
 
 // --- HELPERS ---
 function rollDice(notation: string): number {
-  // Supports expressions like "1d6+2" or "1d4+1d6"
   const tokens = notation.replace(/\s+/g, '').match(/[+-]?[^+-]+/g) || [];
   if (tokens.length === 0) throw new Error(`Invalid dice expression: "${notation}"`);
 
@@ -51,97 +52,23 @@ function rollDice(notation: string): number {
 }
 
 function getRandomScenario(act: number) {
-  const easyMobs = ["Giant Rat", "Skeleton", "Green Slime"];
-  const actMobs = act === 0 ? easyMobs : Object.keys(MONSTER_MANUAL);
+  const actMobs = act === 0 ? EASY_MOBS : Object.keys(MONSTER_MANUAL).filter(m => m !== 'Iron King');
   const mobName = actMobs[Math.floor(Math.random() * actMobs.length)];
   const stats = MONSTER_MANUAL[mobName];
   const LOCATIONS = ["Damp Hallway", "Collapsed Tunnel", "Forgotten Shrine", "Mess Hall", "Torture Chamber"];
   const loc = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
-  
-  // Return stats so we can populate the new schema fields
   return { loc, mob: mobName, desc: stats.desc, hp: stats.hp, maxHp: stats.hp, ac: stats.ac, atk: stats.attackBonus, dmg: stats.damage };
 }
 
-// --- SCHEMAS (Use Import or Redefine) ---
-// Note: In a real app, import these from lib/game-schema
-// For this single-file paste, I am redefining to ensure no errors.
-const itemSchema = z.object({
-  id: z.string().default(() => Math.random().toString(36).substring(7)),
-  name: z.string(),
-  type: z.enum(['weapon', 'armor', 'potion', 'scroll', 'misc', 'food', 'material', 'key']),
-  quantity: z.coerce.number().int(),
-});
-const questSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  status: z.enum(['active', 'completed', 'failed']),
-  description: z.string(),
-});
-const entitySchema = z.object({
-  name: z.string(),
-  status: z.string().default('alive'), 
-  description: z.string().optional(),
-  hp: z.coerce.number().int().default(10),
-  maxHp: z.coerce.number().int().default(10),
-  ac: z.coerce.number().int().default(10),
-  attackBonus: z.coerce.number().int().default(2), 
-  damageDice: z.string().default("1d4"),
-});
-const gameStateSchema = z.object({
-  hp: z.coerce.number().int(),
-  maxHp: z.coerce.number().int(),
-  ac: z.coerce.number().int(),
-  tempAcBonus: z.coerce.number().int().default(0),
-  gold: z.coerce.number().int(),
-  level: z.coerce.number().int().default(1),
-  xp: z.coerce.number().int().default(0),
-  xpToNext: z.coerce.number().int().default(300),
-  character: z.object({
-    name: z.string().default('Adventurer'),
-    class: z.string().default('Fighter'),
-    background: z.string().default('Wanderer'),
-    acBonus: z.coerce.number().int().default(0),
-    hpBonus: z.coerce.number().int().default(0),
-    startingWeapon: z.string().default('Rusty Dagger'),
-    startingArmor: z.string().optional(),
-  }).default({
-    name: 'Adventurer',
-    class: 'Fighter',
-    background: 'Wanderer',
-    acBonus: 0,
-    hpBonus: 0,
-    startingWeapon: 'Rusty Dagger',
-    startingArmor: undefined,
-  }),
-  location: z.string(),
-  inventory: z.array(itemSchema).default([]), 
-  quests: z.array(questSchema).default([]),
-  nearbyEntities: z.array(entitySchema).default([]),
-  lastActionSummary: z.string(),
-  worldSeed: z.coerce.number().int().default(() => Math.floor(Math.random() * 999999)),
-  narrativeHistory: z.array(z.string()).default([]),
-  storyAct: z.coerce.number().int().default(0), 
-  roomRegistry: z.record(z.string()).default({}), 
-  sceneRegistry: z.record(z.string()).default({}), 
-  currentImage: z.string().optional(),
-  lastRolls: z.object({
-    playerAttack: z.coerce.number().int().default(0),
-    playerDamage: z.coerce.number().int().default(0),
-    monsterAttack: z.coerce.number().int().default(0),
-    monsterDamage: z.coerce.number().int().default(0),
-  }).default({
-    playerAttack: 0,
-    playerDamage: 0,
-    monsterAttack: 0,
-    monsterDamage: 0,
-  }),
-  locationHistory: z.array(z.string()).default([]),
-  inventoryChangeLog: z.array(z.string()).default([]),
-  isCombatActive: z.boolean().default(false),
-});
-
-type GameState = z.infer<typeof gameStateSchema>;
 type ActionIntent = 'attack' | 'defend' | 'run' | 'other';
+
+function getActionIntent(userAction: string): ActionIntent {
+  const action = userAction.toLowerCase();
+  if (/(attack|hit|strike|stab|slash|shoot|swing|bash)/.test(action)) return 'attack';
+  if (/(defend|block|dodge|parry|guard|brace)/.test(action)) return 'defend';
+  if (/(run|flee|escape|retreat)/.test(action)) return 'run';
+  return 'other';
+}
 
 const XP_THRESHOLDS = [0, 300, 900, 2700, 6500, 14000, 23000];
 
@@ -152,7 +79,6 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
   }
   const state = parsed.data;
 
-  // Rebuild derived assets when missing
   const { url, registry: sceneRegistry } = await resolveSceneImage(state);
   state.currentImage = url;
   state.sceneRegistry = sceneRegistry;
@@ -166,11 +92,7 @@ async function hydrateState(rawState: unknown): Promise<GameState> {
 // --- RESOLVERS ---
 async function ensureCacheDir() {
   const cacheDir = path.join(process.cwd(), 'public', 'scene-cache');
-  try {
-    await fs.mkdir(cacheDir, { recursive: true });
-  } catch (err) {
-    console.error("Failed to ensure cache dir", err);
-  }
+  await fs.mkdir(cacheDir, { recursive: true }).catch(() => null);
   return cacheDir;
 }
 
@@ -178,20 +100,18 @@ async function cacheSceneImage(remoteUrl: string, fileName: string): Promise<str
   try {
     const cacheDir = await ensureCacheDir();
     const filePath = path.join(cacheDir, fileName);
-    // If already cached, just return
     try {
       await fs.access(filePath);
       return `/scene-cache/${fileName}`;
     } catch {
-      // proceed to fetch
+      // not cached yet
     }
     const res = await fetch(remoteUrl);
     if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
     const arrayBuffer = await res.arrayBuffer();
     await fs.writeFile(filePath, Buffer.from(arrayBuffer));
     return `/scene-cache/${fileName}`;
-  } catch (err) {
-    console.error("Image cache fetch failed, using remote URL", err);
+  } catch {
     return null;
   }
 }
@@ -200,14 +120,13 @@ async function resolveSceneImage(state: GameState): Promise<{ url: string; regis
   const VARIANT_POOL = 3;
   const activeThreat = state.nearbyEntities.find(e => e.status !== 'dead' && e.status !== 'object');
   const sceneKey = activeThreat ? `${state.location}|${activeThreat.name}` : state.location;
-  if (state.sceneRegistry && state.sceneRegistry[sceneKey]) {
+  if (state.sceneRegistry?.[sceneKey]) {
     return { url: state.sceneRegistry[sceneKey], registry: state.sceneRegistry };
   }
-  let visualPrompt = state.location;
-  if (activeThreat) visualPrompt = `A terrifying ${activeThreat.name} inside ${state.location}`;
+  const visualPrompt = activeThreat ? `A terrifying ${activeThreat.name} inside ${state.location}` : state.location;
   const subjectHash = visualPrompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const variantIndex = Math.abs((state.worldSeed || 0) % VARIANT_POOL);
-  const stableSeed = subjectHash + variantIndex * 9973; // variant-specific but stable across runs
+  const stableSeed = subjectHash + variantIndex * 9973;
   const encodedPrompt = encodeURIComponent(visualPrompt + " fantasy oil painting style dark gritty 8k");
   const remoteUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=300&nologo=true&seed=${stableSeed}`;
   const fileName = `${sceneKey.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_v${variantIndex}.jpg`;
@@ -216,31 +135,24 @@ async function resolveSceneImage(state: GameState): Promise<{ url: string; regis
   return { url: finalUrl, registry: { ...state.sceneRegistry, [sceneKey]: finalUrl } };
 }
 
-async function resolveRoomDescription(state: GameState): Promise<{ desc: string, registry: Record<string, string> }> {
-  if (state.roomRegistry && state.roomRegistry[state.location]) {
+async function resolveRoomDescription(state: GameState): Promise<{ desc: string; registry: Record<string, string> }> {
+  if (state.roomRegistry?.[state.location]) {
     return { desc: state.roomRegistry[state.location], registry: state.roomRegistry };
   }
   const aliveThreats = state.nearbyEntities.filter(e => e.status === 'alive').map(e => e.name);
   const desc = aliveThreats.length > 0
     ? `${state.location} with ${aliveThreats.join(', ')} nearby.`
     : `${state.location} is quiet.`;
-  const newRegistry = { ...state.roomRegistry, [state.location]: desc };
-  return { desc, registry: newRegistry };
-}
-
-function getActionIntent(userAction: string): ActionIntent {
-  const action = userAction.toLowerCase();
-  if (/(attack|hit|strike|stab|slash|shoot|swing|bash)/.test(action)) return 'attack';
-  if (/(defend|block|dodge|parry|guard|brace)/.test(action)) return 'defend';
-  if (/(run|flee|escape|retreat)/.test(action)) return 'run';
-  return 'other';
+  return { desc, registry: { ...state.roomRegistry, [state.location]: desc } };
 }
 
 // --- MAIN LOGIC ENGINE ---
-// DM principles: describe what the player perceives, let the player act, resolve fairly.
 async function _updateGameState(currentState: GameState, userAction: string) {
+  // Sanitize input to prevent prompt injection via structural characters
+  const safeAction = userAction.replace(/[|"\\]/g, '').slice(0, 200).trim();
+
   // 1. DETERMINE PLAYER WEAPON & DAMAGE
-  let playerDmgDice = "1d4"; // Default Fists
+  let playerDmgDice = "1d4";
   let weaponName = "Fists";
   const weapon = currentState.inventory.find(i => i.type === 'weapon');
   if (weapon) {
@@ -248,7 +160,8 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     playerDmgDice = WEAPON_TABLE[weapon.name] || "1d4";
   }
 
-  const actionIntent = getActionIntent(userAction);
+  const playerAttackBonus = currentState.character.attackBonus ?? 0;
+  const actionIntent = getActionIntent(safeAction);
 
   // 2. PREP STATE
   const newState: GameState = {
@@ -276,7 +189,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
   const monsterWasAlive = activeMonster?.status === 'alive';
 
   if (actionIntent === 'attack' && activeMonster) {
-    playerAttackRoll = Math.floor(Math.random() * 20) + 1; // no bonus for now
+    playerAttackRoll = Math.floor(Math.random() * 20) + 1 + playerAttackBonus;
     if (playerAttackRoll >= activeMonster.ac) {
       playerDamageRoll = rollDice(playerDmgDice);
       const updatedHp = Math.max(0, activeMonster.hp - playerDamageRoll);
@@ -296,52 +209,45 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     newState.nearbyEntities = [];
     newState.isCombatActive = false;
     summaryParts.push("You flee the encounter.");
-  } else if (actionIntent === 'other' && newState.nearbyEntities.length === 0) {
-    summaryParts.push("You act, but there is no immediate threat here.");
   } else if (actionIntent === 'attack' && !activeMonster) {
     summaryParts.push("You swing, but no foe stands before you.");
   } else {
-    summaryParts.push(`You ${userAction}.`);
+    summaryParts.push(`You ${safeAction}.`);
   }
 
-  // 5. MONSTER TURN (only if still present and player didn't run)
+  // 5. MONSTER TURN
   let monsterAttackRoll = 0;
   let monsterDamageRoll = 0;
-  let monsterDamageNotation = "";
   const monsterStillAlive = activeMonster && newState.nearbyEntities.find(e => e.name === activeMonster.name && e.status === 'alive');
   const monsterIsActive = newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend';
   if (monsterStillAlive && monsterIsActive && actionIntent !== 'run') {
     monsterAttackRoll = Math.floor(Math.random() * 20) + 1 + activeMonster.attackBonus;
-    monsterDamageNotation = activeMonster.damageDice;
     const playerAc = currentState.ac + newState.tempAcBonus;
     if (monsterAttackRoll >= playerAc) {
-      monsterDamageRoll = rollDice(monsterDamageNotation);
+      monsterDamageRoll = rollDice(activeMonster.damageDice);
       newState.hp = Math.max(0, currentState.hp - monsterDamageRoll);
       summaryParts.push(`${activeMonster.name} hits you for ${monsterDamageRoll} damage (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
     } else {
       summaryParts.push(`${activeMonster.name} misses you (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
     }
-  } else if (!monsterStillAlive && actionIntent === 'attack') {
-    summaryParts.push("There is nothing left to attack.");
   }
 
   // 6. CLEANUP COMBAT FLAGS
   newState.tempAcBonus = 0;
   const anyAlive = newState.nearbyEntities.some(e => e.status === 'alive');
-  newState.isCombatActive = (anyAlive && (newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend')) && newState.hp > 0;
+  newState.isCombatActive = anyAlive && (newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend') && newState.hp > 0;
   newState.nearbyEntities = [...newState.nearbyEntities];
 
-  // 6a. LOOTING / KEY RECOVERY (simple heuristic for the Iron Key at the gate)
-  const wantsKey = /(key|glint|shiny|metal|object|take|grab|pick|retrieve)/i.test(userAction) && newState.location.toLowerCase().includes('gate');
+  // 6a. LOOTING / KEY RECOVERY
+  const wantsKey = /(key|glint|shiny|metal|object|take|grab|pick|retrieve)/i.test(safeAction) && newState.location.toLowerCase().includes('gate');
   const hasIronKey = newState.inventory.some(i => i.name === 'Iron Key');
   if (wantsKey && !hasIronKey) {
     newState.inventory = [
       ...newState.inventory,
-      { id: `key-${Date.now().toString(36)}`, name: 'Iron Key', type: 'key', quantity: 1 }
+      { id: `key-${Date.now().toString(36)}`, name: 'Iron Key', type: 'key', quantity: 1 },
     ];
     newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Gained Iron Key at ${newState.location}`].slice(-10);
     summaryParts.push("You recover the Iron Key from the debris.");
-    // Once the key is taken, nearby rats lose interest
     newState.nearbyEntities = newState.nearbyEntities.map(ent =>
       ent.name.toLowerCase().includes('rat')
         ? { ...ent, status: ent.status === 'alive' ? 'fleeing' : ent.status }
@@ -352,27 +258,23 @@ async function _updateGameState(currentState: GameState, userAction: string) {
 
   // 6b. TRACK LOCATION HISTORY
   if (newState.location !== currentState.location) {
-    const history = newState.locationHistory || [];
-    const updatedHistory = [...history, newState.location].slice(-10);
-    newState.locationHistory = updatedHistory;
+    newState.locationHistory = [...(newState.locationHistory || []), newState.location].slice(-10);
   }
 
-  // 7. STORY ACT BOUNDS
-  const maxAct = Math.max(...Object.keys(STORY_ACTS).map(Number));
-  newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
+  // 7. STORY ACT BOUNDS (floor only; no upper cap so victory state can exceed max defined act)
+  newState.storyAct = Math.max(0, newState.storyAct);
 
   // 8. XP & LEVEL
   const monsterNow = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
-  const monsterKilled = monsterWasAlive && monsterNow && monsterNow.status === 'dead';
-  if (monsterKilled) {
-    const xpAward = MONSTER_MANUAL[activeMonster!.name]?.hp ? Math.max(25, MONSTER_MANUAL[activeMonster!.name].hp * 5) : 50;
+  const monsterKilled = monsterWasAlive && monsterNow?.status === 'dead';
+  if (monsterKilled && activeMonster) {
+    const xpAward = Math.max(25, (MONSTER_MANUAL[activeMonster.name]?.hp ?? 10) * 5);
     newState.xp += xpAward;
     summaryParts.push(`You gain ${xpAward} XP.`);
     let leveled = false;
     while (newState.level < XP_THRESHOLDS.length && newState.xp >= XP_THRESHOLDS[newState.level]) {
       newState.level += 1;
       newState.xpToNext = XP_THRESHOLDS[newState.level] ?? newState.xpToNext;
-      // Simple HP bump per level
       newState.maxHp += 2;
       newState.hp = Math.max(newState.hp, newState.maxHp);
       leveled = true;
@@ -380,15 +282,14 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     if (leveled) summaryParts.push(`You reach level ${newState.level}.`);
   }
 
-  // 8b. LOOT CORPSES (simple generic loot)
-  const wantsLoot = /(loot|search|rummage|pick over|salvage)/i.test(userAction);
+  // 8b. LOOT CORPSES
+  const wantsLoot = /(loot|search|rummage|pick over|salvage)/i.test(safeAction);
   const deadCorpse = newState.nearbyEntities.find(e => e.status === 'dead' && !e.name.toLowerCase().includes('looted'));
   if (wantsLoot && deadCorpse) {
     const goldFind = Math.max(1, Math.floor(Math.random() * 6));
     newState.gold += goldFind;
     const trophyName = `${deadCorpse.name} Remnant`;
     newState.inventory = [...newState.inventory, { id: `loot-${Date.now().toString(36)}`, name: trophyName, type: 'misc', quantity: 1 }];
-    // Mark corpse as looted
     newState.nearbyEntities = newState.nearbyEntities.map(e =>
       e === deadCorpse ? { ...e, name: `${e.name} (looted)` } : e
     );
@@ -396,7 +297,32 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     summaryParts.push(`You loot the ${deadCorpse.name}, gaining ${goldFind} gold and a ${trophyName}.`);
   }
 
-  // 9. SUMMARY & ROLLS
+  // 9. STORY ACT ADVANCEMENT
+  if (newState.storyAct === 0 && newState.inventory.some(i => i.name === 'Iron Key')) {
+    newState.storyAct = 1;
+    newState.quests = newState.quests.map(q =>
+      q.id === '1' ? { ...q, status: 'completed' } : q
+    );
+    newState.quests.push({ id: '2', title: 'The Deep Descent', status: 'active', description: 'Find the Cursed Crown in the armory.' });
+    summaryParts.push("The inner sanctum stirs. A new path opens.");
+  }
+  if (newState.storyAct === 1 && newState.inventory.some(i => i.name === 'Cursed Crown')) {
+    newState.storyAct = 2;
+    newState.quests = newState.quests.map(q =>
+      q.id === '2' ? { ...q, status: 'completed' } : q
+    );
+    newState.quests.push({ id: '3', title: "The King's Fall", status: 'active', description: "Destroy the Iron King's Ghost in the throne room." });
+    summaryParts.push("The crown is cold in your hands. The throne room awaits.");
+  }
+  if (newState.storyAct === 2 && monsterKilled && activeMonster?.name === 'Iron King') {
+    newState.storyAct = 3;
+    newState.quests = newState.quests.map(q =>
+      q.id === '3' ? { ...q, status: 'completed' } : q
+    );
+    summaryParts.push("The Iron King dissolves into cold smoke. The curse is broken.");
+  }
+
+  // 10. SUMMARY & ROLLS
   newState.lastActionSummary = summaryParts.join(' ').trim() || "Nothing of note happens.";
   newState.lastRolls = {
     playerAttack: playerAttackRoll,
@@ -405,7 +331,7 @@ async function _updateGameState(currentState: GameState, userAction: string) {
     monsterDamage: monsterDamageRoll,
   };
 
-  // 9. UPDATE ROOM + IMAGE REGISTRIES
+  // 11. UPDATE ROOM + IMAGE REGISTRIES
   const { desc: finalDesc, registry: textReg } = await resolveRoomDescription(newState);
   newState.roomRegistry = textReg;
 
@@ -420,23 +346,25 @@ async function _updateGameState(currentState: GameState, userAction: string) {
 type CreateOptions = { archetypeKey?: keyof typeof ARCHETYPES; forceNew?: boolean };
 
 export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be logged in.");
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("You must be logged in.");
 
-  const archetypeKey = opts?.archetypeKey;
+  const archetypeKey = opts?.archetypeKey ?? 'fighter';
   const forceNew = opts?.forceNew ?? false;
 
-  const { data: existingSave } = await supabase.from('saved_games').select('game_state').eq('user_id', user.id).single();
-  if (existingSave?.game_state && !forceNew) {
-    const hydrated = await hydrateState(existingSave.game_state);
-    const { error: updateError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: hydrated }, { onConflict: 'user_id' });
-    if (updateError) console.error("Failed to update existing save:", updateError);
+  const [existingSave] = await db.select().from(savedGames).where(eq(savedGames.userId, userId)).limit(1);
+
+  if (existingSave?.gameState && !forceNew) {
+    const hydrated = await hydrateState(existingSave.gameState);
+    await db.insert(savedGames)
+      .values({ userId, gameState: hydrated as unknown as Record<string, unknown>, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: savedGames.userId, set: { gameState: hydrated as unknown as Record<string, unknown>, updatedAt: new Date() } });
     return hydrated;
   }
 
   const start = getRandomScenario(0);
-  const archetype = archetypeKey && ARCHETYPES[archetypeKey] ? ARCHETYPES[archetypeKey] : ARCHETYPES.fighter;
+  const archetype = ARCHETYPES[archetypeKey] ?? ARCHETYPES.fighter;
 
   const startingWeapon = archetype.startingWeapon || 'Rusty Dagger';
   const startingArmor = archetype.startingArmor;
@@ -452,22 +380,23 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
       background: archetype.background,
       acBonus: archetype.acBonus,
       hpBonus: archetype.hpBonus,
+      attackBonus: archetype.attackBonus,
       startingWeapon,
       startingArmor: startingArmor || undefined,
+      archetypeKey,
     },
-    location: "The Iron Gate", 
+    location: "The Iron Gate",
     inventory: [
       { id: '1', name: startingWeapon, type: 'weapon', quantity: 1 },
-      ...(startingArmor ? [{ id: 'armor-1', name: startingArmor, type: 'armor', quantity: 1 }] : []),
+      ...(startingArmor ? [{ id: 'armor-1', name: startingArmor, type: 'armor' as const, quantity: 1 }] : []),
     ],
     quests: [{ id: '1', title: 'The Awakening', status: 'active', description: 'Find the Iron Key.' }],
-    // Populating with STATS from getScenario
-    nearbyEntities: [{ 
-        name: start.mob, 
-        status: 'alive', 
-        description: start.desc, 
-        hp: start.hp, maxHp: start.maxHp, ac: start.ac,
-        attackBonus: start.atk, damageDice: start.dmg 
+    nearbyEntities: [{
+      name: start.mob,
+      status: 'alive',
+      description: start.desc,
+      hp: start.hp, maxHp: start.maxHp, ac: start.ac,
+      attackBonus: start.atk, damageDice: start.dmg,
     }],
     lastActionSummary: "The gates are locked. A monster guards the path.",
     worldSeed: Math.floor(Math.random() * 999999),
@@ -475,30 +404,33 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
     sceneRegistry: {}, roomRegistry: {}, storyAct: 0, currentImage: "",
     locationHistory: ["The Iron Gate"],
     inventoryChangeLog: [],
-    isCombatActive: false // Start neutral; combat begins on hostile actions
+    isCombatActive: false,
+    lastRolls: { playerAttack: 0, playerDamage: 0, monsterAttack: 0, monsterDamage: 0 },
   };
 
   const { url, registry } = await resolveSceneImage(initialState);
   initialState.currentImage = url;
   initialState.sceneRegistry = registry;
 
-  const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: initialState }, { onConflict: 'user_id' });
-  if (saveError) throw new Error(`Failed to save new game: ${saveError.message}`);
+  await db.insert(savedGames)
+    .values({ userId, gameState: initialState as unknown as Record<string, unknown>, updatedAt: new Date() })
+    .onConflictDoUpdate({ target: savedGames.userId, set: { gameState: initialState as unknown as Record<string, unknown>, updatedAt: new Date() } });
+
   return initialState;
 }
 
 // --- EXPORT 2: PROCESS TURN ---
 export async function processTurn(currentState: GameState, userAction: string) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("Unauthorized");
 
   const { newState, roomDesc } = await _updateGameState(currentState, userAction);
-  
+
   const isNewLocation = newState.location !== currentState.location;
   const isLooking = userAction.toLowerCase().includes('look') || userAction.toLowerCase().includes('search');
   const isCombat = newState.isCombatActive;
-  
+
   let narrativeMode = "GENERAL_INTERACTION";
   if (isNewLocation) narrativeMode = "ROOM_INTRO";
   else if (isLooking) narrativeMode = "INSPECTION";
@@ -509,16 +441,15 @@ export async function processTurn(currentState: GameState, userAction: string) {
     .join(', ') || "None";
 
   const playerHpDelta = newState.hp - currentState.hp;
+  const tookDamageThisTurn = playerHpDelta < 0;
 
-  const { error: saveError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
-  if (saveError) throw new Error(`Failed to save turn: ${saveError.message}`);
-
-  const actData = STORY_ACTS[newState.storyAct] || STORY_ACTS[0];
+  const actData = STORY_ACTS[Math.min(newState.storyAct, 2)] || STORY_ACTS[0];
   const locationDescription = newState.roomRegistry[newState.location] || roomDesc || "An undefined space.";
   const rulesSnippet = buildRulesReferenceSnippet();
-
   const aliveThreats = newState.nearbyEntities.filter(e => e.status === 'alive').map(e => `${e.name} HP:${e.hp}/${e.maxHp}`).join(', ') || "None";
-  const tookDamageThisTurn = playerHpDelta < 0;
+
+  // Sanitize action for narrator prompt (same sanitization as game logic)
+  const safeAction = userAction.replace(/[|"\\]/g, '').slice(0, 200).trim();
 
   const { text: narration } = await generateText({
     model: groq(MODEL_NARRATOR),
@@ -532,23 +463,22 @@ HARD BANS: Do NOT invent NPCs, rooms, shops, taverns/inns, exits/doors, items/sp
 World: "The Iron Gate" is an exterior gate in cold stone, not an inn/tavern/bar.
 Respect MODE but stay concise: ROOM_INTRO/INSPECTION/COMBAT/GENERAL = same brevity.
 Style: gritty, grounded dark fantasy; 1–2 sentences under 40 words; no questions; only mention items from INVENTORY.
+ACT: ${actData.name} — ${actData.goal}
 `,
-    prompt: `ACTION: "${userAction}" | EVENT_SUMMARY: "${newState.lastActionSummary}" | LOCATION: "${newState.location}" DESC: "${locationDescription}" | ENTITY STATUS: "${visibleEntities}" | ALIVE THREATS: "${aliveThreats}" | COMBAT_ACTIVE: ${newState.isCombatActive} | TOOK_DAMAGE_THIS_TURN: ${tookDamageThisTurn} | RULES: ${rulesSnippet}`,
+    prompt: `ACTION: "${safeAction}" | EVENT_SUMMARY: "${newState.lastActionSummary}" | LOCATION: "${newState.location}" DESC: "${locationDescription}" | ENTITY STATUS: "${visibleEntities}" | ALIVE THREATS: "${aliveThreats}" | COMBAT_ACTIVE: ${newState.isCombatActive} | TOOK_DAMAGE_THIS_TURN: ${tookDamageThisTurn} | MODE: ${narrativeMode} | RULES: ${rulesSnippet}`,
   });
 
-  const updatedHistory = [...newState.narrativeHistory, narration].slice(-3);
-  newState.narrativeHistory = updatedHistory;
-  const { error: finishError } = await supabase.from('saved_games').upsert({ user_id: user.id, game_state: newState }, { onConflict: 'user_id' });
-  if (finishError) console.error("Failed to save narrative update:", finishError);
+  newState.narrativeHistory = [...newState.narrativeHistory, narration].slice(-3);
+
+  // Single save at the end with fully-resolved state (including narrative)
+  await db.insert(savedGames)
+    .values({ userId, gameState: newState as unknown as Record<string, unknown>, updatedAt: new Date() })
+    .onConflictDoUpdate({ target: savedGames.userId, set: { gameState: newState as unknown as Record<string, unknown>, updatedAt: new Date() } });
 
   return { newState, narrativeStream: narration };
 }
 
 // --- EXPORT 3: RESET ---
 export async function resetGame(archetypeKey?: keyof typeof ARCHETYPES) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-
   return createNewGame({ forceNew: true, archetypeKey });
 }

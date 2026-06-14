@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Skull, ArrowRight, BookOpen, Menu, X } from 'lucide-react'; // Added Menu, X
+import { Skull, ArrowRight, BookOpen, Menu, X } from 'lucide-react';
 import { GameState } from '../lib/game-schema';
 import { GameSidebar } from '../components/GameSidebar';
 import { createNewGame, processTurn, resetGame } from './actions';
@@ -10,11 +10,10 @@ import { ARCHETYPES, ArchetypeKey } from './characters';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
-// --- PROLOGUE CONTENT (Local Static Assets) ---
 const PROLOGUE_STEPS = [
   {
     text: "The Kingdom of Aethelgard has fallen. The Iron King, mad with grief, locked himself in the Sunken Citadel, taking the Crown of Light with him.",
-    image: "/prologue/ruins.png" 
+    image: "/prologue/ruins.png"
   },
   {
     text: "For fifty years, the land has rotted. Crops fail, the dead walk, and the sun rarely breaks the grey clouds. You are a Gravewalker, hired by the desperate few who remain.",
@@ -23,7 +22,7 @@ const PROLOGUE_STEPS = [
   {
     text: "Your contract is simple: Breach the Citadel. Find the King. End the Curse. You stand now before the Iron Gate. There is no turning back.",
     image: "/prologue/gate.png"
-  }
+  },
 ];
 
 export default function Home() {
@@ -31,13 +30,12 @@ export default function Home() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<ArchetypeKey | null>('fighter');
+  const [selectedClass, setSelectedClass] = useState<ArchetypeKey>('fighter');
   const [error, setError] = useState<string | null>(null);
-  
-  // UI STATES
+
   const [showIntro, setShowIntro] = useState(false);
   const [introStep, setIntroStep] = useState(0);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Toggle
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -46,58 +44,46 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-async function handleStart() {
+  async function handleStart() {
     setIsLoading(true);
+    setError(null);
     try {
-      if (!selectedClass) {
-        setError("Select a class to begin.");
-        setIsLoading(false);
-        return;
-      }
-      const initialState = await createNewGame({ archetypeKey: selectedClass as ArchetypeKey, forceNew: true });
+      // Without forceNew, loads existing save if one exists; otherwise creates with selectedClass
+      const initialState = await createNewGame({ archetypeKey: selectedClass });
       setGameState(initialState);
-      
-      // LOGIC FIX: Restore the Chat History from the Database
-      if (initialState.narrativeHistory && initialState.narrativeHistory.length > 0) {
-        // Map the saved string history back into chat bubbles
-        const restoredHistory = initialState.narrativeHistory.map(entry => ({
-          role: 'assistant' as const,
-          content: entry
-        }));
-        setMessages(restoredHistory);
-      } else {
-        // If no history exists (New Game), show the intro or default text
-        if (initialState.narrativeHistory.length === 0) {
-          setShowIntro(true);
-          setIntroStep(0);
-        } else {
-          setMessages([{ role: 'assistant', content: initialState.lastActionSummary || "The adventure continues..." }]);
-        }
-      }
 
-    } catch (error) {
-      console.error("Failed to start game:", error);
+      if (initialState.narrativeHistory.length > 0) {
+        setMessages(initialState.narrativeHistory.map(entry => ({
+          role: 'assistant' as const,
+          content: entry,
+        })));
+      } else {
+        setShowIntro(true);
+        setIntroStep(0);
+      }
+    } catch (err) {
+      console.error("Failed to start game:", err);
       router.push('/login');
     } finally {
       setIsLoading(false);
     }
   }
+
   async function handleRestart() {
     setIsLoading(true);
     setMessages([]);
     try {
-      // Try to reuse current character class or selectedClass; default to fighter
       const preferredClass: ArchetypeKey =
-        (gameState?.character?.class?.toLowerCase() as ArchetypeKey) ||
-        (selectedClass as ArchetypeKey) ||
+        (gameState?.character?.archetypeKey as ArchetypeKey) ||
+        selectedClass ||
         'fighter';
       setSelectedClass(preferredClass);
       const freshState = await resetGame(preferredClass);
       setGameState(freshState);
       setShowIntro(true);
       setIntroStep(0);
-    } catch (error) {
-      console.error("Restart failed", error);
+    } catch (err) {
+      console.error("Restart failed", err);
     } finally {
       setIsLoading(false);
     }
@@ -110,22 +96,21 @@ async function handleStart() {
     const userAction = input;
     setInput('');
     setIsLoading(true);
-
     setMessages(prev => [...prev, { role: 'user', content: userAction }]);
 
     try {
       const { newState, narrativeStream } = await processTurn(gameState, userAction);
       setGameState(newState);
       setMessages(prev => [...prev, { role: 'assistant', content: narrativeStream }]);
-    } catch (error) {
-      console.error("Turn Error:", error);
+    } catch (err) {
+      console.error("Turn Error:", err);
       router.push('/login');
     } finally {
       setIsLoading(false);
     }
   }
 
-  // 1. LOADING SCREEN
+  // 1. START SCREEN
   if (!gameState) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-100 p-6">
@@ -148,15 +133,15 @@ async function handleStart() {
                     <h2 className="text-xl font-bold text-amber-400">{data.label}</h2>
                     <span className="text-xs text-slate-500">{data.background}</span>
                   </div>
-                  <p className="text-sm text-slate-300 mt-2">HP +{data.hpBonus}, AC +{data.acBonus}</p>
+                  <p className="text-sm text-slate-300 mt-2">HP +{data.hpBonus}, AC +{data.acBonus}, ATK +{data.attackBonus}</p>
                   <p className="text-xs text-slate-400 mt-1">Starts with {data.startingWeapon}{data.startingArmor ? ` and ${data.startingArmor}` : ''}</p>
                 </button>
               ))}
             </div>
             {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
             <div className="flex justify-end mt-6">
-              <button 
-                onClick={handleStart} 
+              <button
+                onClick={handleStart}
                 disabled={isLoading}
                 className="bg-amber-600 hover:bg-amber-700 text-slate-900 text-lg font-bold py-3 px-6 rounded transition-all disabled:opacity-50 shadow-lg shadow-amber-900/20 flex items-center gap-3"
               >
@@ -202,8 +187,8 @@ async function handleStart() {
 
   return (
     <main className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden relative">
-      
-      {/* MOBILE HEADER (Visible only on small screens) */}
+
+      {/* MOBILE HEADER */}
       <div className="md:hidden absolute top-0 left-0 right-0 h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 z-10">
         <span className="font-bold text-amber-500">Dungeon Portal</span>
         <div className="flex items-center gap-2">
@@ -220,9 +205,8 @@ async function handleStart() {
         </div>
       </div>
 
-      {/* LEFT: Chat Area (Padded top for mobile header) */}
+      {/* LEFT: Chat Area */}
       <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-4 pt-16 md:pt-4 relative h-full">
-        {/* Desktop top bar */}
         <div className="hidden md:flex items-center justify-between mb-2 text-sm text-slate-400">
           <span className="font-semibold text-amber-500">Dungeon Portal</span>
           <button
@@ -238,8 +222,8 @@ async function handleStart() {
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] p-4 rounded-lg leading-relaxed ${
-                m.role === 'user' 
-                  ? 'bg-amber-900/40 border border-amber-800 text-amber-100 rounded-tr-none' 
+                m.role === 'user'
+                  ? 'bg-amber-900/40 border border-amber-800 text-amber-100 rounded-tr-none'
                   : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700 shadow-lg'
               }`}>
                 {m.content}
@@ -282,19 +266,15 @@ async function handleStart() {
         </div>
       </div>
 
-      {/* RIGHT: Sidebar (Responsive) */}
-      {/* 1. DESKTOP: Always visible on right */}
+      {/* RIGHT: Sidebar — desktop */}
       <div className="w-[350px] hidden md:block h-full border-l border-slate-800">
         <GameSidebar state={gameState} />
       </div>
 
-      {/* 2. MOBILE: Slide-over Drawer */}
+      {/* MOBILE: Slide-over Drawer */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex justify-end">
-          {/* Backdrop (Click to close) */}
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
-          
-          {/* Drawer */}
           <div className="relative w-[85%] max-w-[350px] h-full bg-slate-950 border-l border-slate-800 shadow-2xl animate-in slide-in-from-right duration-300">
             <button onClick={() => setIsSidebarOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-900 p-2 rounded-full text-slate-300 border border-slate-700">
               <X size={20} />

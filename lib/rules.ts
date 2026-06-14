@@ -1,5 +1,3 @@
-// lib/rules.ts
-
 export type MonsterStatBlock = {
   name: string;
   hp: number;
@@ -50,7 +48,6 @@ export const MONSTER_MANUAL: Record<string, MonsterStatBlock> = {
     damage: "1d4+1d6",
     desc: "A caustic puddle of sentient ooze.",
   },
-  // Added to prevent runtime error in Act 2
   "Iron King": {
     name: "Iron King",
     hp: 50,
@@ -58,16 +55,20 @@ export const MONSTER_MANUAL: Record<string, MonsterStatBlock> = {
     attackBonus: 7,
     damage: "1d10+4",
     desc: "The ghostly remnant of a tyrant, encased in spectral plate.",
-  }
+  },
 };
+
+export const EASY_MOBS = ["Giant Rat", "Skeleton", "Green Slime"];
 
 export const WEAPON_TABLE: Record<string, string> = {
   "Rusty Dagger": "1d4",
+  "Dagger": "1d4",
   "Longsword": "1d8",
+  "Mace": "1d6",
   "Fists": "1",
 };
 
-export const STORY_ACTS = {
+export const STORY_ACTS: Record<number, { name: string; goal: string; boss: string; clue: string }> = {
   0: {
     name: "The Awakening",
     goal: "Find the 'Iron Key' to unlock the inner sanctum.",
@@ -85,7 +86,7 @@ export const STORY_ACTS = {
     goal: "Destroy the 'Iron King's Ghost'.",
     boss: "Iron King",
     clue: "The throne room is ahead. The air is freezing.",
-  }
+  },
 };
 
 export const KEY_ITEMS = ["Iron Key", "Cursed Crown"];
