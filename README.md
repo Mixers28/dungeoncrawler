@@ -1,24 +1,34 @@
-# Dungeon Portal
+# Dungeon Portal (dcv01)
 
-AI-driven, text-first dungeon crawler built on Next.js with Supabase saves, Groq models for logic/narration, and PHB/DMG-grounded rules.
+Branch `dcv01` focuses on hybrid facts+flavor, deterministic mechanics, a prefab story graph, and 5e reference data wiring for Dungeon Portal.
 
-## Features
-- Quick-start archetypes (Fighter/Rogue/Cleric/Wizard) with class gear/bonuses and XP/level progression.
-- Deterministic combat/state resolution; narrator bound to resolved rolls, PHB actions/conditions, and DMG style.
-- Sidebar path mini-map, class/XP display, inventory and threats, plus cached scene art (with variant pooling).
-- Supabase-backed save/load; hydration/backfill; neutral starts and easy starter mobs.
+## What's in this branch
+- Facts-first logs: Accountant writes `LogEntry.summary`; optional canned flavor line pulled from `data/narration/*.json`.
+- Structured intents: user text parsed into attack/defend/run/look/check-sheet/cast-ability, with class weapon proficiencies applied; quick-insert buttons for spells/skills/weapons in the sidebar; input auto-refocuses.
+- 5e reference layer: typed loaders for weapons, armor, skills, basic actions, conditions, wizard + cleric spell lists (`data/5e/spells-wizard.json`, `data/5e/spells-cleric.json`), and starter prefabs in `data/5e/char_*.json`.
+- Story graph: scenes loaded from `story/*.json` with gated exits, spawns, rewards (XP + loot tables), and location history; narrator modes expanded but flavor stays on a leash.
+- Combat/spells: wizard and cleric spells recognized with slots/prepared checks; basic effects for key spells (damage, heals, AC buffs, pins); bandages added as a starter heal.
+- UI: sidebar includes a dice tray that surfaces last resolved attack/damage rolls, plus a header image fallback when a cached scene image is missing.
+- Loot: scene rewards and corpse looting roll from `data/5e/loot/*.json`, with monster→table mapping and coin/item drops.
+- GameState backfill: skills/logs/story/spell fields hydrate so older saves keep working.
 
-## Setup
-1) Install deps: `npm install`
-2) Env: copy `.env.local.example` to `.env.local` and fill:
-```
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-GROQ_API_KEY=...
-```
-3) Run dev: `npm run dev`
+## Run
+1) Install: `npm install`
+2) Env: set Supabase keys in `.env.local` (see `Project_README.md` for details). Gameplay saves to localStorage; Supabase is for auth/leaderboard.
+3) Dev server: `npm run dev` then open http://localhost:3000.
 
-## Notes
-- PHB/DMG references: see `public/D&D 5e - Players Handbook.pdf` and `DM-rules.md`. Curated snippets in `data/5e/*`.
-- Scene cache: images saved under `public/scene-cache` per scene key with small variant pool.
-- Saved games table requires unique constraint on `user_id`.
+## Quick checks
+- `check skills` → factual summary of skills/equipped gear (no Narrator).
+- `attack the rat with longsword` → uses 5e weapon dice and notes weapon in facts.
+- `cast magic missile on <target>` / `cast healing word` / `use bandage` → resolves spells/consumables; leveled spells consume slots; unknown/unprepared reject.
+- `look around` → factual scan of threats plus exits; repeated scans collapse to “nothing changed.”
+See `SMOKE.md` for a fuller manual runbook.
+
+## Docs & references
+- Branch source of truth (scope + roadmap): `docs/phased-plan.md`
+- Flavor lines: `data/narration/*.json`
+- 5e data: `data/5e/*.json` (weapons/armor/skills/spells; loot tables in `data/5e/loot`)
+- Original overview: `Project_README.md`
+
+## Next/Planned
+See `docs/phased-plan.md` for the canonical roadmap and validation checklist.

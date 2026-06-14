@@ -1,0 +1,23 @@
+{
+  "id": "future_courtyard_hub_v2",
+  "group": "future_act1_hub",
+  "title": "Ashen Court",
+  "location": "Courtyard",
+  "description": "Ash drifts across cracked flagstones. Three routes, each marked by different debris, beckon onward.",
+  "entryConditions": { "flagsAll": ["gate_opened"] },
+  "onEnter": {
+    "log": "You step into the ash-choked courtyard; something stirs among the stones.",
+    "spawn": [
+      { "name": "Skeleton Archer", "hp": 8, "ac": 13, "attackBonus": 4, "damageDice": "1d6" }
+    ]
+  },
+  "exits": [
+    { "verb": ["north", "arches", "hall", "hallway"], "targetSceneId": "future_hallway_branch_v2", "log": "You move beneath the cracked arches." },
+    { "verb": ["east", "ruins", "shrine", "chapel"], "targetSceneId": "future_shrine_branch_v2", "log": "You cross toward the fallen shrine." },
+    { "verb": ["west", "stairs", "cellar", "down"], "targetSceneId": "future_cellar_branch_v2", "log": "You slip down the broken stairwell." }
+  ],
+  "onComplete": {
+    "flagsSet": ["courtyard_cleared"],
+    "reward": { "xp": 75, "lootTable": "5e_minor_undead_treasure" }
+  }
+}

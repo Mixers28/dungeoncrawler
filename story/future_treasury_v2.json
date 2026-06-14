@@ -1,0 +1,19 @@
+{
+  "id": "future_treasury_v2",
+  "group": "future_act1_treasury",
+  "title": "The King's Ledger Room",
+  "location": "Treasury",
+  "description": "Stacks of mouldered scrolls and split coffers line the walls. A cold draft rustles the parchment.",
+  "entryConditions": { "flagsAll": ["boss1_cleared"] },
+  "onEnter": {
+    "log": "The vault lies in ruins, but the King's last accounts still glitter amid the dust.",
+    "spawn": []
+  },
+  "exits": [
+    { "verb": ["stairs", "up", "leave", "exit"], "targetSceneId": "act2_entry", "log": "You follow the draft toward a staircase leading higher." }
+  ],
+  "onComplete": {
+    "flagsSet": ["act1_complete"],
+    "reward": { "xp": 250, "lootTable": "5e_treasure_hoard_low", "items": [] }
+  }
+}

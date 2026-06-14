@@ -1,0 +1,23 @@
+{
+  "id": "future_hallway_branch_v1",
+  "group": "future_act1_hallway",
+  "title": "Torchgrave Corridor",
+  "location": "Hallway",
+  "description": "Blackened torch brackets line the walls. A stale draft slides past your boots.",
+  "entryConditions": { "flagsAll": ["courtyard_cleared"] },
+  "onEnter": {
+    "log": "Movement flickers at the edge of the torchlight.",
+    "spawn": [
+      { "name": "Cultist Acolyte", "hp": 9, "ac": 12, "attackBonus": 3, "damageDice": "1d8" },
+      { "name": "Skeleton", "hp": 13, "ac": 13, "attackBonus": 4, "damageDice": "1d6+2" }
+    ]
+  },
+  "exits": [
+    { "verb": ["armory", "east", "forward"], "targetSceneId": "future_armory_side_v1", "consumeItem": "Armory Key", "log": "The locked armory door yields to the key." },
+    { "verb": ["back", "south", "courtyard"], "targetSceneId": "future_courtyard_hub_v1" }
+  ],
+  "onComplete": {
+    "flagsSet": ["branch_a_cleared"],
+    "reward": { "xp": 75, "lootTable": "5e_minor_cultist_treasure" }
+  }
+}

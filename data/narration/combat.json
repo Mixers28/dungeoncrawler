@@ -1,0 +1,20 @@
+[
+  {
+    "id": "combat_hit_default_1",
+    "modes": ["COMBAT_HIT"],
+    "tags": ["default"],
+    "text": "Your blow lands with a dull crack, forcing the {enemy} back a step."
+  },
+  {
+    "id": "combat_kill_default_1",
+    "modes": ["COMBAT_KILL"],
+    "tags": ["default"],
+    "text": "The {enemy} collapses in a heap, motionless amid grit and shadow."
+  },
+  {
+    "id": "combat_miss_default_1",
+    "modes": ["COMBAT_MISS"],
+    "tags": ["default"],
+    "text": "Steel cuts only air as the {enemy} lurches aside at the last instant."
+  }
+]

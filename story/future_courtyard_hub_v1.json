@@ -1,0 +1,23 @@
+{
+  "id": "future_courtyard_hub_v1",
+  "group": "future_act1_hub",
+  "title": "Windswept Courtyard",
+  "location": "Courtyard",
+  "description": "Crumbling archways and toppled statuary ring the courtyard. Three passages yawn open from the rubble.",
+  "entryConditions": { "flagsAll": ["gate_opened"] },
+  "onEnter": {
+    "log": "The courtyard opens before you, with three distinct paths leading deeper into the Citadel.",
+    "spawn": [
+      { "name": "Skeleton", "hp": 13, "ac": 13, "attackBonus": 4, "damageDice": "1d6+2" }
+    ]
+  },
+  "exits": [
+    { "verb": ["north", "arches", "hall", "hallway"], "targetSceneId": "future_hallway_branch_v1", "log": "You head through the soot-blackened arches." },
+    { "verb": ["east", "ruins", "shrine", "chapel"], "targetSceneId": "future_shrine_branch_v1", "log": "You turn toward the crumbling shrine." },
+    { "verb": ["west", "stairs", "cellar", "down"], "targetSceneId": "future_cellar_branch_v1", "log": "You descend toward the shadowed lower halls." }
+  ],
+  "onComplete": {
+    "flagsSet": ["courtyard_cleared"],
+    "reward": { "xp": 75, "lootTable": "5e_minor_undead_treasure" }
+  }
+}

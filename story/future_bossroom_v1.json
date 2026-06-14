@@ -1,0 +1,26 @@
+{
+  "id": "future_bossroom_v1",
+  "group": "future_act1_boss",
+  "title": "The Flooded Reliquary",
+  "location": "Sunken Throne",
+  "description": "Ripples spread across ankle-deep water as you approach the raised platform.",
+  "entryConditions": { "flagsAll": ["branch_a_cleared", "branch_b_cleared", "branch_c_cleared"] },
+  "onEnter": {
+    "log": "A hulking knight of corroded iron lifts its greatsword, water streaming from its armour plates.",
+    "spawn": [
+      { "name": "Fallen Knight", "hp": 65, "ac": 18, "attackBonus": 7, "damageDice": "2d8+4" },
+      { "name": "Skeleton Spearman", "hp": 15, "ac": 14, "attackBonus": 5, "damageDice": "1d8+2" }
+    ]
+  },
+  "exits": [
+    { "verb": ["forward", "treasury", "north"], "targetSceneId": "future_treasury_v1", "log": "You cross the flooded chamber toward the vault door." }
+  ],
+  "onComplete": {
+    "flagsSet": ["boss1_cleared", "fallen_knight_slain"],
+    "reward": {
+      "xp": 350,
+      "lootTable": "5e_major_undead_boss_treasure",
+      "items": ["Iron Sigil"]
+    }
+  }
+}

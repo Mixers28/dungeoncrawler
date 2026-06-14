@@ -1,11 +1,14 @@
 import { z } from 'zod';
 
+// Shared Zod schemas that define the shape of game content and runtime state.
+
 // 1. ITEMS
 export const itemSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(['weapon', 'armor', 'potion', 'scroll', 'misc', 'food', 'material', 'key']),
   quantity: z.coerce.number().int(),
+  equipped: z.boolean().default(false),
   effect: z.string().optional(),
 });
 
@@ -17,7 +20,7 @@ export const questSchema = z.object({
   description: z.string(),
 });
 
-// 3. ENTITIES
+// 3. ENTITIES (monsters/NPCs on the map)
 export const entitySchema = z.object({
   name: z.string(),
   status: z.string().default('alive'),
@@ -27,15 +30,43 @@ export const entitySchema = z.object({
   ac: z.coerce.number().int().default(10),
   attackBonus: z.coerce.number().int().default(2),
   damageDice: z.string().default('1d4'),
+  effects: z.array(z.object({
+    name: z.string(),
+    type: z.enum(['debuff', 'buff']).default('debuff'),
+    expiresAtTurn: z.number().optional(),
+  })).default([]),
+  imageUrl: z.string().optional(),
+  position: z.object({ x: z.number(), y: z.number() }).optional(),
 });
 
-// 4. MASTER STATE
+export const narrationModeEnum = z.enum([
+  'ROOM_INTRO',
+  'COMBAT_HIT',
+  'COMBAT_MISS',
+  'COMBAT_KILL',
+  'SEARCH_FOUND',
+  'SEARCH_EMPTY',
+  'LOOT_GAIN',
+  'INVESTIGATE',
+  'GENERAL',
+  'SHEET',
+]);
+
+export const logEntrySchema = z.object({
+  id: z.string().default(() => `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`),
+  mode: narrationModeEnum,
+  summary: z.string(),
+  flavor: z.string().optional(),
+  createdAt: z.string().default(() => new Date().toISOString()),
+});
+
+// 4. MASTER STATE (saved/loaded between turns)
 export const gameStateSchema = z.object({
   hp: z.coerce.number().int(),
   maxHp: z.coerce.number().int(),
   ac: z.coerce.number().int(),
   tempAcBonus: z.coerce.number().int().default(0),
-  gold: z.coerce.number().int(),
+  gold: z.coerce.number().int().nonnegative().default(0),
   level: z.coerce.number().int().default(1),
   xp: z.coerce.number().int().default(0),
   xpToNext: z.coerce.number().int().default(300),
@@ -62,6 +93,8 @@ export const gameStateSchema = z.object({
   }),
   location: z.string(),
   inventory: z.array(itemSchema).default([]),
+  equippedWeaponId: z.string().optional(),
+  equippedArmorId: z.string().optional(),
   quests: z.array(questSchema).default([]),
   nearbyEntities: z.array(entitySchema).default([]),
   lastActionSummary: z.string(),
@@ -69,7 +102,13 @@ export const gameStateSchema = z.object({
   narrativeHistory: z.array(z.string()).default([]),
   sceneRegistry: z.record(z.string()).default({}),
   roomRegistry: z.record(z.string()).default({}),
+  monsterRegistry: z.record(z.object({
+    imageUrl: z.string().startsWith('/monster-cache/'),
+    lastSeenFloor: z.number().int().positive(),
+    encounterCount: z.number().int().nonnegative(),
+  })).default({}),
   storyAct: z.coerce.number().int().default(0),
+  currentFloor: z.coerce.number().int().default(1),
   currentImage: z.string().optional(),
   locationHistory: z.array(z.string()).default([]),
   inventoryChangeLog: z.array(z.string()).default([]),
@@ -78,13 +117,38 @@ export const gameStateSchema = z.object({
     playerDamage: z.coerce.number().int().default(0),
     monsterAttack: z.coerce.number().int().default(0),
     monsterDamage: z.coerce.number().int().default(0),
+    playerAttackIsSave: z.boolean().default(false),
+    playerAttackDc: z.coerce.number().int().default(0),
   }).default({
     playerAttack: 0,
     playerDamage: 0,
     monsterAttack: 0,
     monsterDamage: 0,
+    playerAttackIsSave: false,
+    playerAttackDc: 0,
   }),
   isCombatActive: z.boolean().default(false),
+  abilityScores: z.record(z.string(), z.number()).default({}),
+  skills: z.array(z.string()).default([]),
+  knownSpells: z.array(z.string()).default([]),
+  preparedSpells: z.array(z.string()).default([]),
+  spellSlots: z.record(z.object({ max: z.number(), current: z.number() })).default({}),
+  spellcastingAbility: z.string().default('int'),
+  spellAttackBonus: z.number().default(0),
+  spellSaveDc: z.number().default(0),
+  activeEffects: z.array(z.object({
+    name: z.string(),
+    type: z.enum(['ac_bonus', 'buff', 'debuff']).default('buff'),
+    value: z.number().optional(),
+    expiresAtTurn: z.number().optional(),
+  })).default([]),
+  storySceneId: z.string().default('iron_gate_v1'),
+  storyFlags: z.array(z.string()).default([]),
+  turnCounter: z.number().default(0),
+  log: z.array(logEntrySchema).default([]),
 });
 
+export type Entity = z.infer<typeof entitySchema>;
 export type GameState = z.infer<typeof gameStateSchema>;
+export type LogEntry = z.infer<typeof logEntrySchema>;
+export type NarrationMode = z.infer<typeof narrationModeEnum>;

@@ -1,0 +1,49 @@
+{
+  "coins": {
+    "cp": "4d10",
+    "sp": "6d10",
+    "gp": "3d10"
+  },
+  "items": [
+    {
+      "id": "small_gemstone",
+      "weight": 4,
+      "qty": "1d4"
+    },
+    {
+      "id": "healing_potion",
+      "weight": 3,
+      "qty": "1d2"
+    },
+    {
+      "id": "scroll_lvl1_utility",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "scroll_cantrip_random",
+      "weight": 3,
+      "qty": "1d3"
+    },
+    {
+      "id": "simple_weapon_choice",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "tool_kit_basic",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "trinket_bundle",
+      "weight": 4,
+      "qty": "1d6"
+    },
+    {
+      "id": "bandage",
+      "weight": 1,
+      "qty": "1d2"
+    }
+  ]
+}

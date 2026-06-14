@@ -1,0 +1,22 @@
+{
+  "id": "future_cellar_branch_v2",
+  "group": "future_act1_cellar",
+  "title": "Silted Vault",
+  "location": "Cellar",
+  "description": "Silt and fallen stone choke the vaults below. A damp wind seeps through the cracks.",
+  "entryConditions": { "flagsAll": ["courtyard_cleared"] },
+  "onEnter": {
+    "log": "The air smells of rot as a figure lurches from the silt.",
+    "spawn": [
+      { "name": "Armoured Zombie", "hp": 30, "ac": 16, "attackBonus": 5, "damageDice": "1d8+3" }
+    ]
+  },
+  "exits": [
+    { "verb": ["cache", "tunnel", "east"], "targetSceneId": "future_cache_side_v2", "consumeItem": "Hidden Map", "log": "The map guides you to a hidden passage." },
+    { "verb": ["back", "up", "courtyard"], "targetSceneId": "future_courtyard_hub_v2" }
+  ],
+  "onComplete": {
+    "flagsSet": ["branch_c_cleared"],
+    "reward": { "xp": 75, "lootTable": "5e_arms_and_armor_minor" }
+  }
+}

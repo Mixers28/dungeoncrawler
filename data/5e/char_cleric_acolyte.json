@@ -1,0 +1,75 @@
+{
+  "id": "char_cleric_life",
+  "name": "Acolyte of Light",
+  "level": 1,
+  "class": "cleric",
+  "subclass": "life_domain",
+  "race": "human",
+  "hit_die": "d8",
+  "max_hp": 10,
+  "current_hp": 10,
+  "proficiency_bonus": 2,
+  "abilities": {
+    "str": 14,
+    "dex": 12,
+    "con": 14,
+    "int": 10,
+    "wis": 16,
+    "cha": 8
+  },
+  "skills": [
+    "insight",
+    "medicine",
+    "religion"
+  ],
+  "proficiencies": {
+    "armor": ["light", "medium", "shields", "heavy"],
+    "weapons": ["simple"],
+    "tools": []
+  },
+  "equipment": [
+    "chain_mail",
+    "shield",
+    "mace",
+    "light_crossbow",
+    "bolts_20",
+    "priests_pack",
+    "holy_symbol"
+  ],
+  "spells": {
+    "cantrips_known": [
+      "sacred flame",
+      "guidance",
+      "spare the dying"
+    ],
+    "spell_list": [
+      "bless",
+      "cure wounds",
+      "healing word",
+      "shield of faith",
+      "guiding bolt"
+    ],
+    "domain_spells": [
+      "bless",
+      "cure wounds"
+    ],
+    "prepared": [
+      "bless",
+      "cure wounds",
+      "healing word",
+      "guiding bolt"
+    ]
+  },
+  "casting": {
+    "spellcasting_ability": "wis",
+    "spell_attack_bonus": 5,
+    "spell_save_dc": 13,
+    "slots": {
+      "level_1": {
+        "max": 2,
+        "current": 2
+      }
+    }
+  },
+  "tags": ["cleric", "life_domain", "healer", "support", "frontliner"]
+}

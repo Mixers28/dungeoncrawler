@@ -1,0 +1,27 @@
+{
+  "id": "side_broken_shrine",
+  "group": "act1_side_room",
+  "title": "Broken Shrine",
+  "location": "Hallway Side Room",
+  "narrationKey": "side_broken_shrine",
+  "description": "A toppled stone statue lies across a dust-covered shrine. Faded runes glow faintly beneath the rubble.",
+  "entryConditions": { "flagsAll": ["hallway_seen"] },
+  "onEnter": {
+    "log": "You approach the shattered shrine; a robed figure stirs at its base.",
+    "spawn": [
+      { "name": "Cultist Acolyte", "hp": 9, "ac": 12, "attackBonus": 3, "damageDice": "1d8" }
+    ]
+  },
+  "exits": [
+    { "verb": ["back", "return", "hallway"], "targetSceneId": "hallway_v1" },
+    { "verb": ["back", "return", "hallway"], "targetSceneId": "hallway_v2" }
+  ],
+  "onComplete": {
+    "flagsSet": ["side_broken_shrine_cleared"],
+    "reward": {
+      "xp": 60,
+      "lootTable": "5e_minor_cultist_treasure",
+      "items": ["Blessed Charm"]
+    }
+  }
+}

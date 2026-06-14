@@ -2,40 +2,92 @@
 
 import { useState } from 'react';
 import { GameState } from '../lib/game-schema';
+import { getTraderAtLocation } from '../lib/traders';
+import { BUILD_SHA } from '../lib/build-info';
 import { Shield, Sword, MapPin, Coins, Scroll, Skull, ImageOff, Heart } from 'lucide-react';
+import { DiceTray } from './DiceTray';
 
-export function GameSidebar({ state }: { state: GameState }) {
+function SidebarHeaderImage({
+  primaryUrl,
+  fallbackUrl,
+  alt,
+}: {
+  primaryUrl: string;
+  fallbackUrl: string;
+  alt: string;
+}) {
+  const [stage, setStage] = useState<'primary' | 'fallback' | 'none'>(primaryUrl ? 'primary' : 'fallback');
+
+  if (stage === 'none') {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-slate-800 via-slate-900 to-black flex items-center justify-center opacity-50">
+        <ImageOff className="text-slate-700 mb-6" size={48} />
+      </div>
+    );
+  }
+
+  const src = stage === 'primary' ? primaryUrl : fallbackUrl;
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover opacity-80 transition-opacity duration-700"
+      key={`${stage}:${src}`}
+      onError={() => setStage(prev => (prev === 'primary' ? 'fallback' : 'none'))}
+    />
+  );
+}
+
+export function GameSidebar({ state, onInsertCommand }: { state: GameState; onInsertCommand?: (cmd: string) => void }) {
   const hpPercent = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
-  const [imageError, setImageError] = useState(false);
+  const buildSha = process.env.NEXT_PUBLIC_GIT_SHA || BUILD_SHA;
+  const trader = getTraderAtLocation(state.location);
+  const handleSpellClick = (name: string) => {
+    const cmd = `cast ${name.toLowerCase()}`;
+    if (onInsertCommand) {
+      onInsertCommand(cmd);
+      return;
+    }
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(cmd);
+    }
+  };
+  const [showSpellbook, setShowSpellbook] = useState(true);
+  const [showBackpack, setShowBackpack] = useState(true);
 
   // Use the image URL provided by the backend library
   const imageUrl = state.currentImage || "";
   const locationTrail = state.locationHistory?.slice(-6) || [];
+
+  const fallbackImageUrl =
+    state.storyAct <= 0 ? '/prologue/gate.png' :
+    state.storyAct === 1 ? '/prologue/ruins.png' :
+    '/prologue/wanderer.png';
 
   return (
     <div className="h-full bg-slate-950 border-l border-slate-800 flex flex-col text-slate-200 overflow-hidden font-sans">
       
       {/* HEADER IMAGE */}
       <div className="relative w-full h-48 bg-slate-900 shrink-0 group overflow-hidden">
-        {!imageError && imageUrl ? (
-          <img 
-            src={imageUrl} 
-            alt={state.location}
-            className="w-full h-full object-cover opacity-80 transition-opacity duration-700"
-            key={imageUrl} 
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-slate-800 via-slate-900 to-black flex items-center justify-center opacity-50">
-             <ImageOff className="text-slate-700 mb-6" size={48} />
-          </div>
-        )}
+        <SidebarHeaderImage
+          key={`${state.location}:${imageUrl}`}
+          primaryUrl={imageUrl}
+          fallbackUrl={fallbackImageUrl}
+          alt={state.location}
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none" />
-        <div className="absolute bottom-4 left-4 right-4 z-10">
-            <h2 className="text-xl font-bold text-amber-500 flex items-center gap-2 drop-shadow-md">
+        <div className="absolute bottom-4 left-4 right-4 z-10 space-y-2">
+          <h2 className="text-xl font-bold text-amber-500 flex items-center gap-2 drop-shadow-md">
             <MapPin size={20} />
             {state.location}
-            </h2>
+          </h2>
+          {trader && (
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-900/70 border border-amber-700 px-3 py-1 text-[11px] uppercase tracking-widest text-amber-100">
+              <Coins size={12} />
+              Trader Nearby
+            </div>
+          )}
         </div>
       </div>
 
@@ -77,6 +129,8 @@ export function GameSidebar({ state }: { state: GameState }) {
           <div className="text-xs text-slate-400">XP: {state.xp} / {state.xpToNext}</div>
         </div>
 
+        <DiceTray state={state} />
+
         {/* LOCATION TRAIL / MINI-MAP */}
         <div className="space-y-2">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
@@ -103,25 +157,124 @@ export function GameSidebar({ state }: { state: GameState }) {
 
         {/* INVENTORY */}
         <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
-                Backpack
-            </h3>
-            {state.inventory.length === 0 && <p className="text-xs text-slate-600 italic">Empty...</p>}
-            <div className="space-y-2">
-            {state.inventory.map((item, i) => (
-                <div key={i} className="flex items-center gap-3 p-2 bg-slate-900/50 rounded hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
-                <div className="p-2 bg-slate-950 rounded text-amber-700/80">
-                    {item.type === 'weapon' ? <Sword size={16} /> : <Scroll size={16} />}
+            <button
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2 hover:text-amber-400 transition-colors"
+              onClick={() => setShowBackpack(!showBackpack)}
+            >
+              <span>Backpack</span>
+              <span className="text-[10px] font-mono text-slate-400">{showBackpack ? 'Hide' : 'Show'}</span>
+            </button>
+            {showBackpack && (
+              <>
+                {state.inventory.length === 0 && <p className="text-xs text-slate-600 italic">Empty...</p>}
+                <div className="space-y-2">
+                  {state.inventory.map((item, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2 bg-slate-900/50 rounded hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
+                      <div className="p-2 bg-slate-950 rounded text-amber-700/80">
+                        {item.type === 'weapon' ? <Sword size={16} /> : <Scroll size={16} />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-300">{item.name}</p>
+                        {item.effect && <p className="text-[10px] text-slate-500">{item.effect}</p>}
+                      </div>
+                      <span className="text-xs font-mono text-slate-500">x{item.quantity}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-300">{item.name}</p>
-                    {item.effect && <p className="text-[10px] text-slate-500">{item.effect}</p>}
-                </div>
-                <span className="text-xs font-mono text-slate-500">x{item.quantity}</span>
-                </div>
-            ))}
-            </div>
+              </>
+            )}
         </div>
+
+        {/* SKILLS QUICK INSERT */}
+        {state.skills && state.skills.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
+              Skills
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {state.skills.map((skill, idx) => (
+                <button
+                  key={`${skill}-${idx}`}
+                  className="px-2 py-1 rounded border border-slate-800 bg-slate-900/60 text-xs text-slate-200 hover:border-amber-600 hover:text-amber-200 transition-colors"
+                  onClick={() => onInsertCommand?.(`use ${skill.toLowerCase()}`)}
+                >
+                  {skill}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* WEAPONS QUICK INSERT */}
+        {state.inventory && state.inventory.some(i => i.type === 'weapon') && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
+              Weapons
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {state.inventory.filter(i => i.type === 'weapon').map((item, idx) => (
+                <button
+                  key={`${item.name}-${idx}`}
+                  className="px-2 py-1 rounded border border-slate-800 bg-slate-900/60 text-xs text-slate-200 hover:border-amber-600 hover:text-amber-200 transition-colors"
+                  onClick={() => onInsertCommand?.(`attack with ${item.name.toLowerCase()}`)}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* SPELLBOOK (only if spells exist) */}
+        {state.knownSpells && state.knownSpells.length > 0 && (
+          <div className="space-y-3">
+            <button
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2 hover:text-amber-400 transition-colors"
+              onClick={() => setShowSpellbook(!showSpellbook)}
+            >
+              <span>Spellbook</span>
+              <span className="text-[10px] font-mono text-slate-400">{showSpellbook ? 'Hide' : 'Show'}</span>
+            </button>
+            {showSpellbook && (
+              <>
+                <div className="space-y-2">
+                  {state.knownSpells?.map((spell, i) => {
+                    const prepared = state.preparedSpells?.some(s => s.toLowerCase() === spell.toLowerCase());
+                    return (
+                      <button
+                        key={`${spell}-${i}`}
+                        className="w-full flex items-center justify-between gap-2 p-2 bg-slate-900/50 rounded border border-transparent hover:border-amber-700 hover:bg-slate-800 text-left transition-colors"
+                        onClick={() => handleSpellClick(spell)}
+                        title="Click to copy a cast command"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Scroll size={16} className="text-amber-500" />
+                          <span className="text-sm text-slate-200">{spell}</span>
+                        </div>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${prepared ? 'bg-amber-900/50 text-amber-200 border border-amber-700' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                          {prepared ? 'Prepared' : 'Known'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {state.spellSlots && Object.keys(state.spellSlots).length > 0 && (
+                  <div className="text-[11px] text-slate-400">
+                    <div className="uppercase tracking-widest text-slate-500 mb-1">Slots</div>
+                    <div className="space-y-1">
+                      {Object.entries(state.spellSlots).map(([lvl, data]) => (
+                        <div key={lvl} className="flex items-center justify-between">
+                          <span>{lvl.replace('_', ' ')}</span>
+                          <span className="font-mono text-slate-200">{data.current}/{data.max}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* NEARBY ENTITIES (With HP Bars) */}
         {state.nearbyEntities.length > 0 && (
@@ -168,6 +321,9 @@ export function GameSidebar({ state }: { state: GameState }) {
                 </div>
             </div>
         )}
+      </div>
+      <div className="border-t border-slate-800 px-4 py-3 text-[10px] uppercase tracking-widest text-slate-600">
+        Build {buildSha}
       </div>
     </div>
   );

@@ -1,0 +1,11 @@
+{
+  "id": "iron_gate_trader",
+  "name": "Gate-Front Peddler",
+  "location": "The Iron Gate",
+  "inventory": [
+    { "itemId": "healing_potion", "price": 5 },
+    { "itemId": "shortsword", "price": 8 },
+    { "itemId": "leather", "price": 10 }
+  ],
+  "buybackRate": 0.5
+}

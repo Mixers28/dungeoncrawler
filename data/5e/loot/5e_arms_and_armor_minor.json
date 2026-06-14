@@ -1,0 +1,54 @@
+{
+  "coins": {
+    "cp": "0",
+    "sp": "1d6",
+    "gp": "1d4"
+  },
+  "items": [
+    {
+      "id": "club",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "dagger",
+      "weight": 4,
+      "qty": "1d2"
+    },
+    {
+      "id": "shortsword",
+      "weight": 3,
+      "qty": "1"
+    },
+    {
+      "id": "handaxe",
+      "weight": 3,
+      "qty": "1"
+    },
+    {
+      "id": "light_crossbow",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "bolt_bundle_20",
+      "weight": 3,
+      "qty": "1"
+    },
+    {
+      "id": "leather_armor",
+      "weight": 3,
+      "qty": "1"
+    },
+    {
+      "id": "shield_wooden",
+      "weight": 2,
+      "qty": "1"
+    },
+    {
+      "id": "chain_shirt",
+      "weight": 1,
+      "qty": "1"
+    }
+  ]
+}

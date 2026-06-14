@@ -1,0 +1,6 @@
+[
+  { "level": 1, "xpRequired": 0, "hpGain": 0, "proficiencyBonus": 2 },
+  { "level": 2, "xpRequired": 300, "hpGain": 5, "proficiencyBonus": 2 },
+  { "level": 3, "xpRequired": 900, "hpGain": 5, "proficiencyBonus": 2 },
+  { "level": 4, "xpRequired": 2700, "hpGain": 5, "proficiencyBonus": 2 }
+]

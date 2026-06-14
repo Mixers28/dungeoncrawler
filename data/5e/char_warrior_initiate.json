@@ -1,0 +1,42 @@
+{
+  "id": "char_warrior_fighter",
+  "name": "Warrior Initiate",
+  "level": 1,
+  "class": "fighter",
+  "subclass": "champion",
+  "race": "human",
+  "hit_die": "d10",
+  "max_hp": 12,
+  "current_hp": 12,
+  "proficiency_bonus": 2,
+  "abilities": {
+    "str": 16,
+    "dex": 14,
+    "con": 14,
+    "int": 8,
+    "wis": 12,
+    "cha": 10
+  },
+  "skills": [
+    "athletics",
+    "intimidation",
+    "perception",
+    "survival"
+  ],
+  "proficiencies": {
+    "armor": ["all light", "all medium", "all heavy", "shields"],
+    "weapons": ["simple", "martial"],
+    "tools": []
+  },
+  "equipment": [
+    "chain_mail",
+    "shield",
+    "longsword",
+    "handaxe",
+    "handaxe",
+    "explorers_pack"
+  ],
+  "spells": null,
+  "casting": null,
+  "tags": ["fighter", "warrior", "frontline", "tank", "martial"]
+}

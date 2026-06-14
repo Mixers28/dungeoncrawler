@@ -1,0 +1,7 @@
+This is a placeholder for the monster placeholder image.
+To add a proper placeholder:
+1. Create a simple 512x512 silhouette PNG (gray creature shape on transparent background)
+2. Save as public/monster-cache/placeholder.png
+3. Delete this .txt file
+
+For now, the game will gracefully handle missing images with empty state or default styling.

@@ -1,0 +1,19 @@
+{
+  "id": "future_sanctum_side_v1",
+  "group": "future_act1_sanctum",
+  "title": "Sealed Sanctum",
+  "location": "Sanctum",
+  "description": "A small chamber lined with cracked mosaics. A faint hum lingers in the air.",
+  "entryConditions": { "requiresItem": "Sanctum Sigil" },
+  "onEnter": {
+    "log": "The sanctum door seals behind you with a soft click.",
+    "spawn": []
+  },
+  "exits": [
+    { "verb": ["back", "shrine"], "targetSceneId": "future_shrine_branch_v1" }
+  ],
+  "onComplete": {
+    "flagsSet": ["sanctum_opened"],
+    "reward": { "xp": 25, "lootTable": "5e_minor_cultist_treasure", "items": ["Armory Key"] }
+  }
+}

@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Dungeon Portal",
-  description: "AI-Powered AD&D Experience",
+  description: "Deterministic text-first dungeon crawler",
 };
 
 export default function RootLayout({

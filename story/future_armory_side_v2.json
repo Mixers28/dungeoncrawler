@@ -1,0 +1,19 @@
+{
+  "id": "future_armory_side_v2",
+  "group": "future_act1_armory",
+  "title": "Gilded Weapon Racks",
+  "location": "Armory",
+  "description": "Broken weapon racks glint with flecks of gold leaf, hinting at better days.",
+  "entryConditions": { "requiresItem": "Armory Key" },
+  "onEnter": {
+    "log": "You find the armory's last cache amid the debris.",
+    "spawn": []
+  },
+  "exits": [
+    { "verb": ["back", "hallway"], "targetSceneId": "future_hallway_branch_v2" }
+  ],
+  "onComplete": {
+    "flagsSet": ["armory_looted"],
+    "reward": { "xp": 25, "lootTable": "5e_arms_and_armor_minor", "items": ["Hidden Map"] }
+  }
+}
