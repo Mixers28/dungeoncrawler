@@ -14,15 +14,14 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-slate-950 text-slate-200 gap-4">
+    <div className="flex h-screen flex-col items-center justify-center bg-slate-950 text-slate-200 gap-4 p-8">
       <h2 className="text-xl font-bold text-red-500">Something went wrong!</h2>
-      <p className="text-slate-400">Your save file might be corrupted due to an update.</p>
+      <p className="text-slate-400 text-sm font-mono bg-slate-900 px-4 py-2 rounded max-w-lg text-center break-all">
+        {error.message || 'An unexpected error occurred.'}
+      </p>
       <button
         className="px-4 py-2 bg-amber-600 rounded font-bold hover:bg-amber-700"
-        onClick={
-          // Attempt to recover by trying to re-render the segment
-          () => reset()
-        }
+        onClick={() => reset()}
       >
         Try again
       </button>

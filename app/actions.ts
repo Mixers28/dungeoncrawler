@@ -16,6 +16,7 @@ import { ARCHETYPES } from './characters';
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
   apiKey: process.env.GROQ_API_KEY,
+  compatibility: 'compatible', // forces chat completions — Groq doesn't support the Responses API
 });
 
 const MODEL_NARRATOR = 'llama-3.3-70b-versatile';
