@@ -211,7 +211,7 @@ export function applySceneEntry(
     if (scene.onEnter?.log) {
       summaryParts.push(scene.onEnter.log);
     }
-    if (scene.onEnter?.spawn) {
+    if (scene.onEnter?.spawn && scene.onEnter.spawn.length > 0) {
       // Use monster image service for visual representation
       try {
         nextState.nearbyEntities = scene.onEnter.spawn.map(sp => ({
