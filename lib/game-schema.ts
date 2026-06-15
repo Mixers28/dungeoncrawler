@@ -52,12 +52,26 @@ export const narrationModeEnum = z.enum([
   'SHEET',
 ]);
 
+export const rollEventSchema = z.object({
+  label: z.string(),
+  d20: z.number().int(),
+  modifier: z.number().int(),
+  total: z.number().int(),
+  against: z.number().int(),
+  outcome: z.enum(['hit', 'miss', 'crit']),
+  damage: z.number().int().optional(),
+  damageDice: z.string().optional(),
+  damageType: z.string().optional(),
+});
+export type RollEvent = z.infer<typeof rollEventSchema>;
+
 export const logEntrySchema = z.object({
   id: z.string().default(() => `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`),
   mode: narrationModeEnum,
   summary: z.string(),
   flavor: z.string().optional(),
   createdAt: z.string().default(() => new Date().toISOString()),
+  rolls: z.array(rollEventSchema).optional(),
 });
 
 // 4. MASTER STATE (saved/loaded between turns)

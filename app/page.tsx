@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Skull, ArrowRight, BookOpen, X, Eye, EyeOff } from 'lucide-react';
-import type { GameState, LogEntry, NarrationMode } from '../lib/game-schema';
+import type { GameState, LogEntry, NarrationMode, RollEvent } from '../lib/game-schema';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { RightSidebar } from '../components/RightSidebar';
 import { BattlefieldView } from '../components/BattlefieldView';
@@ -14,9 +14,10 @@ import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 import { saveScore } from '../lib/leaderboard';
 import { CommandHints } from '../components/CommandHints';
+import { DiceRollRow } from '../components/DiceRollBadge';
 
 type UserMessage = { role: 'user'; content: string };
-type AssistantMessage = { role: 'assistant'; summary: string; flavor?: string; mode?: NarrationMode; createdAt?: string };
+type AssistantMessage = { role: 'assistant'; summary: string; flavor?: string; mode?: NarrationMode; createdAt?: string; rolls?: RollEvent[] };
 type Message = UserMessage | AssistantMessage;
 
 const VALID_QUICK_ACTIONS = ['attack', 'cast', 'item', 'run'] as const;
@@ -113,6 +114,7 @@ export default function Home() {
           flavor: logEntry.flavor,
           mode: logEntry.mode,
           createdAt: logEntry.createdAt,
+          rolls: logEntry.rolls,
         }
       ]);
 
@@ -241,6 +243,7 @@ export default function Home() {
         flavor: entry.flavor,
         mode: entry.mode,
         createdAt: entry.createdAt,
+        rolls: entry.rolls,
       }));
 
       if (restoredLog.length > 0) {
@@ -514,6 +517,7 @@ export default function Home() {
                       <span className="text-slate-300 italic"> {m.flavor}</span>
                     )}
                   </div>
+                  {m.rolls && m.rolls.length > 0 && <DiceRollRow rolls={m.rolls} />}
                 </div>
               </div>
             );

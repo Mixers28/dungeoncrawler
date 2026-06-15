@@ -11,6 +11,7 @@ import { getTraderAtLocation } from '../../traders';
 import { rollDice, rollD20 } from '../dice';
 import { type CoreActionIntent, type GameIntent, type TradeIntent } from '../intent';
 import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, computeArmorClassFromInventory, resolveRoomDescription, resolveSceneImage } from '../state';
+import { type RollEvent } from '../../game-schema';
 
 
 // --- HELPERS ---
@@ -518,6 +519,7 @@ async function _updateGameState(
   accountantFacts: string[];
   eventSummary: string;
   narrationMode: NarrationMode;
+  rollLog: RollEvent[];
 }> {
   const userAction = intent.userAction;
   // 1. DETERMINE PLAYER WEAPON & DAMAGE
@@ -568,13 +570,13 @@ async function _updateGameState(
     const aliveThreat = newState.nearbyEntities.some(e => e.status === 'alive');
     if (aliveThreat) {
       newState.lastActionSummary = "You cannot leave while threats remain.";
-      return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: ["You cannot leave while threats remain."], eventSummary: newState.lastActionSummary, narrationMode: "GENERAL" };
+      return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: ["You cannot leave while threats remain."], eventSummary: newState.lastActionSummary, narrationMode: "GENERAL", rollLog: [] };
     }
     if (sceneExit.consumeItem) {
       const hasItem = newState.inventory.some(i => i.name.toLowerCase() === sceneExit.consumeItem!.toLowerCase());
       if (!hasItem) {
         newState.lastActionSummary = `You need ${sceneExit.consumeItem} to proceed.`;
-        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: [newState.lastActionSummary], eventSummary: newState.lastActionSummary, narrationMode: "GENERAL" };
+        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: [newState.lastActionSummary], eventSummary: newState.lastActionSummary, narrationMode: "GENERAL", rollLog: [] };
       }
       newState.inventory = newState.inventory.filter(i => i.name.toLowerCase() !== sceneExit.consumeItem!.toLowerCase());
     }
@@ -587,7 +589,7 @@ async function _updateGameState(
       if (sceneExit.log) summaryParts.push(sceneExit.log);
       const { state: transitioned, roomDesc } = applySceneEntry(target.id, newState, summaryParts);
       transitioned.lastActionSummary = summaryParts.join(' ').trim() || `You move to ${target.location}.`;
-      return { newState: transitioned, roomDesc, accountantFacts: summaryParts, eventSummary: transitioned.lastActionSummary, narrationMode: "ROOM_INTRO" };
+      return { newState: transitioned, roomDesc, accountantFacts: summaryParts, eventSummary: transitioned.lastActionSummary, narrationMode: "ROOM_INTRO", rollLog: [] };
     }
   }
 
@@ -601,6 +603,7 @@ async function _updateGameState(
   let playerAttackIsSave = false;
   let playerAttackDc: number | null = null;
   const summaryParts: string[] = [];
+  const rollLog: RollEvent[] = [];
   const safeUserAction = sanitizeUserAction(userAction);
   let combatOutcome: 'hit' | 'miss' | 'kill' | null = null;
   let attemptedSearch = false;
@@ -739,7 +742,9 @@ async function _updateGameState(
             if (damageDice && activeMonster) {
               const damageType = mechanics.damage.type ? mechanics.damage.type.toLowerCase() : 'damage';
               if (mechanics.attackType) {
-                const spellAttack = rollD20() + (newState.spellAttackBonus || 0);
+                const rawSpellD20 = rollD20();
+                const spellBonus = newState.spellAttackBonus || 0;
+                const spellAttack = rawSpellD20 + spellBonus;
                 playerAttackRoll = spellAttack;
                 playerAttackIsSave = false;
                 playerAttackDc = null;
@@ -747,21 +752,26 @@ async function _updateGameState(
                   const dmg = rollDice(damageDice);
                   playerDamageRoll = dmg;
                   applyDamageToActiveMonster(dmg);
+                  rollLog.push({ label: spell.name, d20: rawSpellD20, modifier: spellBonus, total: spellAttack, against: activeMonster.ac, outcome: rawSpellD20 === 20 ? 'crit' : 'hit', damage: dmg, damageDice, damageType });
                   summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
                 } else {
+                  rollLog.push({ label: spell.name, d20: rawSpellD20, modifier: spellBonus, total: spellAttack, against: activeMonster.ac, outcome: 'miss' });
                   summaryParts.push(`Your ${spell.name} misses ${targetName}.`);
                 }
               } else if (mechanics.dc?.ability) {
-                const saveRoll = rollD20();
-                playerAttackRoll = saveRoll;
+                const saveDc = newState.spellSaveDc || 10;
+                const rawSaveD20 = rollD20();
+                playerAttackRoll = rawSaveD20;
                 playerAttackIsSave = true;
-                playerAttackDc = newState.spellSaveDc || 10;
-                if (saveRoll < (newState.spellSaveDc || 10)) {
+                playerAttackDc = saveDc;
+                if (rawSaveD20 < saveDc) {
                   const dmg = rollDice(damageDice);
                   playerDamageRoll = dmg;
                   applyDamageToActiveMonster(dmg);
+                  rollLog.push({ label: `${spell.name} Save`, d20: rawSaveD20, modifier: 0, total: rawSaveD20, against: saveDc, outcome: 'hit', damage: dmg, damageDice, damageType });
                   summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
                 } else {
+                  rollLog.push({ label: `${spell.name} Save`, d20: rawSaveD20, modifier: 0, total: rawSaveD20, against: saveDc, outcome: 'miss' });
                   summaryParts.push(`${targetName} resists your ${spell.name}.`);
                 }
               } else {
@@ -887,14 +897,18 @@ async function _updateGameState(
       summaryParts.push(`A trader is posted here: ${trader.name}.`);
     }
   } else if (actionIntent === 'attack' && activeMonster) {
-    playerAttackRoll = rollD20() + (currentState.character?.attackBonus ?? 0);
+    const rawD20 = rollD20();
+    const attackBonus = currentState.character?.attackBonus ?? 0;
+    playerAttackRoll = rawD20 + attackBonus;
     if (playerAttackRoll >= activeMonster.ac) {
       playerDamageRoll = rollDice(playerDmgDice);
       applyDamageToActiveMonster(playerDamageRoll);
-      summaryParts.push(`You hit ${activeMonster.name} with ${weaponName} for ${playerDamageRoll} damage (roll ${playerAttackRoll} vs AC ${activeMonster.ac}).`);
+      rollLog.push({ label: 'Your Attack', d20: rawD20, modifier: attackBonus, total: playerAttackRoll, against: activeMonster.ac, outcome: rawD20 === 20 ? 'crit' : 'hit', damage: playerDamageRoll, damageDice: playerDmgDice });
+      summaryParts.push(`You hit ${activeMonster.name} with ${weaponName} for ${playerDamageRoll} damage.`);
     } else {
       combatOutcome = 'miss';
-      summaryParts.push(`You miss ${activeMonster.name} (roll ${playerAttackRoll} vs AC ${activeMonster.ac}).`);
+      rollLog.push({ label: 'Your Attack', d20: rawD20, modifier: attackBonus, total: playerAttackRoll, against: activeMonster.ac, outcome: 'miss' });
+      summaryParts.push(`You miss ${activeMonster.name}.`);
     }
   } else if (actionIntent === 'defend') {
     newState.tempAcBonus = 4;
@@ -947,15 +961,19 @@ async function _updateGameState(
     if (monsterHasMageHand) {
       summaryParts.push(`${currentActiveMonster.name} struggles against the spectral hand and cannot attack this moment.`);
     } else {
-      monsterAttackRoll = Math.floor(Math.random() * 20) + 1 + currentActiveMonster.attackBonus;
+      const rawMonsterD20 = Math.floor(Math.random() * 20) + 1;
+      const monsterBonus = currentActiveMonster.attackBonus;
+      monsterAttackRoll = rawMonsterD20 + monsterBonus;
       monsterDamageNotation = currentActiveMonster.damageDice;
       const playerAc = getPlayerAc(newState, getBaseAcFromEquipped(newState));
       if (monsterAttackRoll >= playerAc) {
         monsterDamageRoll = rollDice(monsterDamageNotation);
         newState.hp = Math.max(0, newState.hp - monsterDamageRoll);
-        summaryParts.push(`${currentActiveMonster.name} hits you for ${monsterDamageRoll} damage (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
+        rollLog.push({ label: `${currentActiveMonster.name}`, d20: rawMonsterD20, modifier: monsterBonus, total: monsterAttackRoll, against: playerAc, outcome: rawMonsterD20 === 20 ? 'crit' : 'hit', damage: monsterDamageRoll, damageDice: monsterDamageNotation });
+        summaryParts.push(`${currentActiveMonster.name} hits you for ${monsterDamageRoll} damage.`);
       } else {
-        summaryParts.push(`${currentActiveMonster.name} misses you (roll ${monsterAttackRoll} vs AC ${playerAc}).`);
+        rollLog.push({ label: `${currentActiveMonster.name}`, d20: rawMonsterD20, modifier: monsterBonus, total: monsterAttackRoll, against: playerAc, outcome: 'miss' });
+        summaryParts.push(`${currentActiveMonster.name} misses you.`);
       }
     }
   } else if (!monsterStillAlive && actionIntent === 'attack' && parsedIntent.type !== 'castAbility') {
@@ -1162,14 +1180,14 @@ async function _updateGameState(
   else if (lookedAround || isNewLocation) narrationMode = "ROOM_INTRO";
   else if (attemptedLoot || attemptedSearch) narrationMode = "SEARCH_EMPTY";
 
-  return { newState, roomDesc: finalDesc, accountantFacts: [...summaryParts], eventSummary: newState.lastActionSummary, narrationMode };
+  return { newState, roomDesc: finalDesc, accountantFacts: [...summaryParts], eventSummary: newState.lastActionSummary, narrationMode, rollLog };
 }
 
 export async function runGameTurn(
   currentState: GameState,
   intent: GameIntent
 ): Promise<{ newState: GameState; logEntry: LogEntry }> {
-  const { newState, roomDesc, accountantFacts: engineFacts, eventSummary, narrationMode } = await _updateGameState(currentState, intent);
+  const { newState, roomDesc, accountantFacts: engineFacts, eventSummary, narrationMode, rollLog } = await _updateGameState(currentState, intent);
 
   const locationDescription = newState.roomRegistry[newState.location] || roomDesc || "An undefined space.";
   const { facts, eventSummary: accountantSummary } = buildAccountantFacts({
@@ -1202,6 +1220,7 @@ export async function runGameTurn(
     mode: narrationMode,
     createdAt: new Date().toISOString(),
     id: `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    rolls: rollLog.length > 0 ? rollLog : undefined,
   };
 
   newState.log = [...(newState.log || []), logEntry].slice(-50);
