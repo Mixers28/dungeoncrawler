@@ -584,6 +584,23 @@ async function _updateGameState(
     if (!target && (currentScene?.location.toLowerCase().includes('gate') || currentScene?.id.includes('gate'))) {
       target = pickSceneVariant('act1_courtyard', newState.worldSeed) || getSceneById('courtyard_v1');
     }
+    if (target?.entryConditions) {
+      const conditions = target.entryConditions;
+      let lockedReason: string | null = null;
+      if (conditions.minLevel && newState.level < conditions.minLevel) {
+        lockedReason = "You are not yet strong enough to proceed here.";
+      } else if (conditions.requiresItem && !newState.inventory.some(i => i.name.toLowerCase() === conditions.requiresItem!.toLowerCase())) {
+        lockedReason = `You need ${conditions.requiresItem} to proceed.`;
+      } else if (conditions.flagsAll && !conditions.flagsAll.every(f => newState.storyFlags.includes(f))) {
+        lockedReason = "Something here resists you — you haven't yet done what's needed.";
+      } else if (conditions.flagsAny && conditions.flagsAny.length > 0 && !conditions.flagsAny.some(f => newState.storyFlags.includes(f))) {
+        lockedReason = "Something here resists you — you haven't yet done what's needed.";
+      }
+      if (lockedReason) {
+        newState.lastActionSummary = lockedReason;
+        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: [lockedReason], eventSummary: lockedReason, narrationMode: "GENERAL", rollLog: [] };
+      }
+    }
     if (target) {
       const summaryParts: string[] = [];
       if (sceneExit.log) summaryParts.push(sceneExit.log);
