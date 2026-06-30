@@ -1,6 +1,7 @@
 'use client';
 
 import { type GameState } from '../lib/game-schema';
+import { isConsumableItem } from '../lib/consumables';
 import { ChevronRight } from 'lucide-react';
 
 interface ItemsDropdownProps {
@@ -22,9 +23,7 @@ export function ItemsDropdown({
   isProcessing,
 }: ItemsDropdownProps) {
   // Filter consumable items
-  const consumables = gameState.inventory.filter(
-    i => ['potion', 'scroll', 'food'].includes(i.type)
-  );
+  const consumables = gameState.inventory.filter(isConsumableItem);
 
   if (consumables.length === 0) {
     return (

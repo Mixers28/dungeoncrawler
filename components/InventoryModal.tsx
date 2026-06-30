@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { type GameState } from '../lib/game-schema';
+import { isConsumableItem } from '../lib/consumables';
 import { X, Package, Sword, Shield, Scroll, Droplet, Apple, Trash2, CheckCircle2, Circle, ScrollText } from 'lucide-react';
 
 interface InventoryModalProps {
@@ -118,7 +119,7 @@ export function InventoryModal({
           disabled: true,
         });
       }
-    } else if (['potion', 'scroll', 'food'].includes(item.type)) {
+    } else if (isConsumableItem(item)) {
       actions.push({
         label: 'Use',
         onClick: () => {
