@@ -37,6 +37,15 @@ function getPlayerAc(state: GameState, baseAc: number): number {
   return baseAc + effectBonus + (state.tempAcBonus || 0);
 }
 
+function getPlayerAttackBonus(state: GameState): number {
+  return Math.max(
+    0,
+    ...(state.activeEffects || [])
+      .filter(e => e.type === 'attack_bonus' && e.value !== undefined)
+      .map(e => e.value as number)
+  );
+}
+
 const normalizeSpellName = (name: string | undefined) =>
   (name || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
 
@@ -861,9 +870,9 @@ async function _updateGameState(
         } else if (lowerSpell === 'bless') {
           newState.activeEffects = [
             ...(newState.activeEffects || []),
-            { name: 'Bless', type: 'buff', expiresAtTurn: (newState.turnCounter || 0) + 5 }
+            { name: 'Bless', type: 'attack_bonus', value: 2, expiresAtTurn: (newState.turnCounter || 0) + 5 }
           ];
-          summaryParts.push(`You bless your efforts, guiding your strikes and resolve.`);
+          summaryParts.push(`You bless your efforts, guiding your strikes and resolve (+2 to attack rolls).`);
         } else if (lowerSpell === 'cure wounds') {
           const heal = rollDice("1d8") + 2;
           newState.hp = Math.min(newState.maxHp, newState.hp + heal);
@@ -915,7 +924,7 @@ async function _updateGameState(
     }
   } else if (actionIntent === 'attack' && activeMonster) {
     const rawD20 = rollD20();
-    const attackBonus = currentState.character?.attackBonus ?? 0;
+    const attackBonus = (currentState.character?.attackBonus ?? 0) + getPlayerAttackBonus(newState);
     playerAttackRoll = rawD20 + attackBonus;
     if (playerAttackRoll >= activeMonster.ac) {
       playerDamageRoll = rollDice(playerDmgDice);

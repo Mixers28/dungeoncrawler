@@ -152,7 +152,7 @@ export const gameStateSchema = z.object({
   spellSaveDc: z.number().default(0),
   activeEffects: z.array(z.object({
     name: z.string(),
-    type: z.enum(['ac_bonus', 'buff', 'debuff']).default('buff'),
+    type: z.enum(['ac_bonus', 'attack_bonus', 'buff', 'debuff']).default('buff'),
     value: z.number().optional(),
     expiresAtTurn: z.number().optional(),
   })).default([]),
