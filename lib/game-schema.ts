@@ -18,6 +18,11 @@ export const questSchema = z.object({
   title: z.string(),
   status: z.enum(['active', 'completed', 'failed']),
   description: z.string(),
+  objectives: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    done: z.boolean().default(false),
+  })).default([]),
 });
 
 // 3. ENTITIES (monsters/NPCs on the map)

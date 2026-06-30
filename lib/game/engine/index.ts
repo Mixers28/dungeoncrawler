@@ -1023,6 +1023,17 @@ async function _updateGameState(
     ];
     newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Gained Iron Key at ${newState.location}`].slice(-10);
     summaryParts.push("You recover the Iron Key from the debris.");
+    newState.quests = newState.quests.map(quest => {
+      const objectives = (quest.objectives || []).map(obj =>
+        obj.id === 'find-iron-key' ? { ...obj, done: true } : obj
+      );
+      const hasObjective = objectives.some(obj => obj.id === 'find-iron-key');
+      const allDone = objectives.length > 0 && objectives.every(obj => obj.done);
+      if (hasObjective) {
+        summaryParts.push(`Quest updated: ${quest.title} — Find the Iron Key ✓`);
+      }
+      return { ...quest, objectives, status: allDone ? 'completed' : quest.status };
+    });
     foundSearchItems = true;
     // Once the key is taken, nearby rats lose interest
     newState.nearbyEntities = newState.nearbyEntities.map(ent =>
