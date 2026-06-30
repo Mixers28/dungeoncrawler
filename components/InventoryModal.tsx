@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { type GameState } from '../lib/game-schema';
-import { X, Package, Sword, Shield, Scroll, Droplet, Apple, Trash2, CheckCircle2 } from 'lucide-react';
+import { X, Package, Sword, Shield, Scroll, Droplet, Apple, Trash2, CheckCircle2, Circle, ScrollText } from 'lucide-react';
 
 interface InventoryModalProps {
   gameState: GameState;
@@ -53,7 +53,7 @@ export function InventoryModal({
       case 'items':
         return gameState.inventory.filter(i => ['potion', 'scroll', 'food', 'misc'].includes(i.type));
       case 'quest':
-        return gameState.inventory.filter(i => i.type === 'key' || i.type === 'material');
+        return [];
       default:
         return gameState.inventory;
     }
@@ -186,7 +186,53 @@ export function InventoryModal({
 
         {/* Items Grid */}
         <div className="flex-1 overflow-y-auto p-6">
-          {items.length === 0 ? (
+          {activeTab === 'quest' ? (
+            gameState.quests.length === 0 ? (
+              <div className="flex items-center justify-center h-64 text-slate-400">
+                <div className="text-center">
+                  <ScrollText size={48} className="mx-auto mb-3 opacity-50" />
+                  <p>No active quests</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {gameState.quests.map((quest) => (
+                  <div
+                    key={quest.id}
+                    className="bg-slate-800 border border-slate-700 rounded-lg p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-slate-100">{quest.title}</h3>
+                      <span className={`text-xs font-semibold uppercase px-2 py-1 rounded ${
+                        quest.status === 'completed' ? 'bg-green-900/60 text-green-300' :
+                        quest.status === 'failed' ? 'bg-red-900/60 text-red-300' :
+                        'bg-amber-900/60 text-amber-300'
+                      }`}>
+                        {quest.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-400">{quest.description}</p>
+                    {quest.objectives.length > 0 && (
+                      <ul className="space-y-1">
+                        {quest.objectives.map((obj) => (
+                          <li key={obj.id} className="flex items-center gap-2 text-sm">
+                            {obj.done ? (
+                              <CheckCircle2 size={14} className="text-green-400 shrink-0" />
+                            ) : (
+                              <Circle size={14} className="text-slate-500 shrink-0" />
+                            )}
+                            <span className={obj.done ? 'text-slate-400 line-through' : 'text-slate-200'}>
+                              {obj.text}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          ) : items.length === 0 ? (
             <div className="flex items-center justify-center h-64 text-slate-400">
               <div className="text-center">
                 <Package size={48} className="mx-auto mb-3 opacity-50" />

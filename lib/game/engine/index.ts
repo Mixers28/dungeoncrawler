@@ -37,6 +37,15 @@ function getPlayerAc(state: GameState, baseAc: number): number {
   return baseAc + effectBonus + (state.tempAcBonus || 0);
 }
 
+function getPlayerAttackBonus(state: GameState): number {
+  return Math.max(
+    0,
+    ...(state.activeEffects || [])
+      .filter(e => e.type === 'attack_bonus' && e.value !== undefined)
+      .map(e => e.value as number)
+  );
+}
+
 const normalizeSpellName = (name: string | undefined) =>
   (name || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
 
@@ -584,6 +593,23 @@ async function _updateGameState(
     if (!target && (currentScene?.location.toLowerCase().includes('gate') || currentScene?.id.includes('gate'))) {
       target = pickSceneVariant('act1_courtyard', newState.worldSeed) || getSceneById('courtyard_v1');
     }
+    if (target?.entryConditions) {
+      const conditions = target.entryConditions;
+      let lockedReason: string | null = null;
+      if (conditions.minLevel && newState.level < conditions.minLevel) {
+        lockedReason = "You are not yet strong enough to proceed here.";
+      } else if (conditions.requiresItem && !newState.inventory.some(i => i.name.toLowerCase() === conditions.requiresItem!.toLowerCase())) {
+        lockedReason = `You need ${conditions.requiresItem} to proceed.`;
+      } else if (conditions.flagsAll && !conditions.flagsAll.every(f => newState.storyFlags.includes(f))) {
+        lockedReason = "Something here resists you — you haven't yet done what's needed.";
+      } else if (conditions.flagsAny && conditions.flagsAny.length > 0 && !conditions.flagsAny.some(f => newState.storyFlags.includes(f))) {
+        lockedReason = "Something here resists you — you haven't yet done what's needed.";
+      }
+      if (lockedReason) {
+        newState.lastActionSummary = lockedReason;
+        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: [lockedReason], eventSummary: lockedReason, narrationMode: "GENERAL", rollLog: [] };
+      }
+    }
     if (target) {
       const summaryParts: string[] = [];
       if (sceneExit.log) summaryParts.push(sceneExit.log);
@@ -844,9 +870,9 @@ async function _updateGameState(
         } else if (lowerSpell === 'bless') {
           newState.activeEffects = [
             ...(newState.activeEffects || []),
-            { name: 'Bless', type: 'buff', expiresAtTurn: (newState.turnCounter || 0) + 5 }
+            { name: 'Bless', type: 'attack_bonus', value: 2, expiresAtTurn: (newState.turnCounter || 0) + 5 }
           ];
-          summaryParts.push(`You bless your efforts, guiding your strikes and resolve.`);
+          summaryParts.push(`You bless your efforts, guiding your strikes and resolve (+2 to attack rolls).`);
         } else if (lowerSpell === 'cure wounds') {
           const heal = rollDice("1d8") + 2;
           newState.hp = Math.min(newState.maxHp, newState.hp + heal);
@@ -898,7 +924,7 @@ async function _updateGameState(
     }
   } else if (actionIntent === 'attack' && activeMonster) {
     const rawD20 = rollD20();
-    const attackBonus = currentState.character?.attackBonus ?? 0;
+    const attackBonus = (currentState.character?.attackBonus ?? 0) + getPlayerAttackBonus(newState);
     playerAttackRoll = rawD20 + attackBonus;
     if (playerAttackRoll >= activeMonster.ac) {
       playerDamageRoll = rollDice(playerDmgDice);
@@ -997,6 +1023,17 @@ async function _updateGameState(
     ];
     newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Gained Iron Key at ${newState.location}`].slice(-10);
     summaryParts.push("You recover the Iron Key from the debris.");
+    newState.quests = newState.quests.map(quest => {
+      const objectives = (quest.objectives || []).map(obj =>
+        obj.id === 'find-iron-key' ? { ...obj, done: true } : obj
+      );
+      const hasObjective = objectives.some(obj => obj.id === 'find-iron-key');
+      const allDone = objectives.length > 0 && objectives.every(obj => obj.done);
+      if (hasObjective) {
+        summaryParts.push(`Quest updated: ${quest.title} — Find the Iron Key ✓`);
+      }
+      return { ...quest, objectives, status: allDone ? 'completed' : quest.status };
+    });
     foundSearchItems = true;
     // Once the key is taken, nearby rats lose interest
     newState.nearbyEntities = newState.nearbyEntities.map(ent =>
