@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Skull, ArrowRight, BookOpen, X, Eye, EyeOff } from 'lucide-react';
 import type { GameState, LogEntry, NarrationMode, RollEvent } from '../lib/game-schema';
@@ -43,6 +43,14 @@ const PROLOGUE_STEPS = [
 ];
 
 export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
   const [input, setInput] = useState('');
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
