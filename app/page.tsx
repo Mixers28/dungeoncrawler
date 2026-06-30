@@ -425,7 +425,7 @@ function HomeContent() {
       {/* LEFT: Sidebar (Desktop) */}
       {(viewMode === 'text' || !gameState?.isCombatActive) && (
         <div className="w-[320px] hidden md:block h-full border-r border-slate-800">
-          <LeftSidebar state={gameState} />
+          <LeftSidebar state={gameState} onItemUse={handleItemUse} />
         </div>
       )}
 
@@ -599,7 +599,7 @@ function HomeContent() {
             <button onClick={() => setIsLeftSidebarOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-900 p-2 rounded-full text-slate-300 border border-slate-700">
               <X size={20} />
             </button>
-            <LeftSidebar state={gameState} />
+            <LeftSidebar state={gameState} onItemUse={handleItemUse} />
           </div>
         </div>
       )}

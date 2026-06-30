@@ -38,7 +38,7 @@ function SidebarHeaderImage({
   );
 }
 
-export function LeftSidebar({ state }: { state: GameState }) {
+export function LeftSidebar({ state, onItemUse }: { state: GameState; onItemUse?: (item: string) => void }) {
   const hpPercent = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
   const buildSha = process.env.NEXT_PUBLIC_GIT_SHA || BUILD_SHA;
   const trader = getTraderAtLocation(state.location);
@@ -152,18 +152,30 @@ export function LeftSidebar({ state }: { state: GameState }) {
             <>
               {state.inventory.length === 0 && <p className="text-xs text-slate-600 italic">Empty...</p>}
               <div className="space-y-2">
-                {state.inventory.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2 bg-slate-900/50 rounded hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
-                    <div className="p-2 bg-slate-950 rounded text-amber-700/80">
-                      {item.type === 'weapon' ? <Sword size={16} /> : <Scroll size={16} />}
+                {state.inventory.map((item, i) => {
+                  const isConsumable = ['potion', 'scroll', 'food'].includes(item.type);
+                  return (
+                    <div key={i} className="flex items-center gap-3 p-2 bg-slate-900/50 rounded hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
+                      <div className="p-2 bg-slate-950 rounded text-amber-700/80">
+                        {item.type === 'weapon' ? <Sword size={16} /> : <Scroll size={16} />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-300">{item.name}</p>
+                        {item.effect && <p className="text-[10px] text-slate-500">{item.effect}</p>}
+                      </div>
+                      <span className="text-xs font-mono text-slate-500">x{item.quantity}</span>
+                      {isConsumable && onItemUse && (
+                        <button
+                          onClick={() => onItemUse(item.name.toLowerCase())}
+                          disabled={item.quantity <= 0}
+                          className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded bg-green-900/60 border border-green-700 text-green-200 hover:bg-green-700 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Use
+                        </button>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-300">{item.name}</p>
-                      {item.effect && <p className="text-[10px] text-slate-500">{item.effect}</p>}
-                    </div>
-                    <span className="text-xs font-mono text-slate-500">x{item.quantity}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
