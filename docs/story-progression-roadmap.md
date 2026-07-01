@@ -48,7 +48,7 @@ Introduce real player choice with 3 mid‑branches, key‑gated side paths, and 
 - Armory Key (sanctum) → Armory
 
 ### Action items
-[ ] Wire exit gating for `entryConditions` and `consumeItem` in the engine.
+[x] Wire exit gating for `entryConditions` and `consumeItem` in the engine.
 [ ] Add seed + visit index selection for `future_*` group variants.
 [ ] Add discovery chances for keys/maps via search/investigate rewards.
 [ ] Wire Act 1 entry to the new hub scenes and convergence conditions.

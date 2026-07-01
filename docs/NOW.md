@@ -5,41 +5,46 @@
 
 <!-- SUMMARY_START -->
 **Current Focus (auto-maintained by Agent):**
-- Verify spell roll tracking now drives the Dice Tray after spell casts.
-- Validate the split left/right sidebar layout (desktop + mobile drawers).
-- Validate Railway deploy from `dcv01` with the latest engine changes.
+- Sprint 3: QA + Ops (see `docs/sprint-backlog.md`).
+- Build an automated Playwright smoke test for login/start/core actions.
+- Then: save migration helper and deploy checklist.
 <!-- SUMMARY_END -->
 
 ---
 
 ## Current Objective
 
-Ship the latest `dcv01` build, verify the dice tray + sidebar UX changes, and confirm runtime health.
+Sprint 3 (QA + Ops): protect everything Sprint 1–2 shipped with automated smoke coverage, then add save-migration tooling and a deploy checklist.
 
 ---
 
 ## Active Branch
 
-- `dcv01`
+- `main` (Sprint 2 merged; `dcv01` work has landed)
 
 ---
 
 ## What We Are Working On Right Now
 
-- [ ] Confirm Dice Tray displays spell attack/save rolls in live combat.
-- [ ] Review split sidebar layout on desktop and mobile; adjust if any crowding remains.
-- [ ] Confirm Railway deploy succeeds from `dcv01` and app boots with the latest changes.
+- [x] Sprint 3.1 — Automated smoke test: Playwright covering login / start / check skills / attack / loot (`e2e/smoke.spec.ts`, `npm run test:e2e`).
+- [ ] Sprint 3.2 — Save migration helper: CLI/report that identifies missing fields in legacy saves and applies defaults safely.
+- [ ] Sprint 3.3 — Deploy checklist: build, login flow, combat/dice, story navigation.
 
 ---
 
 ## Next Small Deliverables
 
-- Railway deploy report (build logs + runtime notes).
-- Dice tray + sidebar UX validation notes.
-- Follow-up fixes for Edge warnings if required.
+- Sprint 3.2: save migration report/CLI (`scripts/`), driven by the current `GameState` schema.
+- Sprint 3.3: deploy checklist doc.
+
+## E2E notes
+
+- `npm run test:e2e` (Playwright) auto-starts `next dev`; needs local Postgres (`docker compose up -d`) and `.env.local` with `DATABASE_URL`.
+- The spec signs up a fresh throwaway user (`smoke-<ts>@e2e.test`) each run, so no seeded test user is required.
 
 ---
 
 ## Notes / Scratchpad
 
-- Track whether Railway needs environment variables or build overrides.
+- Story roadmap Phase 1 leftovers (not part of Sprint 3, tracked in `docs/phased-plan.md`): seeded `future_*` variant selection, key/map discovery chances, Act 1 entry wired to the hub scenes.
+- No test tooling existed before Sprint 3 — no `test` script in package.json.

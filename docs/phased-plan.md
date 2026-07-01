@@ -69,7 +69,7 @@ Note: This is the canonical roadmap for dcv01. Other planning docs are supplemen
 - Phase 2 (procedural routes): introduce route modules, seeded junctions, and deterministic segment generation.
 
 Action items (Phase 1):
-[ ] Wire exit gating for `entryConditions` and `consumeItem` in the engine.
+[x] Wire exit gating for `entryConditions` and `consumeItem` in the engine.
 [ ] Add seed + visit-index selection for `future_*` group variants.
 [ ] Add discovery chances for keys/maps via search/investigate rewards.
 [ ] Wire Act 1 entry to the new hub scenes and convergence conditions.
@@ -85,11 +85,13 @@ Validation:
 - Follow-ups: add deterministic tests for `resolveStunt` and decide where temporary effects should live on `GameState`.
 
 ## UI/UX and tests (forward work)
-- UI: surface HP/slots/effects clearly; add quick-use for consumables.
+- [x] UI: quick-use for consumables (Sprint 2; sidebar Use buttons + 5e SRD consumable catalog).
+- [x] Spells: expanded effects (buffs/conditions/AoE) — Sprint 2.
+- [x] Quests: sidebar shows active quests with objective tracking — Sprint 2.
 - Loot/gear: broaden monster->loot mapping, add display names/types, and support potions/scrolls from inventory.
-- Spells: expand effects (buffs/conditions/AoE) and add rest/slot recovery.
+- Spells: add rest/slot recovery.
 - Level-up: grant class-based benefits (slots/spells/features), not just +HP; surface a level-up notice.
-- Tests: add smoke coverage for loot mapping, spell casting, and scene transitions.
+- Tests: add smoke coverage for loot mapping, spell casting, and scene transitions (Sprint 3).
 
 ## Testing and validation
 - `npm run lint`
