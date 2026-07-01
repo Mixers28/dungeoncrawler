@@ -1,6 +1,6 @@
 # Sprint Backlog
 
-> Status: Sprint 1 ✅ complete. Sprint 2 ✅ complete (merged 2026-07: consumable quick-use, AoE/condition spells, story gating with locked reasons, quest sidebar). Sprint 3 in progress.
+> Status: Sprint 1 ✅ complete. Sprint 2 ✅ complete (merged 2026-07: consumable quick-use, AoE/condition spells, story gating with locked reasons, quest sidebar). Sprint 3 ✅ complete (2026-07: `npm run test:e2e` smoke test, `npm run db:migrate-saves` CLI, `docs/deploy-checklist.md`).
 
 ## Sprint 1: Stability + UX
 1) Potion use works  

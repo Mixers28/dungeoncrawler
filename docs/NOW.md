@@ -5,16 +5,16 @@
 
 <!-- SUMMARY_START -->
 **Current Focus (auto-maintained by Agent):**
-- Sprint 3: QA + Ops (see `docs/sprint-backlog.md`).
-- Build an automated Playwright smoke test for login/start/core actions.
-- Then: save migration helper and deploy checklist.
+- Sprint 3 (QA + Ops) is complete — smoke test, save migration CLI, deploy checklist all shipped.
+- Next deploy: walk `docs/deploy-checklist.md` end to end on Railway.
+- Next dev work (pick one): story Phase 1 leftovers, or phased-plan core items (data-driven ability resolution).
 <!-- SUMMARY_END -->
 
 ---
 
 ## Current Objective
 
-Sprint 3 (QA + Ops): protect everything Sprint 1–2 shipped with automated smoke coverage, then add save-migration tooling and a deploy checklist.
+Sprint backlog (1–3) is fully shipped. Decide the next track: story roadmap Phase 1 leftovers, or the canonical phased-plan action items (`docs/phased-plan.md`).
 
 ---
 
@@ -28,13 +28,15 @@ Sprint 3 (QA + Ops): protect everything Sprint 1–2 shipped with automated smok
 
 - [x] Sprint 3.1 — Automated smoke test: Playwright covering login / start / check skills / attack / loot (`e2e/smoke.spec.ts`, `npm run test:e2e`).
 - [x] Sprint 3.2 — Save migration helper: `npm run db:migrate-saves` (dry-run report; `-- --apply` writes back; `-- --user <email>` scopes to one save).
-- [ ] Sprint 3.3 — Deploy checklist: build, login flow, combat/dice, story navigation.
+- [x] Sprint 3.3 — Deploy checklist: `docs/deploy-checklist.md` (build, env, DB, login flow, combat/dice, story navigation, persistence).
 
 ---
 
 ## Next Small Deliverables
 
-- Sprint 3.3: deploy checklist doc (build, login flow, combat/dice, story navigation).
+- Run `docs/deploy-checklist.md` against the next Railway deploy.
+- Fix the two pre-existing `react-hooks/set-state-in-effect` lint errors in `app/page.tsx` (lines ~189, ~231).
+- Persist the legacy `mixers28` save cleanup: `npm run db:migrate-saves -- --apply --user mixers28`.
 
 ## E2E notes
 
