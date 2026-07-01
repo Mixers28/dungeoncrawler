@@ -492,6 +492,12 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
       status: 'active',
       description: 'Find the Iron Key.',
       objectives: [{ id: 'find-iron-key', text: 'Find the Iron Key', done: false }],
+    }, {
+      id: '2',
+      title: 'Breach the Citadel',
+      status: 'active',
+      description: 'Open the Iron Gate and press inward.',
+      objectives: [{ id: 'open-gate', text: 'Breach the Iron Gate', flag: 'gate_opened', done: false }],
     }],
     nearbyEntities: [],
     lastActionSummary: "The gates are locked. A monster guards the path.",

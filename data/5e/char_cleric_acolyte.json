@@ -54,7 +54,8 @@
       "cure wounds",
       "healing word",
       "shield of faith",
-      "guiding bolt"
+      "guiding bolt",
+      "bane"
     ],
     "domain_spells": [
       "bless",
@@ -64,7 +65,8 @@
       "bless",
       "cure wounds",
       "healing word",
-      "guiding bolt"
+      "guiding bolt",
+      "bane"
     ]
   },
   "casting": {

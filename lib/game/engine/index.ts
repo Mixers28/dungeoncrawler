@@ -113,6 +113,29 @@ function applyXpAndCheckLevelUp(state: GameState, xpGained: number, logs: string
   const upcoming = getNextLevelDef(state.level);
   if (upcoming) state.xpToNext = upcoming.xpRequired;
 }
+
+// Mark flag-gated quest objectives done when their story flag is set, completing quests
+// whose objectives are all done. Generic so new flag-driven quests need no bespoke code.
+function reconcileFlagQuests(state: GameState, logs: string[]) {
+  const flags = state.storyFlags || [];
+  state.quests = (state.quests || []).map(quest => {
+    let changed = false;
+    const objectives = (quest.objectives || []).map(obj => {
+      if (obj.flag && !obj.done && flags.includes(obj.flag)) {
+        changed = true;
+        return { ...obj, done: true };
+      }
+      return obj;
+    });
+    const allDone = objectives.length > 0 && objectives.every(o => o.done);
+    const status = allDone && quest.status === 'active' ? 'completed' as const : quest.status;
+    if (changed) {
+      logs.push(`Quest updated: ${quest.title}${allDone ? ' — complete!' : ''}`);
+    }
+    return { ...quest, objectives, status };
+  });
+}
+
 function normalizeLocationKey(location: string): string {
   return location
     .toLowerCase()
@@ -791,6 +814,28 @@ async function _updateGameState(
         const mechanics = spell.mechanics;
         let handledMechanics = false;
 
+        // Area-of-effect damage: hit every alive nearby entity once. The active monster
+        // goes through applyDamageToActiveMonster so section-7 handles its XP; other kills
+        // are credited inline here (mirrors the section-7 XP formula) to avoid double counting.
+        const dealAoeDamage = (dmg: number, damageType: string): number => {
+          const aliveBefore = newState.nearbyEntities.filter(e => e.status === 'alive').length;
+          if (aliveBefore === 0) return 0;
+          if (activeMonsterIndex >= 0 && activeMonster) applyDamageToActiveMonster(dmg);
+          newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) => {
+            if (idx === activeMonsterIndex || entity.status !== 'alive') return entity;
+            const updatedHp = Math.max(0, entity.hp - dmg);
+            const died = updatedHp <= 0;
+            if (died) {
+              newState.totalKills = (newState.totalKills || 0) + 1;
+              const xp = MONSTER_MANUAL[entity.name]?.hp ? Math.max(25, MONSTER_MANUAL[entity.name].hp * 5) : 50;
+              applyXpAndCheckLevelUp(newState, xp, summaryParts);
+            }
+            return { ...entity, hp: updatedHp, status: died ? 'dead' : entity.status };
+          });
+          void damageType;
+          return aliveBefore;
+        };
+
         if (mechanics) {
           const healDice = pickHealDiceFromMechanics(mechanics);
           if (healDice) {
@@ -800,7 +845,14 @@ async function _updateGameState(
             handledMechanics = true;
           } else if (mechanics.damage) {
             const damageDice = pickDamageDiceFromMechanics(mechanics, newState.level);
-            if (damageDice && activeMonster) {
+            if (damageDice && mechanics.areaOfEffect && newState.nearbyEntities.some(e => e.status === 'alive')) {
+              const damageType = mechanics.damage.type ? mechanics.damage.type.toLowerCase() : 'damage';
+              const dmg = rollDice(damageDice);
+              playerDamageRoll = dmg;
+              const hitCount = dealAoeDamage(dmg, damageType);
+              summaryParts.push(`You unleash ${spell.name}, striking ${hitCount} ${hitCount === 1 ? 'foe' : 'foes'} for ${dmg} ${damageType} damage.`);
+              handledMechanics = true;
+            } else if (damageDice && activeMonster) {
               const damageType = mechanics.damage.type ? mechanics.damage.type.toLowerCase() : 'damage';
               if (mechanics.attackType) {
                 const rawSpellD20 = rollD20();
@@ -860,8 +912,11 @@ async function _updateGameState(
           summaryParts.push(`You hurl a lance of radiant light at ${targetName}, dealing ${dmg} radiant damage.`);
         } else if (lowerSpell === 'thunderwave') {
           const dmg = rollDice("2d8");
-          applyDamageToActiveMonster(dmg);
-          summaryParts.push(`You unleash Thunderwave at ${targetName}, dealing ${dmg} thunder damage.`);
+          playerDamageRoll = dmg;
+          const hitCount = dealAoeDamage(dmg, 'thunder');
+          summaryParts.push(hitCount > 0
+            ? `You unleash Thunderwave, striking ${hitCount} ${hitCount === 1 ? 'foe' : 'foes'} for ${dmg} thunder damage.`
+            : `You unleash Thunderwave, but there is nothing nearby to strike.`);
         } else if (lowerSpell === 'fire bolt') {
           const dmg = rollDice("1d10");
           applyDamageToActiveMonster(dmg);
@@ -926,6 +981,17 @@ async function _updateGameState(
             summaryParts.push(`A spectral hand clamps onto ${targetName}, pinning it for the next moments.`);
           } else {
             summaryParts.push("A spectral hand flickers into being, grasping at loose debris.");
+          }
+        } else if (lowerSpell === 'bane') {
+          if (activeMonster) {
+            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+              idx === activeMonsterIndex
+                ? { ...activeMonster, effects: [...(activeMonster.effects || []), { name: 'Bane', type: 'debuff', expiresAtTurn: (newState.turnCounter || 0) + 4 }] }
+                : entity
+            );
+            summaryParts.push(`You curse ${targetName} with Bane; its strikes will falter.`);
+          } else {
+            summaryParts.push("You intone Bane, but there is no foe here to curse.");
           }
         } else if (spell.name.toLowerCase() === 'detect magic') {
           summaryParts.push(`You attune your senses; lingering magic hums in the air.`);
@@ -1018,23 +1084,29 @@ async function _updateGameState(
   const monsterStillAlive = currentActiveMonster && currentActiveMonster.status === 'alive';
   const monsterIsActive = newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend';
   if (monsterStillAlive && monsterIsActive && actionIntent !== 'run') {
-    const monsterHasMageHand = (currentActiveMonster.effects || []).some(e => e.name.toLowerCase() === 'mage hand');
-    if (monsterHasMageHand) {
-      summaryParts.push(`${currentActiveMonster.name} struggles against the spectral hand and cannot attack this moment.`);
+    // Conditions that fully prevent the monster from acting this turn.
+    const DISABLING_CONDITIONS = ['mage hand', 'stunned', 'paralyzed', 'held', 'frightened', 'sleep'];
+    const disablingEffect = (currentActiveMonster.effects || []).find(e => DISABLING_CONDITIONS.includes(e.name.toLowerCase()));
+    if (disablingEffect) {
+      summaryParts.push(`${currentActiveMonster.name} is ${disablingEffect.name.toLowerCase() === 'mage hand' ? 'pinned by the spectral hand' : disablingEffect.name.toLowerCase()} and cannot attack this moment.`);
     } else {
       const rawMonsterD20 = Math.floor(Math.random() * 20) + 1;
-      const monsterBonus = currentActiveMonster.attackBonus;
+      // Bane (5e): target takes -1d4 to attack rolls.
+      const hasBane = (currentActiveMonster.effects || []).some(e => e.name.toLowerCase() === 'bane');
+      const banePenalty = hasBane ? rollDice('1d4') : 0;
+      const monsterBonus = currentActiveMonster.attackBonus - banePenalty;
       monsterAttackRoll = rawMonsterD20 + monsterBonus;
       monsterDamageNotation = currentActiveMonster.damageDice;
       const playerAc = getPlayerAc(newState, getBaseAcFromEquipped(newState));
+      const baneNote = hasBane ? ` (Bane -${banePenalty})` : '';
       if (monsterAttackRoll >= playerAc) {
         monsterDamageRoll = rollDice(monsterDamageNotation);
         newState.hp = Math.max(0, newState.hp - monsterDamageRoll);
-        rollLog.push({ label: `${currentActiveMonster.name}`, d20: rawMonsterD20, modifier: monsterBonus, total: monsterAttackRoll, against: playerAc, outcome: rawMonsterD20 === 20 ? 'crit' : 'hit', damage: monsterDamageRoll, damageDice: monsterDamageNotation });
+        rollLog.push({ label: `${currentActiveMonster.name}${baneNote}`, d20: rawMonsterD20, modifier: monsterBonus, total: monsterAttackRoll, against: playerAc, outcome: rawMonsterD20 === 20 ? 'crit' : 'hit', damage: monsterDamageRoll, damageDice: monsterDamageNotation });
         summaryParts.push(`${currentActiveMonster.name} hits you for ${monsterDamageRoll} damage.`);
       } else {
-        rollLog.push({ label: `${currentActiveMonster.name}`, d20: rawMonsterD20, modifier: monsterBonus, total: monsterAttackRoll, against: playerAc, outcome: 'miss' });
-        summaryParts.push(`${currentActiveMonster.name} misses you.`);
+        rollLog.push({ label: `${currentActiveMonster.name}${baneNote}`, d20: rawMonsterD20, modifier: monsterBonus, total: monsterAttackRoll, against: playerAc, outcome: 'miss' });
+        summaryParts.push(`${currentActiveMonster.name} misses you${hasBane ? ', its cursed strike going wide' : ''}.`);
       }
     }
   } else if (!monsterStillAlive && actionIntent === 'attack' && parsedIntent.type !== 'castAbility') {
@@ -1155,6 +1227,9 @@ async function _updateGameState(
       }
     }
   }
+
+  // Reconcile flag-gated quest objectives now that all story flags for this turn are set.
+  reconcileFlagQuests(newState, summaryParts);
 
 
   // 8b. LOOT CORPSES (simple generic loot)

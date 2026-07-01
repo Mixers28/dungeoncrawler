@@ -5,7 +5,7 @@ import { GameState } from '../lib/game-schema';
 import { isConsumableItem } from '../lib/consumables';
 import { getTraderAtLocation } from '../lib/traders';
 import { BUILD_SHA } from '../lib/build-info';
-import { Shield, Sword, MapPin, Coins, Scroll, ImageOff } from 'lucide-react';
+import { Shield, Sword, MapPin, Coins, Scroll, ImageOff, CheckCircle2, Circle, ScrollText } from 'lucide-react';
 
 function SidebarHeaderImage({
   primaryUrl,
@@ -114,6 +114,43 @@ export function LeftSidebar({ state, onItemUse }: { state: GameState; onItemUse?
           <div className="text-sm text-amber-300 font-semibold">{state.character?.class || 'Adventurer'}</div>
           <div className="text-xs text-slate-500">{state.character?.background || 'Wanderer'}</div>
           <div className="text-xs text-slate-400">XP: {state.xp} / {state.xpToNext}</div>
+        </div>
+
+        {/* QUESTS */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2 flex items-center gap-2">
+            <ScrollText size={13} /> Quests
+          </h3>
+          {(() => {
+            const shown = (state.quests || []).filter(q => q.status === 'active' || q.status === 'completed');
+            if (shown.length === 0) {
+              return <p className="text-xs text-slate-600 italic">No active quests.</p>;
+            }
+            return (
+              <div className="space-y-2">
+                {shown.map((quest) => (
+                  <div key={quest.id} className="bg-slate-900/50 rounded border border-slate-800 p-2 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-xs font-semibold ${quest.status === 'completed' ? 'text-green-400 line-through' : 'text-amber-300'}`}>{quest.title}</span>
+                      {quest.status === 'completed' && <span className="text-[9px] uppercase text-green-500">Done</span>}
+                    </div>
+                    {quest.objectives.length > 0 && (
+                      <ul className="space-y-0.5">
+                        {quest.objectives.map((obj) => (
+                          <li key={obj.id} className="flex items-center gap-1.5 text-[11px]">
+                            {obj.done
+                              ? <CheckCircle2 size={11} className="text-green-400 shrink-0" />
+                              : <Circle size={11} className="text-slate-500 shrink-0" />}
+                            <span className={obj.done ? 'text-slate-500 line-through' : 'text-slate-300'}>{obj.text}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* LOCATION TRAIL */}
