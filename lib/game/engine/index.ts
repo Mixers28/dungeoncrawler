@@ -8,6 +8,7 @@ import { DIFFICULTY_TO_DC, type ClassifiedStunt, type StuntTemplate } from '../.
 import { getNextLevelDef } from '../../progression';
 import { armorById, armorByName as equipmentArmorByName, resolveArmorId, resolveWeaponId, weaponsById, weaponsByName as equipmentWeaponsByName } from '../../items';
 import { getTraderAtLocation } from '../../traders';
+import { getConsumableEffect, isConsumableItem, isUndeadOrFiend } from '../../consumables';
 import { rollDice, rollD20 } from '../dice';
 import { type CoreActionIntent, type GameIntent, type TradeIntent } from '../intent';
 import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, computeArmorClassFromInventory, resolveRoomDescription, resolveSceneImage } from '../state';
@@ -657,33 +658,84 @@ async function _updateGameState(
   attemptedSearch = wantsSearch;
   attemptedInvestigate = wantsInvestigate;
 
-  // Quick-use consumables (bandages, potions) and short rest
-  const wantsBandage = /bandage/i.test(userAction);
-  const wantsPotion = /(potion|elixir|draught|draft)/i.test(userAction);
-  const wantsRest = !wantsBandage && !wantsPotion && /\b(rest|camp|sleep|recover|take a break|sit down)\b/i.test(userAction);
-  const bandageIdx = newState.inventory.findIndex(i => i.name.toLowerCase().includes('bandage') && i.quantity > 0);
-  const potionIdx = wantsPotion
-    ? newState.inventory.findIndex(i => i.name.toLowerCase().includes('potion') && i.quantity > 0)
-    : -1;
+  // Quick-use consumables (potions, bandages, scrolls, food, thrown alchemical items) and short rest.
+  // Match by full item name first (covers the UI "use <name>" buttons), then fall back to a
+  // significant-word match when an explicit use-verb is present (covers free-typed "drink potion").
+  const lowerAction = userAction.toLowerCase();
+  const hasUseVerb = /\b(use|drink|quaff|apply|throw|hurl|consume|eat|drain|pour|splash|read)\b/.test(lowerAction);
+  const matchConsumableIdx = (): number => {
+    let idx = newState.inventory.findIndex(
+      i => i.quantity > 0 && isConsumableItem(i) && lowerAction.includes(i.name.toLowerCase())
+    );
+    if (idx >= 0) return idx;
+    if (hasUseVerb) {
+      idx = newState.inventory.findIndex(
+        i => i.quantity > 0 && isConsumableItem(i)
+          && i.name.toLowerCase().split(/[^a-z]+/).some(w => w.length >= 3 && lowerAction.includes(w))
+      );
+    }
+    return idx;
+  };
+  const consumableItemIdx = matchConsumableIdx();
+  const wantsKnownConsumableKeyword = /\b(bandage|potion|elixir|draught|draft)\b/i.test(userAction);
+  const wantsRest = consumableItemIdx < 0 && !wantsKnownConsumableKeyword && /\b(rest|camp|sleep|recover|take a break|sit down)\b/i.test(userAction);
   let handledConsumable = false;
 
-  if (wantsPotion) {
+  if (consumableItemIdx >= 0) {
     handledConsumable = true;
-    if (potionIdx >= 0) {
-      const item = newState.inventory[potionIdx];
-      const potionName = item.name.toLowerCase();
-      let healDice = '2d4+2';
-      if (potionName.includes('greater')) healDice = '4d4+4';
-      const heal = rollDice(healDice);
-      newState.hp = Math.min(newState.maxHp, newState.hp + heal);
+    const item = newState.inventory[consumableItemIdx];
+    const effect = getConsumableEffect(item);
+    const consumeOne = () => {
       const remainingQty = Math.max(0, item.quantity - 1);
-      if (remainingQty <= 0) {
-        newState.inventory = newState.inventory.filter((_, idx) => idx !== potionIdx);
-      } else {
-        newState.inventory = newState.inventory.map((it, idx) => idx === potionIdx ? { ...it, quantity: remainingQty } : it);
-      }
+      newState.inventory = remainingQty <= 0
+        ? newState.inventory.filter((_, idx) => idx !== consumableItemIdx)
+        : newState.inventory.map((it, idx) => idx === consumableItemIdx ? { ...it, quantity: remainingQty } : it);
+    };
+    if (!effect) {
+      summaryParts.push(`You examine ${item.name}, but aren't sure how to use it.`);
+    } else if (effect.kind === 'heal') {
+      const heal = rollDice(effect.dice);
+      newState.hp = Math.min(newState.maxHp, newState.hp + heal);
+      consumeOne();
       newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} (${heal} HP) at ${newState.location}`].slice(-10);
-      summaryParts.push(`You drink ${item.name}, recovering ${heal} HP.`);
+      summaryParts.push(`You ${effect.verb} ${item.name}, recovering ${heal} HP.`);
+    } else if (effect.kind === 'buff') {
+      newState.activeEffects = [
+        ...(newState.activeEffects || []),
+        { name: effect.effectName, type: effect.effectType, value: effect.value, expiresAtTurn: (newState.turnCounter || 0) + effect.durationTurns }
+      ];
+      consumeOne();
+      newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} at ${newState.location}`].slice(-10);
+      const bonusLabel = effect.effectType === 'ac_bonus' ? 'AC' : 'attack rolls';
+      summaryParts.push(`You ${effect.verb} ${item.name}, gaining +${effect.value} to ${bonusLabel} for a short while.`);
+    } else if (effect.kind === 'flavor') {
+      newState.activeEffects = [
+        ...(newState.activeEffects || []),
+        { name: effect.effectName, type: 'buff', expiresAtTurn: (newState.turnCounter || 0) + effect.durationTurns }
+      ];
+      consumeOne();
+      newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} at ${newState.location}`].slice(-10);
+      summaryParts.push(effect.message(item.name));
+    } else {
+      // Offensive thrown item (Acid, Alchemist's Fire, Holy Water, Oil) — needs an alive target.
+      if (!activeMonster || activeMonster.status !== 'alive') {
+        summaryParts.push(`You ready ${item.name}, but there is no target in range.`);
+      } else if (effect.undeadFiendOnly && !isUndeadOrFiend(activeMonster.name)) {
+        consumeOne();
+        newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} at ${newState.location}`].slice(-10);
+        summaryParts.push(`You ${effect.verb} ${item.name} at ${activeMonster.name}, but it has no effect on the living.`);
+      } else {
+        const dmg = rollDice(effect.dice);
+        applyDamageToActiveMonster(dmg);
+        consumeOne();
+        newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} (${dmg} ${effect.damageType}) at ${newState.location}`].slice(-10);
+        summaryParts.push(`You ${effect.verb} ${item.name} at ${activeMonster.name}, dealing ${dmg} ${effect.damageType} damage.`);
+      }
+    }
+  } else if (wantsKnownConsumableKeyword) {
+    handledConsumable = true;
+    if (/bandage/i.test(userAction)) {
+      summaryParts.push("You fumble for a bandage, but you have none left.");
     } else {
       summaryParts.push("You fumble for a potion, but you have none left.");
     }
@@ -698,23 +750,6 @@ async function _updateGameState(
       const healAmount = Math.ceil(newState.maxHp * 0.25);
       newState.hp = Math.min(newState.maxHp, newState.hp + healAmount);
       summaryParts.push(`You take a short rest and tend your wounds, recovering ${healAmount} HP. (${newState.hp}/${newState.maxHp} HP)`);
-    }
-  } else if (wantsBandage) {
-    handledConsumable = true;
-    if (bandageIdx >= 0) {
-      const heal = 6;
-      newState.hp = Math.min(newState.maxHp, newState.hp + heal);
-      const item = newState.inventory[bandageIdx];
-      const remainingQty = Math.max(0, item.quantity - 1);
-      if (remainingQty <= 0) {
-        newState.inventory = newState.inventory.filter((_, idx) => idx !== bandageIdx);
-      } else {
-        newState.inventory = newState.inventory.map((it, idx) => idx === bandageIdx ? { ...it, quantity: remainingQty } : it);
-      }
-      newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used bandage (${heal} HP) at ${newState.location}`].slice(-10);
-      summaryParts.push(`You apply a bandage, recovering ${heal} HP.`);
-    } else {
-      summaryParts.push("You fumble for a bandage, but you have none left.");
     }
   }
 

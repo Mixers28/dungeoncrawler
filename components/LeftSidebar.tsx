@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { GameState } from '../lib/game-schema';
+import { isConsumableItem } from '../lib/consumables';
 import { getTraderAtLocation } from '../lib/traders';
 import { BUILD_SHA } from '../lib/build-info';
 import { Shield, Sword, MapPin, Coins, Scroll, ImageOff } from 'lucide-react';
@@ -153,7 +154,7 @@ export function LeftSidebar({ state, onItemUse }: { state: GameState; onItemUse?
               {state.inventory.length === 0 && <p className="text-xs text-slate-600 italic">Empty...</p>}
               <div className="space-y-2">
                 {state.inventory.map((item, i) => {
-                  const isConsumable = ['potion', 'scroll', 'food'].includes(item.type);
+                  const isConsumable = isConsumableItem(item);
                   return (
                     <div key={i} className="flex items-center gap-3 p-2 bg-slate-900/50 rounded hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
                       <div className="p-2 bg-slate-950 rounded text-amber-700/80">
