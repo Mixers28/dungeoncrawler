@@ -27,15 +27,14 @@ Sprint 3 (QA + Ops): protect everything Sprint 1–2 shipped with automated smok
 ## What We Are Working On Right Now
 
 - [x] Sprint 3.1 — Automated smoke test: Playwright covering login / start / check skills / attack / loot (`e2e/smoke.spec.ts`, `npm run test:e2e`).
-- [ ] Sprint 3.2 — Save migration helper: CLI/report that identifies missing fields in legacy saves and applies defaults safely.
+- [x] Sprint 3.2 — Save migration helper: `npm run db:migrate-saves` (dry-run report; `-- --apply` writes back; `-- --user <email>` scopes to one save).
 - [ ] Sprint 3.3 — Deploy checklist: build, login flow, combat/dice, story navigation.
 
 ---
 
 ## Next Small Deliverables
 
-- Sprint 3.2: save migration report/CLI (`scripts/`), driven by the current `GameState` schema.
-- Sprint 3.3: deploy checklist doc.
+- Sprint 3.3: deploy checklist doc (build, login flow, combat/dice, story navigation).
 
 ## E2E notes
 
