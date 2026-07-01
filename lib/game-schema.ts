@@ -22,6 +22,7 @@ export const questSchema = z.object({
     id: z.string(),
     text: z.string(),
     done: z.boolean().default(false),
+    flag: z.string().optional(),
   })).default([]),
 });
 
