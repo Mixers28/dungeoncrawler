@@ -12,6 +12,18 @@ import { getMonsterImageUrl, normalizeMonsterType } from './monster-images';
 export type { GameState, LogEntry, NarrationMode };
 export { gameStateSchema };
 
+// Starter data can list a spell in several places (e.g. spell_list + domain_spells);
+// keep the first occurrence, compared case-insensitively.
+function dedupeSpellNames(names: string[]): string[] {
+  const seen = new Set<string>();
+  return names.filter(name => {
+    const key = name.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 const DEFAULT_ABILITY_SCORES: Record<string, number> = {
   str: 10,
   dex: 10,
@@ -359,8 +371,8 @@ export async function hydrateState(rawState: unknown): Promise<GameState> {
     state.skills = getClassReference(classKey).skills;
   }
 
-  state.knownSpells = state.knownSpells || [];
-  state.preparedSpells = state.preparedSpells || [];
+  state.knownSpells = dedupeSpellNames(state.knownSpells || []);
+  state.preparedSpells = dedupeSpellNames(state.preparedSpells || []);
   state.spellSlots = state.spellSlots || {};
   state.spellcastingAbility = state.spellcastingAbility || 'int';
   state.spellAttackBonus = state.spellAttackBonus || 0;
@@ -453,8 +465,8 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
         ? starter.spells.spellbook
         : (starter.spells.spell_list || []);
       const domain = starter.spells.domain_spells || [];
-      knownSpells = [...cantrips, ...book, ...domain];
-      preparedSpells = starter.spells.prepared || [];
+      knownSpells = dedupeSpellNames([...cantrips, ...book, ...domain]);
+      preparedSpells = dedupeSpellNames(starter.spells.prepared || []);
     }
     if (starter.casting) {
       spellSlots = Object.fromEntries(

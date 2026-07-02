@@ -8,6 +8,9 @@ export type ClassReference = {
   allowedWeapons: string[];
   allowedArmor: string[];
   skills: string[];
+  /** Raw data tokens (e.g. "simple", "martial", "light") for compact display. */
+  weaponProficiencyTokens: string[];
+  armorProficiencyTokens: string[];
 };
 
 const classSchema = z.object({
@@ -59,6 +62,8 @@ function buildClassReference(def: z.infer<typeof classSchema>): ClassReference {
     allowedWeapons,
     allowedArmor,
     skills: def.skills.map(resolveSkill),
+    weaponProficiencyTokens: def.weaponProficiencies,
+    armorProficiencyTokens: def.armorProficiencies,
   };
 }
 
@@ -84,5 +89,7 @@ export function getClassReference(key: string): ClassReference {
     allowedWeapons: resolveWeaponToken('simple'),
     allowedArmor: resolveArmorToken('light'),
     skills: allSkills.slice(0, 2),
+    weaponProficiencyTokens: ['simple'],
+    armorProficiencyTokens: ['light'],
   };
 }

@@ -30,7 +30,7 @@ Note: This is the canonical roadmap for dcv01. Other planning docs are supplemen
 - [x] Structured intents drive combat/sheet routing in `lib/game/engine/index.ts`.
 - [x] Ability resolution is fully data-driven from 5e JSON (mechanics + authored `data/5e/ability-effects.json` overlay; no per-spell code paths remain in `lib/game/engine/index.ts`).
 - [x] Class → allowed abilities/skills/proficiencies fully derived from 5e JSON (`data/5e/classes.json` + token resolver in `lib/5e/classes.ts`).
-- [ ] Sheet outputs fully sourced from 5e reference data (partial).
+- [x] Sheet outputs fully sourced from 5e reference data (skills with governing ability, equipped weapon/armor with damage/AC/category, class proficiencies, spell levels).
 
 ## Scope
 - In: 5e reference wiring, intent parsing, deterministic resolution, sheet outputs, narration guardrails.
@@ -73,7 +73,15 @@ Note: This is the canonical roadmap for dcv01. Other planning docs are supplemen
     on unknown tokens/skills so bad data can't silently strip proficiencies. Output verified
     identical to the previous hardcoded mapping. This also answers the open question below:
     per-class metadata lives in JSON.)
-[ ] Update sheet outputs to use reference data for skills/abilities/equipment descriptions.
+[x] Update sheet outputs to use reference data for skills/abilities/equipment descriptions.
+    (`check skills` now reports: class name; skills as canonical names with governing
+    ability, e.g. "Insight (WIS)"; the *equipped* weapon with damage dice and category
+    from `weapons.json`; equipped armor with base AC and category from `armor.json`;
+    compact class proficiency tokens from `classes.json`; and spells with canonical
+    casing and level from the spell catalog. Known/prepared spell lists are deduped
+    case-insensitively at build and hydrate. Known data quirk: the cleric starter
+    prefab equips Chain Mail (heavy) while class proficiencies are light/medium/shield —
+    proficiency is not yet enforced for armor, only surfaced.)
 [ ] Add deterministic tests/fixtures for intent parsing and ability resolution.
 [ ] Find or author mechanics data for the 195 missing non-SRD spells and merge into the overlay.
 

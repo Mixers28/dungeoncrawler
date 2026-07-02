@@ -1,12 +1,12 @@
 import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../../rules';
 import { getClassReference } from '../../5e/classes';
-import { armorByName, weaponsByName, wizardSpellsByName, clericSpellsByName } from '../../5e/reference';
+import { armorByName, weaponsByName, skillsByName, wizardSpellsByName, clericSpellsByName } from '../../5e/reference';
 import { rollLoot } from '../../loot';
 import { getSceneById, pickSceneVariant, type StoryScene } from '../../story';
 import { generateCannedFlavor, type NarrationContext } from '../../narrationEngine';
 import { DIFFICULTY_TO_DC, type ClassifiedStunt, type StuntTemplate } from '../../stunts';
 import { getNextLevelDef } from '../../progression';
-import { armorById, armorByName as equipmentArmorByName, resolveArmorId, resolveWeaponId, weaponsById, weaponsByName as equipmentWeaponsByName } from '../../items';
+import { armorById, armorByName as equipmentArmorByName, normalizeWeaponName, resolveArmorId, resolveWeaponId, weaponsById, weaponsByName as equipmentWeaponsByName } from '../../items';
 import { getTraderAtLocation } from '../../traders';
 import { getConsumableEffect, isConsumableItem, isUndeadOrFiend } from '../../consumables';
 import { rollDice, rollD20 } from '../dice';
@@ -190,7 +190,12 @@ function applySceneCompletion(state: GameState, scene: StoryScene, summaryParts:
         const silver = loot.coins.sp || 0;
         const copper = loot.coins.cp || 0;
         if (gold > 0) awardGold(state, gold);
-        summaryParts.push(`You recover ${gold ? gold + ' gp' : ''}${gold && (silver || copper) ? ', ' : ''}${silver ? silver + ' sp' : ''}${silver && copper ? ', ' : ''}${(!gold && !silver && copper) ? `${copper} cp` : ''}`.trim().replace(/, $/, ''));
+        const coinParts = [
+          gold > 0 ? `${gold} gp` : null,
+          silver > 0 ? `${silver} sp` : null,
+          copper > 0 ? `${copper} cp` : null,
+        ].filter(Boolean);
+        summaryParts.push(`You recover ${coinParts.join(', ')}.`);
       }
       if (loot.items.length > 0) {
         const newItems = loot.items.map(it => ({
@@ -1094,15 +1099,38 @@ async function _updateGameState(
     newState.isCombatActive = false;
     summaryParts.push("You flee the encounter.");
   } else if (parsedIntent.type === 'checkSheet') {
-    const skills = newState.skills?.length ? newState.skills.join(', ') : 'None';
-    const primaryWeapon = newState.inventory.find(i => i.type === 'weapon')?.name || 'None';
-    const armor = newState.inventory.find(i => i.type === 'armor')?.name || 'None';
-    const known = newState.knownSpells?.length ? newState.knownSpells.join(', ') : 'None';
-    const prepared = newState.preparedSpells?.length ? newState.preparedSpells.join(', ') : 'None';
+    // All sheet facts are enriched from the 5e reference layer, never invented.
+    const sheetClassRef = getClassReference(classKey);
+    const describeSkill = (raw: string) => {
+      const ref = skillsByName[raw.toLowerCase().replace(/_/g, ' ')];
+      return ref ? `${ref.name} (${ref.ability})` : raw;
+    };
+    const describeSpell = (raw: string) => {
+      const def = spellCatalog[normalizeSpellName(raw)];
+      if (!def) return raw;
+      const level = def.level.toLowerCase() === 'cantrip' ? 'cantrip' : `${def.level} level`;
+      return `${def.name} (${level})`;
+    };
+    const skills = newState.skills?.length ? newState.skills.map(describeSkill).join(', ') : 'None';
+    const equippedWeapon = newState.inventory.find(i => i.type === 'weapon' && i.equipped)
+      || newState.inventory.find(i => i.type === 'weapon');
+    const weaponRef = equippedWeapon ? weaponsByName[normalizeWeaponName(equippedWeapon.name)] : undefined;
+    const weaponText = equippedWeapon
+      ? (weaponRef ? `${equippedWeapon.name} — ${weaponRef.damage} (${weaponRef.category})` : equippedWeapon.name)
+      : 'None';
+    const equippedArmor = newState.inventory.find(i => i.type === 'armor' && i.equipped)
+      || newState.inventory.find(i => i.type === 'armor');
+    const armorRef = equippedArmor ? armorByName[equippedArmor.name.toLowerCase()] : undefined;
+    const armorText = equippedArmor
+      ? (armorRef ? `${equippedArmor.name} — AC ${armorRef.baseAC} (${armorRef.category})` : equippedArmor.name)
+      : 'None';
+    const profText = `weapons — ${sheetClassRef.weaponProficiencyTokens.join(', ') || 'none'}; armor — ${sheetClassRef.armorProficiencyTokens.join(', ') || 'none'}`;
+    const known = newState.knownSpells?.length ? newState.knownSpells.map(describeSpell).join(', ') : 'None';
+    const prepared = newState.preparedSpells?.length ? newState.preparedSpells.map(describeSpell).join(', ') : 'None';
     const slotText = Object.entries(newState.spellSlots || {})
       .map(([lvl, data]) => `${lvl.replace('_', ' ')}: ${data.current}/${data.max}`)
       .join('; ');
-    summaryParts.push(`Skills: ${skills}. Equipped weapon: ${primaryWeapon}. Armor: ${armor}. Spells known: ${known}. Spells prepared: ${prepared}. Slots: ${slotText || 'None'}.`);
+    summaryParts.push(`Class: ${sheetClassRef.name}. Skills: ${skills}. Equipped weapon: ${weaponText}. Armor: ${armorText}. Proficiencies: ${profText}. Spells known: ${known}. Spells prepared: ${prepared}. Slots: ${slotText || 'None'}.`);
   } else {
     if (intent.tradeIntent) {
       const tradeResult = resolveTradeIntent(newState, intent.tradeIntent);
