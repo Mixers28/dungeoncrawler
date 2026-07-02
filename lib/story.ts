@@ -19,6 +19,15 @@ export type StorySpawn = {
   damageDice: string;
 };
 
+export type StoryDiscovery = {
+  item: string;
+  /** 0–1 chance per search/investigate attempt; defaults to 1. */
+  chance?: number;
+  /** Story flag set when found; prevents re-discovery after the item is consumed. */
+  onceFlag: string;
+  log?: string;
+};
+
 export type StoryScene = {
   id: string;
   group?: string;
@@ -32,6 +41,8 @@ export type StoryScene = {
     flagsAll?: string[];
     flagsAny?: string[];
   };
+  /** Items discoverable via search/investigate while in this scene. */
+  discovery?: StoryDiscovery[];
   onEnter?: {
     log?: string;
     spawn?: StorySpawn[];

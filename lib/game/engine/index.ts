@@ -2,7 +2,7 @@ import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../../rules';
 import { getClassReference } from '../../5e/classes';
 import { armorByName, weaponsByName, wizardSpellsByName, clericSpellsByName } from '../../5e/reference';
 import { rollLoot } from '../../loot';
-import { getSceneById, pickSceneVariant } from '../../story';
+import { getSceneById, pickSceneVariant, type StoryScene } from '../../story';
 import { generateCannedFlavor, type NarrationContext } from '../../narrationEngine';
 import { DIFFICULTY_TO_DC, type ClassifiedStunt, type StuntTemplate } from '../../stunts';
 import { getNextLevelDef } from '../../progression';
@@ -134,6 +134,69 @@ function reconcileFlagQuests(state: GameState, logs: string[]) {
     }
     return { ...quest, objectives, status };
   });
+}
+
+// Applies a scene's onComplete flags/rewards exactly once (guarded by flagsSet).
+// Called both at end-of-turn for the current scene and when exiting a cleared
+// scene, so leaving immediately after a fight still counts as completing it.
+function applySceneCompletion(state: GameState, scene: StoryScene, summaryParts: string[]) {
+  if (!scene.onComplete?.flagsSet) return;
+  const newFlags = scene.onComplete.flagsSet.filter(f => !(state.storyFlags || []).includes(f));
+  if (newFlags.length === 0) return;
+  state.storyFlags = [...(state.storyFlags || []), ...newFlags];
+  const rewardXp = scene.onComplete.reward?.xp || 0;
+  if (rewardXp > 0) {
+    applyXpAndCheckLevelUp(
+      state,
+      rewardXp,
+      summaryParts,
+      `for securing ${scene.title || scene.location}.`
+    );
+  }
+  const rewardItems = scene.onComplete.reward?.items || [];
+  const grantedItems = rewardItems.filter(name =>
+    !state.inventory.some(i => i.name.toLowerCase() === name.toLowerCase())
+  );
+  if (grantedItems.length > 0) {
+    state.inventory = [
+      ...state.inventory,
+      ...grantedItems.map((name, idx) => ({
+        id: `reward-${Date.now().toString(36)}-${idx}`,
+        name,
+        type: (/key|sigil|map/i.test(name) ? 'key' : 'misc') as 'key' | 'misc',
+        quantity: 1,
+        equipped: false,
+      })),
+    ];
+    state.inventoryChangeLog = [...state.inventoryChangeLog, `Scene reward: ${grantedItems.join(', ')}`].slice(-10);
+    summaryParts.push(`You claim ${grantedItems.join(' and ')}.`);
+  }
+  const lootTable = scene.onComplete.reward?.lootTable;
+  if (lootTable) {
+    const loot = rollLoot(lootTable);
+    if (loot) {
+      const coinGain = Object.entries(loot.coins).filter(([, v]) => (v || 0) > 0);
+      if (coinGain.length > 0) {
+        const gold = loot.coins.gp || 0;
+        const silver = loot.coins.sp || 0;
+        const copper = loot.coins.cp || 0;
+        if (gold > 0) awardGold(state, gold);
+        summaryParts.push(`You recover ${gold ? gold + ' gp' : ''}${gold && (silver || copper) ? ', ' : ''}${silver ? silver + ' sp' : ''}${silver && copper ? ', ' : ''}${(!gold && !silver && copper) ? `${copper} cp` : ''}`.trim().replace(/, $/, ''));
+      }
+      if (loot.items.length > 0) {
+        const newItems = loot.items.map(it => ({
+          id: `loot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+          name: it.id.replace(/_/g, ' '),
+          type: 'misc' as const,
+          quantity: it.quantity,
+          equipped: false,
+        }));
+        state.inventory = [...state.inventory, ...newItems];
+        state.inventoryChangeLog = [...state.inventoryChangeLog, `Scene loot: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}`].slice(-10);
+        summaryParts.push(`Loot found: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}.`);
+      }
+    }
+  }
 }
 
 function normalizeLocationKey(location: string): string {
@@ -605,17 +668,32 @@ async function _updateGameState(
       newState.lastActionSummary = "You cannot leave while threats remain.";
       return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: ["You cannot leave while threats remain."], eventSummary: newState.lastActionSummary, narrationMode: "GENERAL", rollLog: [] };
     }
+    // Leaving a cleared scene counts as completing it: apply onComplete
+    // flags/rewards now so exits gated on those flags open immediately.
+    const exitSummaries: string[] = [];
+    if (currentScene) {
+      applySceneCompletion(newState, currentScene, exitSummaries);
+    }
     if (sceneExit.consumeItem) {
       const hasItem = newState.inventory.some(i => i.name.toLowerCase() === sceneExit.consumeItem!.toLowerCase());
       if (!hasItem) {
         newState.lastActionSummary = `You need ${sceneExit.consumeItem} to proceed.`;
         return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: [newState.lastActionSummary], eventSummary: newState.lastActionSummary, narrationMode: "GENERAL", rollLog: [] };
       }
-      newState.inventory = newState.inventory.filter(i => i.name.toLowerCase() !== sceneExit.consumeItem!.toLowerCase());
+      // Consumed below, only once the transition actually happens — the target's
+      // entryConditions.requiresItem check must still see the item in inventory.
     }
     let target = getSceneById(sceneExit.targetSceneId);
     if (!target && (currentScene?.location.toLowerCase().includes('gate') || currentScene?.id.includes('gate'))) {
       target = pickSceneVariant('act1_courtyard', newState.worldSeed) || getSceneById('courtyard_v1');
+    }
+    // Deterministic variant selection: exits name a concrete scene id, but the
+    // actual variant within its group is picked from the run's worldSeed mixed
+    // with a per-group hash, so the choice is stable across revisits within a
+    // run while different seeds (and different groups) still vary.
+    if (target?.group) {
+      const groupHash = target.group.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+      target = pickSceneVariant(target.group, newState.worldSeed + groupHash) || target;
     }
     if (target?.entryConditions) {
       const conditions = target.entryConditions;
@@ -630,12 +708,21 @@ async function _updateGameState(
         lockedReason = "Something here resists you — you haven't yet done what's needed.";
       }
       if (lockedReason) {
-        newState.lastActionSummary = lockedReason;
-        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: [lockedReason], eventSummary: lockedReason, narrationMode: "GENERAL", rollLog: [] };
+        const lockedFacts = [...exitSummaries, lockedReason];
+        newState.lastActionSummary = lockedFacts.join(' ');
+        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: lockedFacts, eventSummary: newState.lastActionSummary, narrationMode: "GENERAL", rollLog: [] };
       }
     }
     if (target) {
-      const summaryParts: string[] = [];
+      if (sceneExit.consumeItem) {
+        newState.inventory = newState.inventory.filter(i => i.name.toLowerCase() !== sceneExit.consumeItem!.toLowerCase());
+        newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${sceneExit.consumeItem}`].slice(-10);
+      }
+      if (target.group) {
+        const visits = (newState.sceneVisits || {})[target.group] || 0;
+        newState.sceneVisits = { ...(newState.sceneVisits || {}), [target.group]: visits + 1 };
+      }
+      const summaryParts: string[] = [...exitSummaries];
       if (sceneExit.log) summaryParts.push(sceneExit.log);
       const { state: transitioned, roomDesc } = applySceneEntry(target.id, newState, summaryParts);
       transitioned.lastActionSummary = summaryParts.join(' ').trim() || `You move to ${target.location}.`;
@@ -1151,6 +1238,26 @@ async function _updateGameState(
     newState.isCombatActive = newState.nearbyEntities.some(e => e.status === 'alive' && e.hp > 0) && newState.hp > 0;
   }
 
+  // 6a-ii. SCENE DISCOVERY (keys/maps found via search/investigate, data-driven from story JSON)
+  if (wantsSearch || wantsInvestigate) {
+    const sceneForDiscovery = getSceneById(newState.storySceneId);
+    for (const disc of sceneForDiscovery?.discovery || []) {
+      const alreadyFound = newState.storyFlags.includes(disc.onceFlag)
+        || newState.inventory.some(i => i.name.toLowerCase() === disc.item.toLowerCase());
+      if (alreadyFound) continue;
+      if (Math.random() >= (disc.chance ?? 1)) continue;
+      const itemType = /key|sigil|map/i.test(disc.item) ? 'key' as const : 'misc' as const;
+      newState.inventory = [
+        ...newState.inventory,
+        { id: `disc-${Date.now().toString(36)}`, name: disc.item, type: itemType, quantity: 1, equipped: false },
+      ];
+      newState.storyFlags = [...newState.storyFlags, disc.onceFlag];
+      newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Found ${disc.item} at ${newState.location}`].slice(-10);
+      summaryParts.push(disc.log || `Your search turns up ${disc.item}.`);
+      foundSearchItems = true;
+    }
+  }
+
   // 6b. TRACK LOCATION HISTORY
   if (newState.location !== currentState.location) {
     const history = newState.locationHistory || [];
@@ -1186,46 +1293,8 @@ async function _updateGameState(
   // Scene completion rewards
   const sceneForReward = getSceneById(newState.storySceneId);
   const sceneCleared = !newState.nearbyEntities.some(e => e.status === 'alive');
-  if (sceneForReward?.onComplete?.flagsSet && sceneCleared) {
-    const newFlags = sceneForReward.onComplete.flagsSet.filter(f => !(newState.storyFlags || []).includes(f));
-    if (newFlags.length > 0) {
-      newState.storyFlags = [...(newState.storyFlags || []), ...newFlags];
-      const rewardXp = sceneForReward.onComplete.reward?.xp || 0;
-      if (rewardXp > 0) {
-        applyXpAndCheckLevelUp(
-          newState,
-          rewardXp,
-          summaryParts,
-          `for securing ${sceneForReward.title || sceneForReward.location}.`
-        );
-      }
-      const lootTable = sceneForReward.onComplete.reward?.lootTable;
-      if (lootTable) {
-        const loot = rollLoot(lootTable);
-        if (loot) {
-          const coinGain = Object.entries(loot.coins).filter(([, v]) => (v || 0) > 0);
-          if (coinGain.length > 0) {
-            const gold = loot.coins.gp || 0;
-            const silver = loot.coins.sp || 0;
-            const copper = loot.coins.cp || 0;
-            if (gold > 0) awardGold(newState, gold);
-            summaryParts.push(`You recover ${gold ? gold + ' gp' : ''}${gold && (silver || copper) ? ', ' : ''}${silver ? silver + ' sp' : ''}${silver && copper ? ', ' : ''}${(!gold && !silver && copper) ? `${copper} cp` : ''}`.trim().replace(/, $/, ''));
-          }
-          if (loot.items.length > 0) {
-            const newItems = loot.items.map(it => ({
-              id: `loot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-              name: it.id.replace(/_/g, ' '),
-              type: 'misc' as const,
-              quantity: it.quantity,
-              equipped: false,
-            }));
-            newState.inventory = [...newState.inventory, ...newItems];
-            newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Scene loot: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}`].slice(-10);
-            summaryParts.push(`Loot found: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}.`);
-          }
-        }
-      }
-    }
+  if (sceneForReward && sceneCleared) {
+    applySceneCompletion(newState, sceneForReward, summaryParts);
   }
 
   // Reconcile flag-gated quest objectives now that all story flags for this turn are set.

@@ -131,6 +131,7 @@ export const gameStateSchema = z.object({
   currentFloor: z.coerce.number().int().default(1),
   currentImage: z.string().optional(),
   locationHistory: z.array(z.string()).default([]),
+  sceneVisits: z.record(z.coerce.number().int().nonnegative()).default({}),
   inventoryChangeLog: z.array(z.string()).default([]),
   lastRolls: z.object({
     playerAttack: z.coerce.number().int().default(0),

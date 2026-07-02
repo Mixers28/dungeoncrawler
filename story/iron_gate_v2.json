@@ -4,20 +4,32 @@
   "title": "The Windscar Gate",
   "location": "The Iron Gate",
   "description": "Gusts whistle through jagged gaps in the rusted bars, scattering flakes of iron across the stone at your feet.",
-  "entryConditions": { "minLevel": 1, "flagsAll": [] },
+  "entryConditions": {
+    "minLevel": 1,
+    "flagsAll": []
+  },
   "onEnter": {
     "log": "The gate towers above you like a dead giant's ribs. Beyond it, the Citadel broods in silence.",
     "spawn": []
   },
   "exits": [
     {
-      "verb": ["open", "push", "enter", "proceed"],
-      "targetSceneId": "courtyard_v2",
-      "log": "You brace your shoulders and shove. The gate groans open just enough for you to slip inside."
+      "verb": [
+        "open",
+        "push",
+        "enter",
+        "proceed"
+      ],
+      "targetSceneId": "future_courtyard_hub_v1",
+      "log": "With a grinding shriek, the gate yields and you step into the Citadel courtyard."
     }
   ],
   "onComplete": {
-    "flagsSet": ["gate_opened"],
-    "reward": { "xp": 25 }
+    "flagsSet": [
+      "gate_opened"
+    ],
+    "reward": {
+      "xp": 25
+    }
   }
 }

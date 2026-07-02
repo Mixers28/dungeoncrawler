@@ -4,20 +4,32 @@
   "title": "The Iron Gate",
   "location": "The Iron Gate",
   "description": "A rusted gate looms half-sunken in the collapsed wall. Wind pushes through the cracks, carrying the faint smell of ash and cold stone.",
-  "entryConditions": { "minLevel": 1, "flagsAll": [] },
+  "entryConditions": {
+    "minLevel": 1,
+    "flagsAll": []
+  },
   "onEnter": {
     "log": "You stand before the Iron Gate of the Sunken Citadel. Beyond it, the curse waits.",
     "spawn": []
   },
   "exits": [
     {
-      "verb": ["open", "push", "enter", "proceed"],
-      "targetSceneId": "courtyard_v1",
+      "verb": [
+        "open",
+        "push",
+        "enter",
+        "proceed"
+      ],
+      "targetSceneId": "future_courtyard_hub_v1",
       "log": "With a grinding shriek, the gate yields and you step into the Citadel courtyard."
     }
   ],
   "onComplete": {
-    "flagsSet": ["gate_opened"],
-    "reward": { "xp": 25 }
+    "flagsSet": [
+      "gate_opened"
+    ],
+    "reward": {
+      "xp": 25
+    }
   }
 }

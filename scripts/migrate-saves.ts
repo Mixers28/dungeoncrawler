@@ -52,7 +52,7 @@ function stableStringify(value: unknown): string {
 
 /** Top-level keys whose value genuinely differs between raw and hydrated. */
 function diffKeys(raw: Record<string, unknown>, hydrated: Record<string, unknown>): string[] {
-  const keys = new Set([...Object.keys(raw), ...Object.keys(hydrated)]);
+  const keys = Array.from(new Set(Object.keys(raw).concat(Object.keys(hydrated))));
   const changed: string[] = [];
   for (const key of keys) {
     if (stableStringify(raw[key]) !== stableStringify(hydrated[key])) changed.push(key);

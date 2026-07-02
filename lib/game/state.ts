@@ -211,7 +211,17 @@ export function applySceneEntry(
     if (scene.onEnter?.log) {
       summaryParts.push(scene.onEnter.log);
     }
-    if (scene.onEnter?.spawn && scene.onEnter.spawn.length > 0) {
+    // A scene whose completion flags are all set was already cleared this run —
+    // re-entering it must not respawn its monsters.
+    const alreadyCleared =
+      (scene.onComplete?.flagsSet?.length || 0) > 0 &&
+      scene.onComplete!.flagsSet!.every(f => (nextState.storyFlags || []).includes(f));
+    if (alreadyCleared || !scene.onEnter?.spawn || scene.onEnter.spawn.length === 0) {
+      // Fresh room: entities from the previous scene don't follow the player.
+      nextState.nearbyEntities = [];
+      nextState.isCombatActive = false;
+    }
+    if (!alreadyCleared && scene.onEnter?.spawn && scene.onEnter.spawn.length > 0) {
       // Use monster image service for visual representation
       try {
         nextState.nearbyEntities = scene.onEnter.spawn.map(sp => ({
@@ -506,6 +516,7 @@ export async function buildNewGameState(archetypeKey?: ArchetypeKey): Promise<Ga
     log: [],
     sceneRegistry: {}, roomRegistry: {}, monsterRegistry: {}, storyAct: 0, currentFloor: 1, currentImage: "",
     locationHistory: [],
+    sceneVisits: {},
     inventoryChangeLog: [],
     lastRolls: {
       playerAttack: 0,

@@ -5,16 +5,16 @@
 
 <!-- SUMMARY_START -->
 **Current Focus (auto-maintained by Agent):**
-- Sprint 3 (QA + Ops) is complete — smoke test, save migration CLI, deploy checklist all shipped.
-- Next deploy: walk `docs/deploy-checklist.md` end to end on Railway.
-- Next dev work (pick one): story Phase 1 leftovers, or phased-plan core items (data-driven ability resolution).
+- Story Phase 1 is fully wired: gate → hub → 3 branches (+ key-gated side rooms) → boss → treasury.
+- Next deploy: walk `docs/deploy-checklist.md` end to end on Railway (old saves will need `db:migrate-saves` for `sceneVisits`).
+- Next dev work: phased-plan core items (data-driven ability resolution, class proficiency mapping), or story Phase 2 (procedural routes).
 <!-- SUMMARY_END -->
 
 ---
 
 ## Current Objective
 
-Sprint backlog (1–3) is fully shipped. Decide the next track: story roadmap Phase 1 leftovers, or the canonical phased-plan action items (`docs/phased-plan.md`).
+Sprint backlog (1–3) and story roadmap Phase 1 are fully shipped. Decide the next track: canonical phased-plan action items (data-driven ability resolution, class proficiency mapping), or story Phase 2 (procedural routes).
 
 ---
 
@@ -29,6 +29,7 @@ Sprint backlog (1–3) is fully shipped. Decide the next track: story roadmap Ph
 - [x] Sprint 3.1 — Automated smoke test: Playwright covering login / start / check skills / attack / loot (`e2e/smoke.spec.ts`, `npm run test:e2e`).
 - [x] Sprint 3.2 — Save migration helper: `npm run db:migrate-saves` (dry-run report; `-- --apply` writes back; `-- --user <email>` scopes to one save).
 - [x] Sprint 3.3 — Deploy checklist: `docs/deploy-checklist.md` (build, env, DB, login flow, combat/dice, story navigation, persistence).
+- [x] Story Phase 1 wiring — Act 1 now runs gate → hub → 3 branches (+ side rooms via discoverable keys) → convergence boss → treasury; validated by full engine traversal.
 
 ---
 

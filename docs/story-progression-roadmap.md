@@ -49,9 +49,21 @@ Introduce real player choice with 3 mid‑branches, key‑gated side paths, and 
 
 ### Action items
 [x] Wire exit gating for `entryConditions` and `consumeItem` in the engine.
-[ ] Add seed + visit index selection for `future_*` group variants.
-[ ] Add discovery chances for keys/maps via search/investigate rewards.
-[ ] Wire Act 1 entry to the new hub scenes and convergence conditions.
+[x] Add seeded selection for `future_*` group variants. (Deviation from the original
+    "seed + visit index" idea: the variant is pinned per run via `worldSeed` + a
+    per-group hash, because rotating variants on revisit re-rolled cleared rooms
+    with fresh spawns. Visit counts are tracked in `GameState.sceneVisits` for
+    Phase 2 use. Cleared scenes — all `onComplete.flagsSet` present — no longer
+    respawn monsters on re-entry.)
+[x] Add discovery chances for keys/maps via search/investigate rewards.
+    (Data-driven `discovery` array on scenes; each branch can discover its own
+    side-door key at 65% per search, so the circular key loop cannot deadlock.)
+[x] Wire Act 1 entry to the new hub scenes and convergence conditions.
+    (Iron Gate exits now target the hub; hub gained a bossroom exit whose
+    `entryConditions` enforce the three-branch convergence. Engine fixes along
+    the way: `onComplete.reward.items` are now actually granted; `consumeItem`
+    is consumed only when the transition succeeds; leaving a cleared scene
+    applies its `onComplete` immediately so flag-gated exits open right away.)
 
 ### Validation
 - Manual: hub offers 3 distinct exits.

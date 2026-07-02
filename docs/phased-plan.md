@@ -70,9 +70,9 @@ Note: This is the canonical roadmap for dcv01. Other planning docs are supplemen
 
 Action items (Phase 1):
 [x] Wire exit gating for `entryConditions` and `consumeItem` in the engine.
-[ ] Add seed + visit-index selection for `future_*` group variants.
-[ ] Add discovery chances for keys/maps via search/investigate rewards.
-[ ] Wire Act 1 entry to the new hub scenes and convergence conditions.
+[x] Add seeded selection for `future_*` group variants (pinned per run by worldSeed + group hash; see roadmap doc for the deviation rationale).
+[x] Add discovery chances for keys/maps via search/investigate rewards (data-driven `discovery` on scenes).
+[x] Wire Act 1 entry to the new hub scenes and convergence conditions (gate → hub → 3 branches → boss → treasury).
 
 Validation:
 - Manual: hub offers 3 distinct exits.
