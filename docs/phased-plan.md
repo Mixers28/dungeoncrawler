@@ -1,23 +1,25 @@
 ---
 name: phased-plan
-description: Source of truth for dcv01 branch scope and roadmap
+description: Roadmap for Dungeon Portal mechanics, story progression, UI, and validation
 ---
 
-# dcv01 Branch Plan (Source of Truth)
+# Dungeon Portal Roadmap
 
-Unify the 5e reference integration work, current dcv01 behaviors, and remaining gaps into a single source-of-truth document. This plan tracks what is already wired, what remains, and how to validate changes.
+This is the canonical roadmap. Architecture and setup details live in `docs/PROJECT_CONTEXT.md`; current build order lives in `docs/NOW.md`.
 
-Note: This is the canonical roadmap for dcv01. Other planning docs are supplemental only.
+Other planning docs are supplemental only unless linked here.
 
 ## Branch scope (current reality)
 - Facts-first logs: `LogEntry.summary` is canonical; optional canned flavor comes from `data/narration/*.json`.
-- Structured intents for attack/defend/run/look/check-sheet/cast-ability with quick-insert buttons in the sidebar.
+- Structured intents for attack/defend/run/look/check-sheet/cast-ability/equip/drop with quick-insert buttons in the sidebar.
 - 5e reference layer (`data/5e/*.json`) for weapons/armor/skills/spells/loot; starter prefabs in `data/5e/char_*.json`.
 - Story graph from `story/*.json` with exits, spawns, rewards, and location history.
 - Combat + spells resolve deterministically with slot/prepared checks and a small set of modeled effects.
 - UI: dice tray for last rolls and image fallback for scene art.
 - Loot: scene rewards and corpse looting via `data/5e/loot/*.json`.
-- Saves: localStorage with hydration/backfill; Supabase used for auth/leaderboard if configured.
+- Saves: Drizzle/Postgres JSONB saves with Zod hydration/backfill.
+- Auth: Auth.js credentials backed by `public.users`.
+- Leaderboard: localStorage-only until a new global leaderboard design is implemented.
 
 ## Requirements
 - Drive abilities, skills, weapons, armor, and basic actions from `data/5e/*.json` via typed reference helpers.
@@ -52,10 +54,12 @@ Note: This is the canonical roadmap for dcv01. Other planning docs are supplemen
 - Sidebar provides quick actions for spells/skills/weapons and shows collapsible spellbook/backpack.
 
 ## Known gaps
-- Ability resolution only covers a starter subset; higher-level abilities are unmodeled.
-- Class proficiency mapping is partially hardcoded; not fully derived from 5e JSON.
-- Sheet outputs are not fully driven by the reference layer.
-- Narration guardrails are enforced via canned flavor and state-derived context.
+- Many non-SRD spells still lack authored deterministic mechanics.
+- Armor proficiency is surfaced but not enforced.
+- Rest/slot recovery and class-based level-up benefits are incomplete.
+- Loot/gear display names and item types need broader normalization.
+- Stunt effects need deterministic regression tests and a clearer temporary-effect model.
+- Playwright e2e should be run regularly against local Postgres.
 
 ## Action items
 [x] Complete data-driven ability resolution from reference metadata (damage, cost, requirements).
@@ -82,8 +86,11 @@ Note: This is the canonical roadmap for dcv01. Other planning docs are supplemen
     case-insensitively at build and hydrate. Known data quirk: the cleric starter
     prefab equips Chain Mail (heavy) while class proficiencies are light/medium/shield —
     proficiency is not yet enforced for armor, only surfaced.)
-[ ] Add deterministic tests/fixtures for intent parsing and ability resolution.
+[x] Add deterministic tests/fixtures for inventory command parsing and core weapon attack regressions.
 [ ] Find or author mechanics data for the 195 missing non-SRD spells and merge into the overlay.
+[ ] Add deterministic tests/fixtures for broader ability resolution.
+[ ] Enforce or explicitly ignore armor proficiency in combat calculations.
+[ ] Add rest/slot recovery and class-based level-up benefits.
 
 ## Story progression roadmap (supplemental details in `docs/story-progression-roadmap.md`)
 - Phase 1 (authored branches): add mid-branch scenes with gated exits, key/map/sigil loop, and deterministic variants.
@@ -109,15 +116,20 @@ Validation:
 - [x] UI: quick-use for consumables (Sprint 2; sidebar Use buttons + 5e SRD consumable catalog).
 - [x] Spells: expanded effects (buffs/conditions/AoE) — Sprint 2.
 - [x] Quests: sidebar shows active quests with objective tracking — Sprint 2.
+- [x] Inventory: equip/drop commands mutate state, recompute AC, and protect key items.
+- [x] Combat: owned-weapon validation, equipped-weapon default attacks, matching requested-weapon damage dice, target-aware attacks.
 - Loot/gear: broaden monster->loot mapping, add display names/types, and support potions/scrolls from inventory.
 - Spells: add rest/slot recovery.
 - Level-up: grant class-based benefits (slots/spells/features), not just +HP; surface a level-up notice.
-- Tests: add smoke coverage for loot mapping, spell casting, and scene transitions (Sprint 3).
+- Tests: add smoke coverage for loot mapping, spell casting, inventory equip/drop, and scene transitions.
 
 ## Testing and validation
+- `npm run test:unit`
+- `npx tsc --noEmit`
 - `npm run lint`
 - `npm run build`
-- Manual: `check skills`, `attack`, `cast <starter spell>`, `look around`.
+- `npm run test:e2e` with local Postgres and `.env.local`
+- Manual: `check skills`, `attack`, `attack <target>`, `equip <item>`, `drop <item>`, `cast <starter spell>`, `look around`.
 
 ## Risks and edge cases
 - Over-eager intent matching could misclassify commands.

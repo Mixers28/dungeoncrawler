@@ -1,36 +1,69 @@
-# Smoke Test Runbook (manual)
+# Smoke Test Runbook
 
-Use this to sanity‑check the hybrid facts+flavor flow without extra tooling.
+Use this to sanity-check setup, deterministic game resolution, persistence, and the browser flow.
 
 ## Prereqs
-- `npm install` (once)
-- `.env.local` with Supabase keys for auth; start a local or connected Supabase instance.
-- Terminal 1: `npm run dev`
 
-## Flow
-1) Open http://localhost:3000, start a new game (ensures skills/log backfill).
-2) Enter commands and expect factual fact blocks:
-   - `check skills` → shows “Skills: … Equipped weapon: … Armor: …”
-   - `attack the rat with longsword` → uses longsword dice from 5e, names the weapon in facts.
-   - `cast fireball on rat` → deterministic rejection line (“no learned abilities…” for now).
-   - `look around` → factual event + optional 1-line flavor (no numbers/items/skills listed).
-3) Reload an old save if you have one → log should populate even if only `narrativeHistory` existed; skills should be present.
+```bash
+npm install
+docker compose up -d
+cp .env.local.example .env.local
+npm run db:migrate
+```
 
-## Optional automation
-If you want browser automation, add Playwright:
+Required `.env.local` values:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/dungeoncrawler
+AUTH_SECRET=<generate with: openssl rand -base64 32>
 ```
-npm i -D @playwright/test
-npx playwright install --with-deps
+
+## Fast Local Checks
+
+```bash
+npm run test:unit
+npx tsc --noEmit
+npm run lint
+npm run build
 ```
-Create `tests/smoke.spec.ts` that:
+
+`npm run build` writes `lib/build-info.ts`; avoid committing timestamp-only changes unless intentionally updating build metadata.
+
+## Manual Browser Flow
+
+Start the app:
+
+```bash
+npm run dev
 ```
-import { test, expect } from '@playwright/test';
-test('facts + flavor', async ({ page }) => {
-  await page.goto('http://localhost:3000');
-  // perform login/start game as your app requires, then:
-  await page.fill('input[placeholder="What do you do?"]', 'check skills');
-  await page.click('text=ACT');
-  await expect(page.getByText('Skills:')).toBeVisible();
-});
+
+Then visit http://localhost:3000.
+
+1. Logged-out `/` redirects to `/login`.
+2. Sign up with a fresh email.
+3. Choose a class and start a run.
+4. Click through the prologue until the command input appears.
+5. Run factual commands:
+   - `check skills` shows skills, equipped weapon, armor, proficiencies, spells, and slots.
+   - `look around` reports the current location, threats, exits, and trader if present.
+   - `attack` uses the equipped weapon.
+   - `attack skeleton` targets the named enemy when present.
+   - `attack with greatsword` rejects the command if the weapon is not in inventory.
+   - `equip handaxe` changes the equipped weapon.
+   - `drop healing potion` removes or decrements the item.
+   - `drop iron key` refuses to discard a key item.
+   - `cast <starter spell>` resolves modeled spell mechanics or rejects unknown/unprepared spells.
+6. Reload mid-run and confirm HP, inventory, log, and location restore from the database save.
+7. Use "New Run" and confirm a fresh save replaces the previous run.
+
+## Automated Browser Smoke
+
+```bash
+npm run test:e2e
 ```
-Run with `npx playwright test` while `npm run dev` is active.
+
+Notes:
+
+- Playwright auto-starts `next dev`.
+- Local Postgres and `.env.local` are required.
+- The smoke spec signs up a fresh throwaway user each run.

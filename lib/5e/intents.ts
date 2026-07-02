@@ -3,6 +3,8 @@ import { weapons, basicActions, skills, abilityScores } from './reference';
 export type ParsedIntent =
   | { type: 'castAbility'; abilityName: string; target?: string }
   | { type: 'attack'; target?: string; weaponName?: string }
+  | { type: 'equip'; itemName: string }
+  | { type: 'drop'; itemName: string }
   | { type: 'defend' }
   | { type: 'run' }
   | { type: 'look' }
@@ -28,9 +30,25 @@ function findTarget(text: string): string | undefined {
   return undefined;
 }
 
+function findAttackTarget(text: string): string | undefined {
+  const explicit = findTarget(text);
+  if (explicit) return explicit;
+  const match = text.match(/\b(?:attack|hit|strike|stab|slash|shoot|bash|punch|kick)\s+(?!with\b)(?:the\s+|a\s+|an\s+)?([a-z][a-z\s'-]{1,40})/i);
+  return match?.[1]?.replace(/\s+with\s+.*$/i, '').trim();
+}
+
 function findDirection(text: string): string | undefined {
   const match = text.match(/\b(north|south|east|west|left|right|forward|back|backward|forwards)\b/i);
   return match ? match[1].toLowerCase() : undefined;
+}
+
+function findItemCommand(text: string, verb: 'equip' | 'drop'): string | undefined {
+  const match = text.match(
+    verb === 'equip'
+      ? /^\s*(?:equip|wear|wield)\s+(?:the\s+|a\s+|an\s+)?(.+?)\s*$/i
+      : /^\s*(?:drop|discard|throw away)\s+(?:the\s+|a\s+|an\s+)?(.+?)\s*$/i
+  );
+  return match?.[1]?.trim();
 }
 
 function isCheckSheet(text: string): { section?: 'skills' | 'abilities' | 'inventory' | 'all' } | null {
@@ -47,6 +65,16 @@ export function parseActionIntent(raw: string): ParsedIntent {
 
 export function parseActionIntentWithKnown(raw: string, knownSpells: string[], availableSpellNames: string[] = []): ParsedIntent {
   const text = raw.trim();
+
+  const equipItemName = findItemCommand(text, 'equip');
+  if (equipItemName) {
+    return { type: 'equip', itemName: equipItemName };
+  }
+
+  const dropItemName = findItemCommand(text, 'drop');
+  if (dropItemName) {
+    return { type: 'drop', itemName: dropItemName };
+  }
 
   const sheetSection = isCheckSheet(text);
   if (sheetSection) {
@@ -94,7 +122,7 @@ export function parseActionIntentWithKnown(raw: string, knownSpells: string[], a
     return {
       type: 'attack',
       weaponName,
-      target: findTarget(text),
+      target: findAttackTarget(text),
     };
   }
 

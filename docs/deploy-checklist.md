@@ -10,7 +10,9 @@ Follow top to bottom for every production deploy (Railway). Check items off as y
 ## 1. Pre-deploy (local)
 
 - [ ] `main` is up to date and the working tree is clean (`git status`).
-- [ ] `npm run lint` passes (no new errors beyond known baseline).
+- [ ] `npm run test:unit` passes.
+- [ ] `npx tsc --noEmit` passes.
+- [ ] `npm run lint` passes.
 - [ ] `npm run build` succeeds locally.
 - [ ] `npm run test:e2e` passes (requires local Postgres: `docker compose up -d`).
 
@@ -40,8 +42,11 @@ Follow top to bottom for every production deploy (Railway). Check items off as y
 - [ ] Pick a class → "Enter the Realm" → prologue plays → game input appears.
 - [ ] `check skills` returns factual sheet output (skills, equipped weapon, armor, slots).
 - [ ] `attack` resolves and the Dice Tray shows the attack/damage rolls.
+- [ ] `attack with <unowned weapon>` is rejected without a damage roll.
+- [ ] `equip <owned weapon>` changes the equipped weapon; bare `attack` uses it.
 - [ ] Cast a starter spell: slots decrement and the roll (attack or save vs DC) appears.
 - [ ] Use a consumable from the sidebar: inventory count drops and the effect applies.
+- [ ] Drop a non-key item: inventory count drops; dropping a key item is refused.
 
 ## 6. Post-deploy validation — story navigation
 

@@ -54,7 +54,7 @@ export function WeaponDropdown({
 
       {/* Weapons List */}
       <div className="space-y-1">
-        <div className="text-xs font-semibold text-slate-400 px-1">Switch Weapon</div>
+        <div className="text-xs font-semibold text-slate-400 px-1">Attack With Weapon</div>
         {weapons.map((weapon) => (
           <div key={weapon.id} className="flex items-stretch gap-1">
             <button

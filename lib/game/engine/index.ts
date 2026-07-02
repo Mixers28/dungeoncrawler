@@ -439,12 +439,17 @@ function resolveStunt(
 }
 
 function getEquippedWeaponDamageDice(state: GameState, fallbackName: string): string {
+  const fallbackId = resolveWeaponId(fallbackName);
+  if (fallbackId) {
+    const def = weaponsById[fallbackId];
+    if (def?.damageDice) return def.damageDice;
+  }
+  const byName = equipmentWeaponsByName[normalizeWeaponName(fallbackName)];
+  if (byName?.damageDice) return byName.damageDice;
   if (state.equippedWeaponId) {
     const def = weaponsById[state.equippedWeaponId];
     if (def?.damageDice) return def.damageDice;
   }
-  const byName = equipmentWeaponsByName[fallbackName.toLowerCase()];
-  if (byName?.damageDice) return byName.damageDice;
   return getWeaponDamageDice(fallbackName);
 }
 
@@ -452,6 +457,116 @@ function getBaseAcFromEquipped(state: GameState): number {
   if (!state.inventory || state.inventory.length === 0) return state.ac;
   const abilityScores = state.abilityScores || {};
   return computeArmorClassFromInventory(state.inventory, abilityScores);
+}
+
+function findInventoryItemIndex(
+  inventory: GameState["inventory"],
+  itemName: string,
+  type?: GameState["inventory"][number]["type"]
+): number {
+  const requested = normalizeName(itemName);
+  if (!requested) return -1;
+  const candidates = inventory
+    .map((item, idx) => ({ item, idx, normalized: normalizeName(item.name) }))
+    .filter(({ item }) => !type || item.type === type);
+
+  const exact = candidates.find(({ normalized }) => normalized === requested);
+  if (exact) return exact.idx;
+
+  const partial = candidates.find(({ normalized }) =>
+    normalized.includes(requested) || requested.includes(normalized)
+  );
+  return partial?.idx ?? -1;
+}
+
+function refreshEquipmentAfterInventoryChange(state: GameState) {
+  const equippedWeapon = state.inventory.find(item => item.type === 'weapon' && item.equipped);
+  const fallbackWeapon = state.inventory.find(item => item.type === 'weapon');
+  const weaponToEquip = equippedWeapon || fallbackWeapon;
+
+  state.inventory = state.inventory.map(item => {
+    if (item.type !== 'weapon') return item;
+    return { ...item, equipped: weaponToEquip ? item.id === weaponToEquip.id : false };
+  });
+  state.equippedWeaponId = weaponToEquip ? resolveWeaponId(weaponToEquip.name) : undefined;
+
+  const equippedBodyArmor = state.inventory.find(item =>
+    item.type === 'armor' && item.equipped && !isShieldName(item.name)
+  );
+  const fallbackBodyArmor = state.inventory.find(item => item.type === 'armor' && !isShieldName(item.name));
+  const bodyArmorToEquip = equippedBodyArmor || fallbackBodyArmor;
+
+  const equippedShield = state.inventory.find(item =>
+    item.type === 'armor' && item.equipped && isShieldName(item.name)
+  );
+  const fallbackShield = state.inventory.find(item => item.type === 'armor' && isShieldName(item.name));
+  const shieldToEquip = equippedShield || fallbackShield;
+
+  state.inventory = state.inventory.map(item => {
+    if (item.type !== 'armor') return item;
+    if (isShieldName(item.name)) {
+      return { ...item, equipped: shieldToEquip ? item.id === shieldToEquip.id : false };
+    }
+    return { ...item, equipped: bodyArmorToEquip ? item.id === bodyArmorToEquip.id : false };
+  });
+  state.equippedArmorId = bodyArmorToEquip ? resolveArmorId(bodyArmorToEquip.name) : undefined;
+  state.ac = computeArmorClassFromInventory(state.inventory, state.abilityScores || {});
+}
+
+function equipInventoryItem(state: GameState, itemName: string): string {
+  const idx = findInventoryItemIndex(state.inventory, itemName);
+  if (idx < 0) return `You do not have ${itemName} in your pack.`;
+
+  const item = state.inventory[idx];
+  if (item.type !== 'weapon' && item.type !== 'armor') {
+    return `${item.name} cannot be equipped.`;
+  }
+
+  if (item.type === 'weapon') {
+    state.inventory = state.inventory.map((entry, entryIdx) =>
+      entry.type === 'weapon' ? { ...entry, equipped: entryIdx === idx } : entry
+    );
+    state.equippedWeaponId = resolveWeaponId(item.name);
+    return `You equip ${item.name}.`;
+  }
+
+  const equippingShield = isShieldName(item.name);
+  state.inventory = state.inventory.map((entry, entryIdx) => {
+    if (entry.type !== 'armor') return entry;
+    const entryIsShield = isShieldName(entry.name);
+    if (equippingShield) {
+      return entryIsShield ? { ...entry, equipped: entryIdx === idx } : entry;
+    }
+    return entryIsShield ? entry : { ...entry, equipped: entryIdx === idx };
+  });
+  if (!equippingShield) state.equippedArmorId = resolveArmorId(item.name);
+  state.ac = computeArmorClassFromInventory(state.inventory, state.abilityScores || {});
+  return `You equip ${item.name}. Your AC is now ${state.ac}.`;
+}
+
+function dropInventoryItem(state: GameState, itemName: string): string {
+  const idx = findInventoryItemIndex(state.inventory, itemName);
+  if (idx < 0) return `You do not have ${itemName} in your pack.`;
+
+  const item = state.inventory[idx];
+  if (item.type === 'key') {
+    return `${item.name} feels too important to discard.`;
+  }
+
+  const remainingQty = Math.max(0, item.quantity - 1);
+  state.inventory = remainingQty > 0
+    ? state.inventory.map((entry, entryIdx) =>
+        entryIdx === idx ? { ...entry, quantity: remainingQty } : entry
+      )
+    : state.inventory.filter((_, entryIdx) => entryIdx !== idx);
+
+  if (item.equipped || item.type === 'weapon' || item.type === 'armor') {
+    refreshEquipmentAfterInventoryChange(state);
+  }
+  state.inventoryChangeLog = [...state.inventoryChangeLog, `Dropped ${item.name} at ${state.location}`].slice(-10);
+  return remainingQty > 0
+    ? `You drop one ${item.name}. ${remainingQty} remain.`
+    : `You drop ${item.name}.`;
 }
 
 function resolveTradeIntent(
@@ -638,9 +753,16 @@ async function _updateGameState(
   const parsedIntent = intent.parsedIntent;
   const actionIntent: CoreActionIntent = intent.actionIntent;
 
-  const preferredWeaponName = parsedIntent.type === 'attack' && parsedIntent.weaponName
-    ? parsedIntent.weaponName
-    : currentState.inventory.find(i => i.type === 'weapon')?.name;
+  const requestedWeaponName = parsedIntent.type === 'attack' ? parsedIntent.weaponName : undefined;
+  const requestedWeaponIdx = requestedWeaponName
+    ? findInventoryItemIndex(currentState.inventory, requestedWeaponName, 'weapon')
+    : -1;
+  const requestedWeaponMissing = !!requestedWeaponName && requestedWeaponIdx < 0;
+  const equippedWeapon = currentState.inventory.find(i => i.type === 'weapon' && i.equipped);
+  const fallbackWeapon = currentState.inventory.find(i => i.type === 'weapon');
+  const preferredWeaponName = requestedWeaponName
+    ? currentState.inventory[requestedWeaponIdx]?.name
+    : equippedWeapon?.name || fallbackWeapon?.name;
 
   let weaponName = preferredWeaponName || "Fists";
   let playerDmgDice = getEquippedWeaponDamageDice(currentState, weaponName);
@@ -744,8 +866,34 @@ async function _updateGameState(
     }
   }
 
+  if (requestedWeaponMissing) {
+    const missingSummary = `You do not have ${requestedWeaponName} in your pack.`;
+    newState.lastActionSummary = missingSummary;
+    return {
+      newState,
+      roomDesc: newState.roomRegistry[newState.location] || "",
+      accountantFacts: [missingSummary],
+      eventSummary: missingSummary,
+      narrationMode: "GENERAL",
+      rollLog: [],
+    };
+  }
+
   // 3. ACTIVE MONSTER CONTEXT
-  const activeMonsterIndex = newState.nearbyEntities.findIndex(e => e.status === 'alive');
+  const requestedTargetName =
+    parsedIntent.type === 'attack' || parsedIntent.type === 'castAbility'
+      ? parsedIntent.target
+      : undefined;
+  const requestedTargetIndex = requestedTargetName
+    ? newState.nearbyEntities.findIndex(e =>
+        e.status === 'alive' &&
+        (normalizeName(e.name).includes(normalizeName(requestedTargetName)) ||
+          normalizeName(requestedTargetName).includes(normalizeName(e.name)))
+      )
+    : -1;
+  const activeMonsterIndex = requestedTargetIndex >= 0
+    ? requestedTargetIndex
+    : newState.nearbyEntities.findIndex(e => e.status === 'alive');
   const activeMonster = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
 
   // 4. PLAYER TURN
@@ -878,7 +1026,11 @@ async function _updateGameState(
   }
 
   if (!handledConsumable) {
-  if (parsedIntent.type === 'castAbility') {
+  if (parsedIntent.type === 'equip') {
+    summaryParts.push(equipInventoryItem(newState, parsedIntent.itemName));
+  } else if (parsedIntent.type === 'drop') {
+    summaryParts.push(dropInventoryItem(newState, parsedIntent.itemName));
+  } else if (parsedIntent.type === 'castAbility') {
     const spellKey = parsedIntent.abilityName.toLowerCase();
     const normalizedKey = normalizeSpellName(spellKey);
     const spell = spellCatalog[normalizedKey] || spellCatalog[spellKey];

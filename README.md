@@ -14,8 +14,10 @@ Branch `dcv01` focuses on hybrid facts+flavor, deterministic mechanics, a prefab
 
 ## Run
 1) Install: `npm install`
-2) Env: set Supabase keys in `.env.local` (see `Project_README.md` for details). Gameplay saves to localStorage; Supabase is for auth/leaderboard.
-3) Dev server: `npm run dev` then open http://localhost:3000.
+2) Start Postgres: `docker compose up -d`
+3) Env: copy `.env.local.example` to `.env.local`, then set `DATABASE_URL` and `AUTH_SECRET`.
+4) Apply migrations: `npm run db:migrate`
+5) Dev server: `npm run dev` then open http://localhost:3000.
 
 ## Quick checks
 - `check skills` → factual summary of skills/equipped gear (no Narrator).
@@ -25,10 +27,14 @@ Branch `dcv01` focuses on hybrid facts+flavor, deterministic mechanics, a prefab
 See `SMOKE.md` for a fuller manual runbook.
 
 ## Docs & references
-- Branch source of truth (scope + roadmap): `docs/phased-plan.md`
+- Architecture/context source of truth: `docs/PROJECT_CONTEXT.md`
+- Current build order: `docs/NOW.md`
+- Roadmap: `docs/phased-plan.md`
+- Smoke validation: `SMOKE.md`
+- Deploy validation: `docs/deploy-checklist.md`
 - Flavor lines: `data/narration/*.json`
 - 5e data: `data/5e/*.json` (weapons/armor/skills/spells; loot tables in `data/5e/loot`)
 - Original overview: `Project_README.md`
 
 ## Next/Planned
-See `docs/phased-plan.md` for the canonical roadmap and validation checklist.
+See `docs/NOW.md` for immediate build order and `docs/phased-plan.md` for roadmap items.

@@ -59,7 +59,6 @@ function HomeContent() {
   const [deathCountdown, setDeathCountdown] = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<ArchetypeKey | null>('fighter');
   const [error, setError] = useState<string | null>(null);
-  const [lastSlots, setLastSlots] = useState<string>('');
 
   // UI states
   const [showIntro, setShowIntro] = useState(false);
@@ -77,6 +76,11 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const isNewRun = searchParams.has('newRun');
   const focusInput = useCallback(() => inputRef.current?.focus(), []);
+  const lastSlots = gameState?.spellSlots
+    ? Object.entries(gameState.spellSlots)
+      .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
+      .join(' · ')
+    : '';
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -131,12 +135,6 @@ function HomeContent() {
         return;
       }
 
-      if (newState?.spellSlots) {
-        const slotText = Object.entries(newState.spellSlots)
-          .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
-          .join(' · ');
-        setLastSlots(slotText);
-      }
     } catch (err) {
       console.error("Turn Error:", err);
       setError("Failed to process turn. Please try again.");
@@ -184,10 +182,13 @@ function HomeContent() {
 
   // Load view mode preference on mount
   useEffect(() => {
-    const savedViewMode = localStorage.getItem('dungeon_portal_view_mode');
-    if (savedViewMode === 'visual' || savedViewMode === 'text') {
-      setViewMode(savedViewMode);
-    }
+    const frame = window.requestAnimationFrame(() => {
+      const savedViewMode = localStorage.getItem('dungeon_portal_view_mode');
+      if (savedViewMode === 'visual' || savedViewMode === 'text') {
+        setViewMode(savedViewMode);
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   // Keyboard shortcuts for combat actions
@@ -222,15 +223,6 @@ function HomeContent() {
   useEffect(() => {
     if (!isLoading) focusInput();
   }, [isLoading, messages.length, focusInput]);
-
-  useEffect(() => {
-    if (gameState?.spellSlots) {
-      const slotText = Object.entries(gameState.spellSlots)
-        .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
-        .join(' · ');
-      setLastSlots(slotText);
-    }
-  }, [gameState]);
 
   async function handleStart() {
     setIsLoading(true);

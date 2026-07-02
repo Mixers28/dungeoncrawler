@@ -1,69 +1,93 @@
-# Project Context – Long-Term Memory (LTM)
+# Project Context - Long-Term Memory
 
-> High-level design, tech decisions, constraints for this project.  
-> This is the **source of truth** for agents and humans.
+> Canonical architecture and project context for humans and agents. Keep this file stable and factual; put short-term priorities in `docs/NOW.md`.
 
 <!-- SUMMARY_START -->
-**Summary (auto-maintained by Agent):**
-- Dungeon Portal is a Next.js dungeon crawler with Supabase auth/leaderboard (optional), localStorage saves, and canned narration.
-- Story content lives in `story/*.json` and game state stays deterministic on the server.
-- Deployment target is Railway, driven from a tracked git branch.
-- Core game logic has been modularized under `lib/game/` with economy/progression and canned narration systems.
-- A mechanics overlay for spells is sourced from SRD data and merged into the local 5e reference layer.
+**Summary:**
+- Dungeon Portal is a text-first Next.js dungeon crawler with deterministic server-side game resolution and canned flavor narration.
+- Auth uses Auth.js credentials backed by the local `public.users` table.
+- Saves are persisted in Postgres through Drizzle (`saved_games.game_state` JSONB), then hydrated through Zod before use.
+- Story content lives in `story/*.json`; rules/reference content lives in `data/5e/*.json`.
+- Deployment target is Railway with Postgres, `DATABASE_URL`, `AUTH_SECRET`, and Drizzle migrations.
 <!-- SUMMARY_END -->
 
----
+## Documentation Map
 
-## 1. Project Overview
+- Entry point and setup: `README.md`
+- Project overview: `Project_README.md`
+- Canonical architecture/context: `docs/PROJECT_CONTEXT.md`
+- Current build order and active sprint: `docs/NOW.md`
+- Roadmap: `docs/phased-plan.md`
+- Release validation: `docs/deploy-checklist.md`
+- Manual/automated smoke checks: `SMOKE.md`
+- Historical or supplemental docs: files that explicitly say deprecated, superseded, or supplemental.
+
+## Project Overview
 
 - **Name:** Dungeon Portal
-- **Owner:** TBD
-- **Purpose:** Text-first dungeon crawler with deterministic mechanics, local saves, and optional Supabase auth/leaderboard.
-- **Primary Stack:** Next.js (App Router), TypeScript, Supabase, Tailwind CSS.
-- **Target Platforms:** Web (desktop/mobile), Railway deployment target.
+- **Purpose:** Text-first dungeon crawler with deterministic mechanics, JSON-authored story content, and factual state logs.
+- **Primary stack:** Next.js App Router, TypeScript, React, Tailwind CSS, Auth.js, Drizzle ORM, Postgres.
+- **Deployment target:** Railway.
+- **Local database:** Docker Compose Postgres on port `5433`.
 
----
+## Core Design Pillars
 
-## 2. Core Design Pillars
+- Game state is authoritative and deterministic. Narration decorates resolved facts but does not invent mechanics.
+- Server actions load saves from the database and persist validated state; client state is never trusted as the source of truth.
+- Story scenes, exits, spawns, discoveries, and rewards should be data-driven through `story/*.json`.
+- Rules and equipment should come from typed local reference data in `data/5e/*.json`.
+- Documentation remains plain Markdown and should point to one canonical source for each concern.
 
-- Keep deterministic game state authoritative; narration decorates but does not mutate state.
-- Keep story content in JSON so scenes/exits/rewards are data-driven.
-- Keep auth/leaderboard in Supabase; saves live in localStorage with deterministic server actions.
+## Current Architecture
 
----
+- `app/actions.ts` authenticates the user, loads the save, parses intent, runs the game engine, and persists the new state.
+- `auth.ts` configures Auth.js credentials auth against `lib/db/schema.ts` `users`.
+- `lib/db/schema.ts` defines `users` and `saved_games`; committed migrations live in `drizzle/`.
+- `lib/game/state.ts` builds and hydrates `GameState`, including legacy backfills and derived scene/room registries.
+- `lib/game/engine/index.ts` resolves turns: movement, combat, spells, inventory, stunts, loot, XP, quests, and scene completion.
+- `lib/5e/reference.ts`, `lib/5e/classes.ts`, and `lib/5e/intents.ts` expose typed 5e data and intent parsing.
+- `lib/leaderboard.ts` is currently localStorage-only. The old Supabase global leaderboard SQL is archived in `supabase/migrations/`.
 
-## 3. Technical Decisions & Constraints
+## Setup Contract
 
-- Language(s): TypeScript/React for app; Markdown for docs.
-- Framework(s): Next.js App Router; Tailwind CSS.
-- Database / storage: Supabase for auth/leaderboard; localStorage for saves.
-- Hosting / deployment: Railway, pulling from a git branch.
-- Non-negotiable constraints:
-  - Must remain backend-free and editor-native.
-  - Documentation stays in plain Markdown for easy review.
+Required local setup:
 
----
+```bash
+npm install
+docker compose up -d
+cp .env.local.example .env.local
+npm run db:migrate
+npm run dev
+```
 
-## 4. Architecture Snapshot
+Required environment:
 
-- App lives in `app/` with server actions handling core game logic.
-- Story scenes load from `story/*.json` with deterministic picks by seed.
-- Supabase middleware handles sessions; saves live in localStorage; leaderboard writes to Supabase if configured.
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/dungeoncrawler
+AUTH_SECRET=<generate with: openssl rand -base64 32>
+```
 
----
+Validation commands:
 
-## 5. Links & Related Docs
+```bash
+npm run test:unit
+npx tsc --noEmit
+npm run lint
+npm run build
+npm run test:e2e
+```
 
-- Roadmap: `docs/phased-plan.md`
-- Design docs: `PROJECT_STATUS.md`, `SMOKE.md`
-- Specs: `Project_README.md`, `README.md`
-- Product / UX docs: `docs/NOW.md`
+`npm run test:e2e` requires local Postgres and a valid `.env.local`.
 
----
+## Non-Goals And Historical Paths
 
-## 6. Change Log (High-Level Decisions)
+- Supabase Auth is not the active auth path.
+- Supabase `auth.users` migrations are not part of the active setup path.
+- Gameplay saves are not localStorage-backed. The leaderboard remains localStorage-only until a new global leaderboard design is implemented.
+- Model-generated mechanics are out of scope for core resolution; mechanics should be deterministic and data-driven.
 
-Use this section for **big decisions** only:
+## Decision Log
 
-- `YYYY-MM-DD` – Decided on X instead of Y.
-- `YYYY-MM-DD` – Switched primary deployment target to Z.
+- 2026-07-02 - Standardized runtime persistence on Auth.js credentials plus Drizzle/Postgres. Supabase SQL retained only as legacy reference.
+- 2026-07-02 - Added first-class inventory equip/drop handling and owned-weapon validation in the game engine.
+- 2026-07-02 - Removed `next/font/google` to keep production builds independent of Google Fonts network fetches.
