@@ -29,7 +29,7 @@ Note: This is the canonical roadmap for dcv01. Other planning docs are supplemen
 - [x] Intent parsing uses 5e data (`lib/5e/intents.ts`, `lib/game/intent.ts`).
 - [x] Structured intents drive combat/sheet routing in `lib/game/engine/index.ts`.
 - [x] Ability resolution is fully data-driven from 5e JSON (mechanics + authored `data/5e/ability-effects.json` overlay; no per-spell code paths remain in `lib/game/engine/index.ts`).
-- [ ] Class → allowed abilities/skills/proficiencies fully derived from 5e JSON (partial).
+- [x] Class → allowed abilities/skills/proficiencies fully derived from 5e JSON (`data/5e/classes.json` + token resolver in `lib/5e/classes.ts`).
 - [ ] Sheet outputs fully sourced from 5e reference data (partial).
 
 ## Scope
@@ -66,7 +66,13 @@ Note: This is the canonical roadmap for dcv01. Other planning docs are supplemen
     The overlay also authors mechanics for the non-SRD cantrips Word of Radiance and
     Toll the Dead, and heal/damage dice now resolve the 5e-database "MOD" placeholder
     against the caster's spellcasting ability — previously Cure Wounds crashed the turn.)
-[ ] Expand class reference mapping (allowed abilities/skills/weapons/armor) from 5e data where possible.
+[x] Expand class reference mapping (allowed abilities/skills/weapons/armor) from 5e data.
+    (`data/5e/classes.json` defines per-class proficiency tokens — category prefixes like
+    "simple"/"martial"/"light" expand against `weapons.json`/`armor.json`, exact names pass
+    through — plus canonical skills. `lib/5e/classes.ts` resolves tokens at load and throws
+    on unknown tokens/skills so bad data can't silently strip proficiencies. Output verified
+    identical to the previous hardcoded mapping. This also answers the open question below:
+    per-class metadata lives in JSON.)
 [ ] Update sheet outputs to use reference data for skills/abilities/equipment descriptions.
 [ ] Add deterministic tests/fixtures for intent parsing and ability resolution.
 [ ] Find or author mechanics data for the 195 missing non-SRD spells and merge into the overlay.
@@ -110,7 +116,9 @@ Validation:
 - Partial reference data coverage may require safe fallbacks.
 
 ## Open questions
-- Do we want to add per-class allowed-ability metadata directly to JSON or keep it in code?
+- ~~Do we want to add per-class allowed-ability metadata directly to JSON or keep it in code?~~
+  Resolved 2026-07-02: JSON. Per-class proficiencies/skills live in `data/5e/classes.json`,
+  and authored spell effects live in `data/5e/ability-effects.json`.
 
 ## Quick smoke
 - See `SMOKE.md` for manual steps.

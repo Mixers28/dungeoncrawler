@@ -1,0 +1,30 @@
+[
+  {
+    "key": "fighter",
+    "name": "Fighter",
+    "weaponProficiencies": ["simple", "martial"],
+    "armorProficiencies": ["light", "medium", "heavy", "shield"],
+    "skills": ["Athletics", "Perception", "Survival"]
+  },
+  {
+    "key": "rogue",
+    "name": "Rogue",
+    "weaponProficiencies": ["simple", "Rapier", "Shortsword", "Hand Crossbow"],
+    "armorProficiencies": ["light"],
+    "skills": ["Stealth", "Sleight of Hand", "Perception", "Acrobatics"]
+  },
+  {
+    "key": "cleric",
+    "name": "Cleric",
+    "weaponProficiencies": ["simple"],
+    "armorProficiencies": ["light", "medium", "shield"],
+    "skills": ["Insight", "Medicine", "Religion"]
+  },
+  {
+    "key": "wizard",
+    "name": "Wizard",
+    "weaponProficiencies": ["Dagger", "Quarterstaff", "Light Crossbow"],
+    "armorProficiencies": [],
+    "skills": ["Arcana", "History", "Investigation"]
+  }
+]
