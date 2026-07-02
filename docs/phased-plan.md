@@ -28,7 +28,7 @@ Note: This is the canonical roadmap for dcv01. Other planning docs are supplemen
 - [x] 5e reference layer exists (`lib/5e/reference.ts`) with typed data and lookup maps.
 - [x] Intent parsing uses 5e data (`lib/5e/intents.ts`, `lib/game/intent.ts`).
 - [x] Structured intents drive combat/sheet routing in `lib/game/engine/index.ts`.
-- [ ] Ability resolution is fully data-driven from 5e JSON (still partially hardcoded in `lib/game/engine/index.ts`).
+- [x] Ability resolution is fully data-driven from 5e JSON (mechanics + authored `data/5e/ability-effects.json` overlay; no per-spell code paths remain in `lib/game/engine/index.ts`).
 - [ ] Class → allowed abilities/skills/proficiencies fully derived from 5e JSON (partial).
 - [ ] Sheet outputs fully sourced from 5e reference data (partial).
 
@@ -58,7 +58,14 @@ Note: This is the canonical roadmap for dcv01. Other planning docs are supplemen
 - Narration guardrails are enforced via canned flavor and state-derived context.
 
 ## Action items
-[ ] Complete data-driven ability resolution using `abilitiesById` and reference metadata (damage, cost, requirements).
+[x] Complete data-driven ability resolution from reference metadata (damage, cost, requirements).
+    (Implemented via `data/5e/ability-effects.json`, an authored overlay merged over the
+    5e-database mechanics in `lib/5e/reference.ts`. It adds a generic `effect` descriptor
+    — self/enemy/none target, ac_bonus/attack_bonus/buff/debuff, value, duration, logs —
+    interpreted by one engine branch; the ~100-line per-spell else-if chain is gone.
+    The overlay also authors mechanics for the non-SRD cantrips Word of Radiance and
+    Toll the Dead, and heal/damage dice now resolve the 5e-database "MOD" placeholder
+    against the caster's spellcasting ability — previously Cure Wounds crashed the turn.)
 [ ] Expand class reference mapping (allowed abilities/skills/weapons/armor) from 5e data where possible.
 [ ] Update sheet outputs to use reference data for skills/abilities/equipment descriptions.
 [ ] Add deterministic tests/fixtures for intent parsing and ability resolution.

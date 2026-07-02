@@ -8,6 +8,7 @@ import weaponData from '../../data/5e/weapons.json';
 import wizardSpellData from '../../data/5e/spells-wizard.json';
 import clericSpellData from '../../data/5e/spells-cleric.json';
 import abilityMechanicsData from '../../data/5e/ability-mechanics.json';
+import abilityEffectsData from '../../data/5e/ability-effects.json';
 import wizardStarterData from '../../data/5e/char_wizard_novice.json';
 import warriorStarterData from '../../data/5e/char_warrior_initiate.json';
 import rogueStarterData from '../../data/5e/char_rogue_cutpurse.json';
@@ -116,6 +117,15 @@ const spellMechanicsSchema = z.object({
     atCharacterLevel: z.record(z.string()).optional(),
   }).optional(),
   healAtSlotLevel: z.record(z.string()).optional(),
+  effect: z.object({
+    target: z.enum(['self', 'enemy', 'none']),
+    type: z.enum(['ac_bonus', 'attack_bonus', 'buff', 'debuff']).optional(),
+    value: z.number().optional(),
+    minAc: z.number().optional(),
+    durationTurns: z.number().optional(),
+    log: z.string().optional(),
+    missLog: z.string().optional(),
+  }).optional(),
 });
 
 const starterCharacterSchema = z.object({
@@ -213,10 +223,17 @@ export const wizardSpells: SpellDef[] = parseData('wizard spells', spellSchema, 
 export const clericSpells: SpellDef[] = parseData('cleric spells', spellSchema, clericSpellData);
 
 const spellMechanics: SpellMechanicsDef[] = parseData('spell mechanics', spellMechanicsSchema, abilityMechanicsData);
+const abilityEffectOverlay: SpellMechanicsDef[] = parseData('ability effects overlay', spellMechanicsSchema, abilityEffectsData);
 const spellMechanicsByName = spellMechanics.reduce<Record<string, SpellMechanicsDef>>((acc, item) => {
   acc[item.name.toLowerCase()] = item;
   return acc;
 }, {});
+// Authored overlay merges over the imported 5e-database mechanics: fields the
+// overlay defines win, everything else falls through to the base entry.
+for (const entry of abilityEffectOverlay) {
+  const key = entry.name.toLowerCase();
+  spellMechanicsByName[key] = { ...spellMechanicsByName[key], ...entry };
+}
 
 export const wizardSpellsByName = indexByName(
   wizardSpells.map(spell => ({

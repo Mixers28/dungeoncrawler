@@ -87,6 +87,15 @@ function pickHealDiceFromMechanics(
   return pickDiceAtLevel(mechanics.healAtSlotLevel, slotLevel);
 }
 
+// 5e-database dice expressions use "MOD" for the caster's spellcasting ability
+// modifier (e.g. Cure Wounds "1d8 + MOD"); substitute it before rolling.
+function resolveDiceModifiers(dice: string, state: GameState): string {
+  if (!/MOD/i.test(dice)) return dice;
+  const score = (state.abilityScores || {})[state.spellcastingAbility || 'int'] ?? 10;
+  const mod = Math.floor((score - 10) / 2);
+  return dice.replace(/\+\s*MOD/i, mod >= 0 ? `+${mod}` : `${mod}`).replace(/MOD/i, `${mod}`);
+}
+
 function awardGold(state: GameState, amount: number) {
   if (!Number.isFinite(amount) || amount === 0) return;
   state.gold = Math.max(0, (state.gold || 0) + amount);
@@ -895,9 +904,8 @@ async function _updateGameState(
       }
 
       if (canCast) {
-        // Resolve a minimal set of spells
+        // Resolve entirely from reference mechanics (5e data + authored overlay).
         const targetName = parsedIntent.target || activeMonster?.name || 'the area';
-        const lowerSpell = spell.name.toLowerCase();
         const mechanics = spell.mechanics;
         let handledMechanics = false;
 
@@ -926,12 +934,13 @@ async function _updateGameState(
         if (mechanics) {
           const healDice = pickHealDiceFromMechanics(mechanics);
           if (healDice) {
-            const heal = rollDice(healDice);
+            const heal = rollDice(resolveDiceModifiers(healDice, newState));
             newState.hp = Math.min(newState.maxHp, newState.hp + heal);
             summaryParts.push(`Healing energy restores ${heal} HP.`);
             handledMechanics = true;
           } else if (mechanics.damage) {
-            const damageDice = pickDamageDiceFromMechanics(mechanics, newState.level);
+            const rawDamageDice = pickDamageDiceFromMechanics(mechanics, newState.level);
+            const damageDice = rawDamageDice ? resolveDiceModifiers(rawDamageDice, newState) : null;
             if (damageDice && mechanics.areaOfEffect && newState.nearbyEntities.some(e => e.status === 'alive')) {
               const damageType = mechanics.damage.type ? mechanics.damage.type.toLowerCase() : 'damage';
               const dmg = rollDice(damageDice);
@@ -985,106 +994,59 @@ async function _updateGameState(
               handledMechanics = true;
             }
           }
+
+          // Non-damage effects (buffs, debuffs, utility) from the authored overlay.
+          if (!handledMechanics && mechanics.effect) {
+            const fx = mechanics.effect;
+            if (fx.target === 'self') {
+              if (fx.minAc !== undefined) {
+                newState.ac = Math.max(newState.ac, fx.minAc);
+              }
+              if (fx.type) {
+                newState.activeEffects = [
+                  ...(newState.activeEffects || []),
+                  {
+                    name: spell.name,
+                    type: fx.type,
+                    ...(fx.value !== undefined ? { value: fx.value } : {}),
+                    ...(fx.durationTurns !== undefined
+                      ? { expiresAtTurn: (newState.turnCounter || 0) + fx.durationTurns }
+                      : {}),
+                  },
+                ];
+              }
+              summaryParts.push(fx.log || `You cast ${spell.name} on yourself.`);
+            } else if (fx.target === 'enemy') {
+              if (activeMonster) {
+                newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
+                  idx === activeMonsterIndex
+                    ? {
+                        ...activeMonster,
+                        effects: [
+                          ...(activeMonster.effects || []),
+                          {
+                            name: spell.name,
+                            type: (fx.type === 'buff' ? 'buff' : 'debuff') as 'buff' | 'debuff',
+                            ...(fx.durationTurns !== undefined
+                              ? { expiresAtTurn: (newState.turnCounter || 0) + fx.durationTurns }
+                              : {}),
+                          },
+                        ],
+                      }
+                    : entity
+                );
+                summaryParts.push((fx.log || `You cast ${spell.name} at {target}.`).replace('{target}', targetName));
+              } else {
+                summaryParts.push(fx.missLog || `You cast ${spell.name}, but there is no foe here.`);
+              }
+            } else {
+              summaryParts.push(fx.log || `You cast ${spell.name}.`);
+            }
+            handledMechanics = true;
+          }
         }
 
-        if (handledMechanics) {
-          // Mechanics-driven resolution handled above.
-        } else if (lowerSpell === 'magic missile') {
-          const dmg = rollDice("1d4+1");
-          applyDamageToActiveMonster(dmg);
-          summaryParts.push(`You cast Magic Missile at ${targetName}, dealing ${dmg} force damage.`);
-        } else if (lowerSpell === 'guiding bolt') {
-          const dmg = rollDice("4d6");
-          applyDamageToActiveMonster(dmg);
-          summaryParts.push(`You hurl a lance of radiant light at ${targetName}, dealing ${dmg} radiant damage.`);
-        } else if (lowerSpell === 'thunderwave') {
-          const dmg = rollDice("2d8");
-          playerDamageRoll = dmg;
-          const hitCount = dealAoeDamage(dmg, 'thunder');
-          summaryParts.push(hitCount > 0
-            ? `You unleash Thunderwave, striking ${hitCount} ${hitCount === 1 ? 'foe' : 'foes'} for ${dmg} thunder damage.`
-            : `You unleash Thunderwave, but there is nothing nearby to strike.`);
-        } else if (lowerSpell === 'fire bolt') {
-          const dmg = rollDice("1d10");
-          applyDamageToActiveMonster(dmg);
-          summaryParts.push(`You hurl a Fire Bolt at ${targetName}, dealing ${dmg} fire damage.`);
-        } else if (lowerSpell === 'ray of frost') {
-          const dmg = rollDice("1d8");
-          applyDamageToActiveMonster(dmg);
-          summaryParts.push(`You cast Ray of Frost at ${targetName}, dealing ${dmg} cold damage.`);
-        } else if (lowerSpell === 'sacred flame') {
-          const dmg = rollDice("1d8");
-          applyDamageToActiveMonster(dmg);
-          summaryParts.push(`Radiant fire sears ${targetName}, dealing ${dmg} radiant damage.`);
-        } else if (lowerSpell === 'word of radiance') {
-          const dmg = rollDice("1d6");
-          applyDamageToActiveMonster(dmg);
-          summaryParts.push(`You utter a searing word; ${targetName} takes ${dmg} radiant damage.`);
-        } else if (lowerSpell === 'toll the dead') {
-          const dmg = rollDice("1d12");
-          applyDamageToActiveMonster(dmg);
-          summaryParts.push(`A mournful toll rings out; ${targetName} suffers ${dmg} necrotic damage.`);
-        } else if (lowerSpell === 'shield') {
-          newState.activeEffects = [
-            ...(newState.activeEffects || []),
-            { name: 'Shield', type: 'ac_bonus', value: 5, expiresAtTurn: (newState.turnCounter || 0) + 1 }
-          ];
-          summaryParts.push(`You raise Shield, gaining +5 AC until the start of your next turn.`);
-        } else if (lowerSpell === 'mage armor') {
-          const targetAc = Math.max(newState.ac, 13);
-          newState.ac = targetAc;
-          newState.activeEffects = [
-            ...(newState.activeEffects || []),
-            { name: 'Mage Armor', type: 'buff', expiresAtTurn: undefined }
-          ];
-          summaryParts.push(`You ward yourself with Mage Armor, hardening your defenses.`);
-        } else if (lowerSpell === 'shield of faith') {
-          newState.activeEffects = [
-            ...(newState.activeEffects || []),
-            { name: 'Shield of Faith', type: 'ac_bonus', value: 2, expiresAtTurn: (newState.turnCounter || 0) + 3 }
-          ];
-          summaryParts.push(`A shimmering field surrounds you, granting +2 AC for a short while.`);
-        } else if (lowerSpell === 'bless') {
-          newState.activeEffects = [
-            ...(newState.activeEffects || []),
-            { name: 'Bless', type: 'attack_bonus', value: 2, expiresAtTurn: (newState.turnCounter || 0) + 5 }
-          ];
-          summaryParts.push(`You bless your efforts, guiding your strikes and resolve (+2 to attack rolls).`);
-        } else if (lowerSpell === 'cure wounds') {
-          const heal = rollDice("1d8") + 2;
-          newState.hp = Math.min(newState.maxHp, newState.hp + heal);
-          summaryParts.push(`Healing energy knits flesh; you recover ${heal} HP.`);
-        } else if (lowerSpell === 'healing word') {
-          const heal = rollDice("1d4") + 2;
-          newState.hp = Math.min(newState.maxHp, newState.hp + heal);
-          summaryParts.push(`You speak a word of restoration, recovering ${heal} HP.`);
-        } else if (lowerSpell === 'mage hand') {
-          if (activeMonster) {
-            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
-              idx === activeMonsterIndex
-                ? { ...activeMonster, effects: [...(activeMonster.effects || []), { name: 'Mage Hand', type: 'debuff', expiresAtTurn: (newState.turnCounter || 0) + 2 }] }
-                : entity
-            );
-            summaryParts.push(`A spectral hand clamps onto ${targetName}, pinning it for the next moments.`);
-          } else {
-            summaryParts.push("A spectral hand flickers into being, grasping at loose debris.");
-          }
-        } else if (lowerSpell === 'bane') {
-          if (activeMonster) {
-            newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
-              idx === activeMonsterIndex
-                ? { ...activeMonster, effects: [...(activeMonster.effects || []), { name: 'Bane', type: 'debuff', expiresAtTurn: (newState.turnCounter || 0) + 4 }] }
-                : entity
-            );
-            summaryParts.push(`You curse ${targetName} with Bane; its strikes will falter.`);
-          } else {
-            summaryParts.push("You intone Bane, but there is no foe here to curse.");
-          }
-        } else if (spell.name.toLowerCase() === 'detect magic') {
-          summaryParts.push(`You attune your senses; lingering magic hums in the air.`);
-        } else if (spell.name.toLowerCase() === 'identify') {
-          summaryParts.push(`You focus to identify an item or effect; details surface in your mind.`);
-        } else {
+        if (!handledMechanics) {
           summaryParts.push(`You cast ${spell.name}, but its effect is not modeled yet.`);
         }
       }

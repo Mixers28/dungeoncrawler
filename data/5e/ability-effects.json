@@ -1,0 +1,120 @@
+[
+  {
+    "name": "Word of Radiance",
+    "source": "authored:overlay",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "5 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": ["Cleric"],
+    "dc": { "ability": "CON", "success": "none" },
+    "areaOfEffect": { "type": "radius", "size": 5 },
+    "damage": {
+      "type": "Radiant",
+      "dice": "1d6",
+      "atCharacterLevel": { "1": "1d6", "5": "2d6", "11": "3d6", "17": "4d6" }
+    }
+  },
+  {
+    "name": "Toll the Dead",
+    "source": "authored:overlay",
+    "level": 0,
+    "castingTime": "1 action",
+    "range": "60 feet",
+    "duration": "Instantaneous",
+    "concentration": false,
+    "ritual": false,
+    "attackType": null,
+    "classes": ["Cleric", "Warlock", "Wizard"],
+    "dc": { "ability": "WIS", "success": "none" },
+    "damage": {
+      "type": "Necrotic",
+      "dice": "1d12",
+      "atCharacterLevel": { "1": "1d12", "5": "2d12", "11": "3d12", "17": "4d12" }
+    }
+  },
+  {
+    "name": "Shield",
+    "source": "authored:overlay",
+    "effect": {
+      "target": "self",
+      "type": "ac_bonus",
+      "value": 5,
+      "durationTurns": 1,
+      "log": "You raise Shield, gaining +5 AC until the start of your next turn."
+    }
+  },
+  {
+    "name": "Mage Armor",
+    "source": "authored:overlay",
+    "effect": {
+      "target": "self",
+      "type": "buff",
+      "minAc": 13,
+      "log": "You ward yourself with Mage Armor, hardening your defenses."
+    }
+  },
+  {
+    "name": "Shield of Faith",
+    "source": "authored:overlay",
+    "effect": {
+      "target": "self",
+      "type": "ac_bonus",
+      "value": 2,
+      "durationTurns": 3,
+      "log": "A shimmering field surrounds you, granting +2 AC for a short while."
+    }
+  },
+  {
+    "name": "Bless",
+    "source": "authored:overlay",
+    "effect": {
+      "target": "self",
+      "type": "attack_bonus",
+      "value": 2,
+      "durationTurns": 5,
+      "log": "You bless your efforts, guiding your strikes and resolve (+2 to attack rolls)."
+    }
+  },
+  {
+    "name": "Mage Hand",
+    "source": "authored:overlay",
+    "effect": {
+      "target": "enemy",
+      "type": "debuff",
+      "durationTurns": 2,
+      "log": "A spectral hand clamps onto {target}, pinning it for the next moments.",
+      "missLog": "A spectral hand flickers into being, grasping at loose debris."
+    }
+  },
+  {
+    "name": "Bane",
+    "source": "authored:overlay",
+    "effect": {
+      "target": "enemy",
+      "type": "debuff",
+      "durationTurns": 4,
+      "log": "You curse {target} with Bane; its strikes will falter.",
+      "missLog": "You intone Bane, but there is no foe here to curse."
+    }
+  },
+  {
+    "name": "Detect Magic",
+    "source": "authored:overlay",
+    "effect": {
+      "target": "none",
+      "log": "You attune your senses; lingering magic hums in the air."
+    }
+  },
+  {
+    "name": "Identify",
+    "source": "authored:overlay",
+    "effect": {
+      "target": "none",
+      "log": "You focus to identify an item or effect; details surface in your mind."
+    }
+  }
+]
