@@ -1,5 +1,13 @@
 # Global Leaderboard Implementation - Phase 1 Complete
 
+> **Status: SUPERSEDED (2026-07-02).** The Supabase implementation described below was
+> removed when auth moved to NextAuth + local Postgres. There are no `supabase`
+> references left in `lib/` or `app/`; the leaderboard today is **localStorage-only**
+> (`lib/leaderboard.ts`, `saveScore`/`getLeaderboard`). The SQL in
+> `supabase/migrations/` is kept as a starting point if a global leaderboard is
+> revived — it would need rework (RLS policies reference `auth.users`, which
+> assumed Supabase Auth). Everything below is historical.
+
 ## ✅ What's Been Implemented
 
 ### Database Schema
