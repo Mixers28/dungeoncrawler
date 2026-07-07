@@ -85,3 +85,49 @@ export function applyDamageToActor(context: TurnContext, damage: number): number
   context.actor.hp = Math.max(0, context.actor.hp - damage);
   return context.actor.hp;
 }
+
+export function healActor(context: TurnContext, amount: number): number {
+  context.actor.hp = Math.min(context.actor.maxHp, context.actor.hp + amount);
+  return context.actor.hp;
+}
+
+export function consumeActorSpellSlot(context: TurnContext, slotKey: string): boolean {
+  const slots = context.actor.spellSlots || {};
+  const slot = slots[slotKey];
+  if (!slot || slot.current <= 0) return false;
+  context.actor.spellSlots = {
+    ...slots,
+    [slotKey]: { ...slot, current: slot.current - 1 },
+  };
+  return true;
+}
+
+export function setActorMinimumAc(context: TurnContext, minAc: number): number {
+  context.actor.ac = Math.max(context.actor.ac, minAc);
+  return context.actor.ac;
+}
+
+export function addActorEffect(
+  context: TurnContext,
+  effect: CharacterState['activeEffects'][number]
+): CharacterState['activeEffects'] {
+  context.actor.activeEffects = [...(context.actor.activeEffects || []), effect];
+  return context.actor.activeEffects;
+}
+
+export function addMonsterEffect(
+  context: TurnContext,
+  targetIndex: number,
+  effect: Entity['effects'][number]
+): Entity | null {
+  const target = targetIndex >= 0 ? context.session.nearbyEntities[targetIndex] : null;
+  if (!target) return null;
+  const updatedTarget = {
+    ...target,
+    effects: [...(target.effects || []), effect],
+  };
+  context.session.nearbyEntities = context.session.nearbyEntities.map((entity, idx) =>
+    idx === targetIndex ? updatedTarget : entity
+  );
+  return updatedTarget;
+}

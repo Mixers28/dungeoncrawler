@@ -4,6 +4,38 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-08 - Codex - M1 Casting Context Slice
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game/turn-context.ts`
+- `lib/game/engine/index.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Moved the first casting state writes behind `TurnContext`.
+- Spell slot consumption, spell healing, self minimum-AC/effects, and enemy spell effects now update the context first and sync touched fields back to the legacy `GameState`.
+- Added direct regressions for spell-slot consumption, healing caps, actor effects, minimum AC, and monster spell effects.
+
+Contract changes:
+- New backend helpers: `consumeActorSpellSlot`, `healActor`, `setActorMinimumAc`, `addActorEffect`, `addMonsterEffect`.
+- No frontend or public engine API changes.
+
+Validation:
+- `npm run db:migrate` passed.
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm run test:e2e` passed: 5/5 Playwright specs.
+
+Needs from other agent:
+- None blocking. This is backend-only scaffolding; visual contracts are unchanged.
+
 ## Handoff - 2026-07-07 - Codex - M1 Monster Retaliation Context Slice
 
 Owner: Codex

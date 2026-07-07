@@ -5,11 +5,16 @@ import { runGameTurn } from '../lib/game/engine';
 import { buildNewGameState } from '../lib/game/state';
 import { composeGameStateForSolo, splitGameStateForSolo } from '../lib/game/state-split';
 import {
+  addActorEffect,
+  addMonsterEffect,
   applyDamageToActor,
   applyDamageToMonsterTarget,
+  consumeActorSpellSlot,
   createTurnContextFromGameState,
   findActiveMonsterTarget,
   getMonsterTargetByIndex,
+  healActor,
+  setActorMinimumAc,
   syncTurnContextFromGameState,
 } from '../lib/game/turn-context';
 import { resolveWeaponId } from '../lib/items';
@@ -375,6 +380,41 @@ async function testTurnContextSyncsRetaliationState() {
   assert.equal(getMonsterTargetByIndex(context, 0).entity?.name, 'Zombie');
 }
 
+async function testTurnContextConsumesSpellSlotsAndHealsActor() {
+  const state = await makeState();
+  const context = createTurnContextFromGameState({
+    ...state,
+    hp: 3,
+    maxHp: 10,
+    spellSlots: {
+      level_1: { current: 1, max: 2 },
+    },
+  });
+
+  assert.equal(consumeActorSpellSlot(context, 'level_1'), true);
+  assert.equal(context.actor.spellSlots.level_1.current, 0);
+  assert.equal(consumeActorSpellSlot(context, 'level_1'), false);
+  assert.equal(healActor(context, 20), 10);
+}
+
+async function testTurnContextAppliesActorAndMonsterSpellEffects() {
+  const state = await makeState();
+  const context = createTurnContextFromGameState({
+    ...state,
+    ac: 11,
+    nearbyEntities: [makeMonster('Zombie', 5)],
+    isCombatActive: true,
+  });
+
+  assert.equal(setActorMinimumAc(context, 13), 13);
+  addActorEffect(context, { name: 'Mage Armor', type: 'ac_bonus', value: 1, expiresAtTurn: 5 });
+  const target = addMonsterEffect(context, 0, { name: 'Bane', type: 'debuff', expiresAtTurn: 5 });
+
+  assert.equal(context.actor.activeEffects[0].name, 'Mage Armor');
+  assert.equal(target?.effects[0].name, 'Bane');
+  assert.equal(context.session.nearbyEntities[0].effects[0].type, 'debuff');
+}
+
 async function testVisualAssetManifestLoads() {
   assert.equal(visualAssetManifest.styleVersion, 'visual-phase0-v1');
   assert.ok(visualAssetManifest.assets.length > 0);
@@ -543,6 +583,8 @@ async function main() {
   await testTurnContextKillsMonsterTarget();
   await testTurnContextReadsMonsterByIndexAndDamagesActor();
   await testTurnContextSyncsRetaliationState();
+  await testTurnContextConsumesSpellSlotsAndHealsActor();
+  await testTurnContextAppliesActorAndMonsterSpellEffects();
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();
   await testVisualViewModelSoloContract();

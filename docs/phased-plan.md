@@ -153,7 +153,8 @@ Action items (Phase M1):
 [x] Migrate active monster target selection and damage application onto `TurnContext` behind the party-of-one shim.
 [x] Move solo monster retaliation actor-damage reads/writes behind `TurnContext`.
 [ ] Add session round-batch monster handling in Phase M2 after session tables exist.
-[ ] Migrate casting, story/exits, loot/economy, and sheet fields in separate slices.
+[x] Migrate casting spell-slot, healing, actor-effect, and enemy-effect writes onto `TurnContext`.
+[ ] Migrate story/exits, loot/economy, and sheet fields in separate slices.
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
 - Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.

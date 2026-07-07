@@ -13,11 +13,16 @@ import { rollDice, rollD20 } from '../dice';
 import { type CoreActionIntent, type GameIntent, type TradeIntent } from '../intent';
 import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, computeArmorClassFromInventory, resolveRoomDescription, resolveSceneImage } from '../state';
 import {
+  addActorEffect,
+  addMonsterEffect,
   applyDamageToActor,
   applyDamageToMonsterTarget,
+  consumeActorSpellSlot,
   createTurnContextFromGameState,
   findActiveMonsterTarget,
   getMonsterTargetByIndex,
+  healActor,
+  setActorMinimumAc,
   syncTurnContextFromGameState,
 } from '../turn-context';
 import { type RollEvent } from '../../game-schema';
@@ -1045,15 +1050,12 @@ async function _updateGameState(
       const isCantrip = spell.level.toLowerCase().includes('cantrip');
       const spellLevelNum = spell.level.match(/\d+/)?.[0] ?? '1';
       const slotKey = `level_${spellLevelNum}`;
-      const slots = newState.spellSlots || {};
       if (!isCantrip) {
-        const slot = slots[slotKey];
-        if (!slot || slot.current <= 0) {
+        if (!consumeActorSpellSlot(turnContext, slotKey)) {
           summaryParts.push(`You have no ${slotKey.replace('_', ' ')} spell slots left.`);
           canCast = false;
         } else {
-          slots[slotKey] = { ...slot, current: slot.current - 1 };
-          newState.spellSlots = slots;
+          newState.spellSlots = turnContext.actor.spellSlots;
         }
       }
 
@@ -1089,7 +1091,7 @@ async function _updateGameState(
           const healDice = pickHealDiceFromMechanics(mechanics);
           if (healDice) {
             const heal = rollDice(resolveDiceModifiers(healDice, newState));
-            newState.hp = Math.min(newState.maxHp, newState.hp + heal);
+            newState.hp = healActor(turnContext, heal);
             summaryParts.push(`Healing energy restores ${heal} HP.`);
             handledMechanics = true;
           } else if (mechanics.damage) {
@@ -1154,41 +1156,29 @@ async function _updateGameState(
             const fx = mechanics.effect;
             if (fx.target === 'self') {
               if (fx.minAc !== undefined) {
-                newState.ac = Math.max(newState.ac, fx.minAc);
+                newState.ac = setActorMinimumAc(turnContext, fx.minAc);
               }
               if (fx.type) {
-                newState.activeEffects = [
-                  ...(newState.activeEffects || []),
-                  {
-                    name: spell.name,
-                    type: fx.type,
-                    ...(fx.value !== undefined ? { value: fx.value } : {}),
-                    ...(fx.durationTurns !== undefined
-                      ? { expiresAtTurn: (newState.turnCounter || 0) + fx.durationTurns }
-                      : {}),
-                  },
-                ];
+                newState.activeEffects = addActorEffect(turnContext, {
+                  name: spell.name,
+                  type: fx.type,
+                  ...(fx.value !== undefined ? { value: fx.value } : {}),
+                  ...(fx.durationTurns !== undefined
+                    ? { expiresAtTurn: (newState.turnCounter || 0) + fx.durationTurns }
+                    : {}),
+                });
               }
               summaryParts.push(fx.log || `You cast ${spell.name} on yourself.`);
             } else if (fx.target === 'enemy') {
               if (activeMonster) {
-                newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
-                  idx === activeMonsterIndex
-                    ? {
-                        ...activeMonster,
-                        effects: [
-                          ...(activeMonster.effects || []),
-                          {
-                            name: spell.name,
-                            type: (fx.type === 'buff' ? 'buff' : 'debuff') as 'buff' | 'debuff',
-                            ...(fx.durationTurns !== undefined
-                              ? { expiresAtTurn: (newState.turnCounter || 0) + fx.durationTurns }
-                              : {}),
-                          },
-                        ],
-                      }
-                    : entity
-                );
+                addMonsterEffect(turnContext, activeMonsterIndex, {
+                  name: spell.name,
+                  type: (fx.type === 'buff' ? 'buff' : 'debuff') as 'buff' | 'debuff',
+                  ...(fx.durationTurns !== undefined
+                    ? { expiresAtTurn: (newState.turnCounter || 0) + fx.durationTurns }
+                    : {}),
+                });
+                newState.nearbyEntities = turnContext.session.nearbyEntities;
                 summaryParts.push((fx.log || `You cast ${spell.name} at {target}.`).replace('{target}', targetName));
               } else {
                 summaryParts.push(fx.missLog || `You cast ${spell.name}, but there is no foe here.`);
