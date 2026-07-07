@@ -11,6 +11,8 @@ Define how a human and a local code agent coordinate using this repo’s memory 
 - Working memory (WM): `docs/NOW.md`
 - Session memory (SM): `docs/SESSION_NOTES.md`
 - Design notes: `docs/MCP_LOCAL_DESIGN.md`
+- Cross-agent ownership: `docs/agent-crossover-contract.md`
+- Cross-agent handoffs: `docs/agent-handoff.md`
 
 ## Start Session (Context Hydration)
 Preferred: VS Code task `Start Session (Agent - Coder)` (or pick another role; see `.vscode/tasks.json`).
@@ -26,7 +28,7 @@ pwsh ./scripts/session-helper.ps1 -Mode Start -AgentRole Coder -OpenDocs
 ```
 
 Agent instructions:
-1. Read (in order): `docs/PROJECT_CONTEXT.md`, `docs/NOW.md`, `docs/SESSION_NOTES.md` (recent).
+1. Read (in order): `docs/PROJECT_CONTEXT.md`, `docs/NOW.md`, `docs/agent-crossover-contract.md`, `docs/agent-handoff.md`, `docs/SESSION_NOTES.md` (recent).
 2. Summarize context in 3–6 bullets.
 3. Wait for the next instruction.
 
@@ -53,3 +55,4 @@ Writeback expectations:
 - `docs/PROJECT_CONTEXT.md`: update only when higher-level decisions/constraints changed; refresh summary blocks if present.
 - `docs/NOW.md`: update immediate next steps and current focus; refresh summary blocks if present.
 - `docs/SESSION_NOTES.md`: append a new dated entry (do not overwrite previous entries).
+- `docs/agent-handoff.md`: add or resolve any Codex/Claude handoff entries created during the session.

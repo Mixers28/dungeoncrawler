@@ -4,6 +4,9 @@ import { parseIntent } from '../lib/game/intent';
 import { runGameTurn } from '../lib/game/engine';
 import { buildNewGameState } from '../lib/game/state';
 import { resolveWeaponId } from '../lib/items';
+import { getSceneById, pickSceneVariant } from '../lib/story';
+import { getVisualAsset, visualAssetManifest } from '../lib/visual/assets';
+import { buildVisualGameViewModel } from '../lib/visual/view-model';
 import type { Entity, GameState } from '../lib/game-schema';
 
 function makeMonster(name: string, hp = 20): Entity {
@@ -34,6 +37,29 @@ async function makeState(): Promise<GameState> {
 
 async function turn(state: GameState, command: string) {
   return runGameTurn(state, parseIntent(command, state));
+}
+
+function clearThreats(state: GameState): GameState {
+  return {
+    ...state,
+    nearbyEntities: [],
+    isCombatActive: false,
+  };
+}
+
+function withStory(state: GameState, sceneId: string, flags: string[]): GameState {
+  const scene = getSceneById(sceneId);
+  assert.ok(scene, `Missing test scene ${sceneId}`);
+  return clearThreats({
+    ...state,
+    storySceneId: scene.id,
+    location: scene.location,
+    roomRegistry: {
+      ...state.roomRegistry,
+      [scene.location]: scene.description || scene.location,
+    },
+    storyFlags: flags,
+  });
 }
 
 async function testParserInventoryCommands() {
@@ -126,6 +152,171 @@ async function testAttackHonorsTarget() {
   assert.ok(newState.nearbyEntities[1].hp < 20);
 }
 
+async function testPhase1HubBranchAndBossGates() {
+  const state = await makeState();
+  const hub = getSceneById('future_courtyard_hub_v1');
+  assert.ok(hub);
+
+  const branchTargets = new Set(
+    hub.exits
+      ?.filter(exit => exit.targetSceneId.includes('_branch_'))
+      .map(exit => exit.targetSceneId)
+  );
+  assert.deepEqual(branchTargets, new Set([
+    'future_hallway_branch_v1',
+    'future_shrine_branch_v1',
+    'future_cellar_branch_v1',
+  ]));
+
+  const lockedBoss = await turn(
+    withStory(state, 'future_courtyard_hub_v1', ['gate_opened', 'courtyard_cleared']),
+    'boss'
+  );
+  assert.equal(lockedBoss.newState.storySceneId, 'future_courtyard_hub_v1');
+  assert.match(lockedBoss.logEntry.summary, /haven't yet done what's needed/i);
+
+  const unlockedBoss = await turn(
+    withStory(state, 'future_courtyard_hub_v1', [
+      'gate_opened',
+      'courtyard_cleared',
+      'branch_a_cleared',
+      'branch_b_cleared',
+      'branch_c_cleared',
+    ]),
+    'boss'
+  );
+  assert.match(unlockedBoss.newState.storySceneId, /^future_bossroom_v[12]$/);
+  assert.equal(unlockedBoss.newState.location, 'Sunken Throne');
+}
+
+async function testPhase1ConsumeItemGate() {
+  const state = await makeState();
+  const hallwayState = withStory(state, 'future_hallway_branch_v1', ['gate_opened', 'courtyard_cleared']);
+
+  const lockedArmory = await turn(hallwayState, 'armory');
+  assert.equal(lockedArmory.newState.storySceneId, 'future_hallway_branch_v1');
+  assert.match(lockedArmory.logEntry.summary, /need Armory Key/i);
+
+  const withKey: GameState = {
+    ...hallwayState,
+    inventory: [
+      ...hallwayState.inventory,
+      { id: 'armory-key', name: 'Armory Key', type: 'key', quantity: 1, equipped: false },
+    ],
+  };
+  const enteredArmory = await turn(withKey, 'armory');
+
+  assert.match(enteredArmory.newState.storySceneId, /^future_armory_side_v[12]$/);
+  assert.equal(
+    enteredArmory.newState.inventory.some(item => item.name === 'Armory Key'),
+    false
+  );
+  assert.ok(enteredArmory.newState.inventoryChangeLog.includes('Used Armory Key'));
+}
+
+async function testPhase1DiscoveryAndBranchCompletion() {
+  const state = await makeState();
+  const hallwayState = withStory(state, 'future_hallway_branch_v1', ['gate_opened', 'courtyard_cleared']);
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  try {
+    const searched = await turn(hallwayState, 'search the hallway');
+    assert.equal(
+      searched.newState.inventory.some(item => item.name === 'Armory Key'),
+      true
+    );
+    assert.ok(searched.newState.storyFlags.includes('found_armory_key'));
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  const returnedToHub = await turn(hallwayState, 'back to courtyard');
+  assert.ok(returnedToHub.newState.storyFlags.includes('branch_a_cleared'));
+  assert.match(returnedToHub.newState.storySceneId, /^future_courtyard_hub_v[12]$/);
+}
+
+async function testPhase1SeededVariants() {
+  const group = 'future_act1_hub';
+  const firstPick = pickSceneVariant(group, 100);
+  const secondPick = pickSceneVariant(group, 100);
+  const differentPick = pickSceneVariant(group, 101);
+
+  assert.ok(firstPick);
+  assert.ok(secondPick);
+  assert.ok(differentPick);
+  assert.equal(firstPick.id, secondPick.id);
+  assert.notEqual(firstPick.id, differentPick.id);
+}
+
+async function testVisualAssetManifestLoads() {
+  assert.equal(visualAssetManifest.styleVersion, 'visual-phase0-v1');
+  assert.ok(visualAssetManifest.assets.length > 0);
+  assert.equal(getVisualAsset('scene', 'iron_gate_v1')?.path, '/scene-cache/the_iron_gate_v1.jpg');
+  assert.equal(getVisualAsset('item', 'missing-item'), null);
+}
+
+async function testVisualViewModelSoloContract() {
+  const state = await makeState();
+  const view = buildVisualGameViewModel(state);
+
+  assert.equal(view.mode, 'solo');
+  assert.equal(view.partySlots.length, 1);
+  assert.equal(view.partySlots[0].playerId, 'solo');
+  assert.equal(view.partySlots[0].isYou, true);
+  assert.equal(view.turnState.currentTurnPlayerId, 'solo');
+  assert.equal(view.turnState.canAct, true);
+  assert.ok(view.scene.imagePath.startsWith('/'));
+  assert.ok(view.movementActions.some(action => action.command === 'open' && action.enabled));
+}
+
+async function testVisualViewModelGatesBossMovement() {
+  const state = await makeState();
+  const lockedHub = withStory(state, 'future_courtyard_hub_v1', ['gate_opened', 'courtyard_cleared']);
+  const lockedView = buildVisualGameViewModel(lockedHub);
+  const lockedBoss = lockedView.movementActions.find(action => action.targetId?.startsWith('future_bossroom'));
+
+  assert.ok(lockedBoss);
+  assert.equal(lockedBoss.enabled, false);
+  assert.match(lockedBoss.reason || '', /requires more progress/i);
+
+  const unlockedHub = withStory(state, 'future_courtyard_hub_v1', [
+    'gate_opened',
+    'courtyard_cleared',
+    'branch_a_cleared',
+    'branch_b_cleared',
+    'branch_c_cleared',
+  ]);
+  const unlockedView = buildVisualGameViewModel(unlockedHub);
+  const unlockedBoss = unlockedView.movementActions.find(action => action.targetId?.startsWith('future_bossroom'));
+
+  assert.ok(unlockedBoss);
+  assert.equal(unlockedBoss.enabled, true);
+}
+
+async function testVisualViewModelConsumeItemGate() {
+  const state = await makeState();
+  const hallwayState = withStory(state, 'future_hallway_branch_v1', ['gate_opened', 'courtyard_cleared']);
+  const lockedView = buildVisualGameViewModel(hallwayState);
+  const lockedArmory = lockedView.movementActions.find(action => action.targetId?.startsWith('future_armory_side'));
+
+  assert.ok(lockedArmory);
+  assert.equal(lockedArmory.enabled, false);
+  assert.match(lockedArmory.reason || '', /requires armory key/i);
+
+  const withKey: GameState = {
+    ...hallwayState,
+    inventory: [
+      ...hallwayState.inventory,
+      { id: 'armory-key', name: 'Armory Key', type: 'key', quantity: 1, equipped: false },
+    ],
+  };
+  const unlockedView = buildVisualGameViewModel(withKey);
+  const unlockedArmory = unlockedView.movementActions.find(action => action.targetId?.startsWith('future_armory_side'));
+
+  assert.ok(unlockedArmory);
+  assert.equal(unlockedArmory.enabled, true);
+}
+
 async function main() {
   await testParserInventoryCommands();
   await testEquipWeapon();
@@ -133,6 +324,14 @@ async function main() {
   await testRejectUnownedWeapon();
   await testRequestedOwnedWeaponUsesMatchingDice();
   await testAttackHonorsTarget();
+  await testPhase1HubBranchAndBossGates();
+  await testPhase1ConsumeItemGate();
+  await testPhase1DiscoveryAndBranchCompletion();
+  await testPhase1SeededVariants();
+  await testVisualAssetManifestLoads();
+  await testVisualViewModelSoloContract();
+  await testVisualViewModelGatesBossMovement();
+  await testVisualViewModelConsumeItemGate();
 
   console.log('game-engine regression tests passed');
 }

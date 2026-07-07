@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "styleVersion": "visual-phase0-v1",
+  "assets": [
+    {
+      "id": "fallback_scene",
+      "kind": "scene",
+      "path": "/prologue/gate.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "width": 1024,
+      "height": 1024,
+      "tags": ["fallback", "scene"]
+    },
+    {
+      "id": "iron_gate_v1",
+      "kind": "scene",
+      "path": "/scene-cache/the_iron_gate_v1.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "gate"]
+    },
+    {
+      "id": "iron_gate_v2",
+      "kind": "scene",
+      "path": "/scene-cache/the_iron_gate_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "gate"]
+    },
+    {
+      "id": "future_courtyard_hub_v1",
+      "kind": "scene",
+      "path": "/scene-cache/courtyard_v1.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "hub"]
+    },
+    {
+      "id": "future_courtyard_hub_v2",
+      "kind": "scene",
+      "path": "/scene-cache/courtyard_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "hub"]
+    },
+    {
+      "id": "future_hallway_branch_v1",
+      "kind": "scene",
+      "path": "/scene-cache/hallway_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "branch"]
+    },
+    {
+      "id": "future_bossroom_v1",
+      "kind": "scene",
+      "path": "/scene-cache/sunken_throne_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "boss"]
+    },
+    {
+      "id": "skeleton",
+      "kind": "monster",
+      "path": "/file.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["undead"]
+    },
+    {
+      "id": "zombie",
+      "kind": "monster",
+      "path": "/file.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["undead"]
+    },
+    {
+      "id": "fighter",
+      "kind": "portrait",
+      "path": "/prologue/wanderer.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["class"]
+    },
+    {
+      "id": "wizard",
+      "kind": "portrait",
+      "path": "/prologue/wanderer.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["class"]
+    },
+    {
+      "id": "cleric",
+      "kind": "portrait",
+      "path": "/prologue/wanderer.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["class"]
+    },
+    {
+      "id": "rogue",
+      "kind": "portrait",
+      "path": "/prologue/wanderer.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["class"]
+    },
+    {
+      "id": "fallback_item",
+      "kind": "item",
+      "path": "/file.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["fallback", "item"]
+    }
+  ]
+}

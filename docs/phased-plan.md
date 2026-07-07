@@ -9,6 +9,12 @@ This is the canonical roadmap. Architecture and setup details live in `docs/PROJ
 
 Other planning docs are supplemental only unless linked here.
 
+Linked planning docs:
+- Visual multiplayer UI and asset plan: `docs/visual-multiplayer-phase0.md`
+- Multiplayer session/state architecture: `docs/multiplayer-design.md`
+- Codex/Claude ownership and audit contract: `docs/agent-crossover-contract.md`
+- Active agent handoffs: `docs/agent-handoff.md`
+
 ## Branch scope (current reality)
 - Facts-first logs: `LogEntry.summary` is canonical; optional canned flavor comes from `data/narration/*.json`.
 - Structured intents for attack/defend/run/look/check-sheet/cast-ability/equip/drop with quick-insert buttons in the sidebar.
@@ -96,6 +102,10 @@ Other planning docs are supplemental only unless linked here.
 - Phase 1 (authored branches): add mid-branch scenes with gated exits, key/map/sigil loop, and deterministic variants.
 - Phase 2 (procedural routes): introduce route modules, seeded junctions, and deterministic segment generation.
 
+Status:
+- Phase 1 closed 2026-07-07. The authored branch flow is wired and covered by `npm run test:unit` regression checks for hub exits, item-gated side areas, discovery rewards, branch completion, boss gating, and seeded variants. Full local validation, including Playwright e2e against local Postgres, passes.
+- Phase 2 is ready to start. The first implementation target is route-module data plus deterministic junction selection on top of the existing story scene/variant system.
+
 Action items (Phase 1):
 [x] Wire exit gating for `entryConditions` and `consumeItem` in the engine.
 [x] Add seeded selection for `future_*` group variants (pinned per run by worldSeed + group hash; see roadmap doc for the deviation rationale).
@@ -103,10 +113,35 @@ Action items (Phase 1):
 [x] Wire Act 1 entry to the new hub scenes and convergence conditions (gate → hub → 3 branches → boss → treasury).
 
 Validation:
-- Manual: hub offers 3 distinct exits.
-- Manual: keys/maps gate optional areas correctly.
-- Manual: boss unlocks after all three branches cleared.
-- Manual: different seeds yield different variants with the same arc.
+- [x] Automated: hub offers 3 distinct branch exits.
+- [x] Automated: keys/maps/sigils gate optional areas and are consumed on entry.
+- [x] Automated: branch completion flags are set when returning to the hub.
+- [x] Automated: boss unlocks only after all three branches are cleared.
+- [x] Automated: identical seeds pick identical variants while different seeds can vary.
+- [x] Playwright e2e against local Postgres.
+
+Action items (Phase 2):
+[ ] Define route-module JSON shape for procedural route segments.
+[ ] Add deterministic junction selection from `worldSeed` and current story flags.
+[ ] Connect generated route segments back into authored convergence scenes.
+[ ] Add regression coverage for seeded route reproducibility and replay variety.
+
+## Visual multiplayer roadmap
+- Phase 0 (visual shell and asset plan): Eye-of-the-Beholder-inspired first-person dungeon UI, compact party rail, button-driven movement/actions, asset manifest, and OpenAI-generated asset style guide.
+- Phase M1 (state split): split `GameState` into session/character state behind a party-of-one shim.
+- Phase M2 (sessions): session tables, join-by-code, turn gate, and polling sync.
+- Phase M3 (party UI): actor-named logs, party controls, turn affordances, and balance knobs.
+
+Status:
+- Visual Phase 0 is selected as the next build target before multiplayer code. See `docs/visual-multiplayer-phase0.md`.
+- `docs/multiplayer-design.md` remains the architecture reference once the visual shell is validated.
+
+Action items (Visual Phase 0):
+[x] Add asset manifest types, loader helpers, and a `GameState` → visual view model contract.
+[ ] Build a single-player `VisualDungeonShell` on top of current `GameState`.
+[ ] Move movement, combat, inventory, spellbook, and log into the compact visual shell/drawer model.
+[ ] Seed Act 1 visual assets and fallbacks.
+[ ] Add visual-mode smoke coverage.
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
 - Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.

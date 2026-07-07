@@ -6,10 +6,10 @@ import { Skull, ArrowRight, BookOpen, X, Eye, EyeOff } from 'lucide-react';
 import type { GameState, LogEntry, NarrationMode, RollEvent } from '../lib/game-schema';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { RightSidebar } from '../components/RightSidebar';
-import { BattlefieldView } from '../components/BattlefieldView';
-import { NarrationLog } from '../components/NarrationLog';
-import { VisualGameBar } from '../components/VisualGameBar';
 import { InventoryModal } from '../components/InventoryModal';
+import { VisualDungeonShell } from '../components/visual/VisualDungeonShell';
+import type { VisualGameViewModel } from '../lib/visual/view-model';
+import { getVisualViewModel } from './visual-actions';
 import { createNewGame, processTurn, resetGame } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 import { saveScore } from '../lib/leaderboard';
@@ -53,6 +53,7 @@ export default function Home() {
 function HomeContent() {
   const [input, setInput] = useState('');
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [visualViewModel, setVisualViewModel] = useState<VisualGameViewModel | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDying, setIsDying] = useState(false);
@@ -67,6 +68,7 @@ function HomeContent() {
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'text' | 'visual'>('text');
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  const [isAdvancedInputOpen, setIsAdvancedInputOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -85,6 +87,19 @@ function HomeContent() {
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
+
+  // Visual mode consumes Codex's buildVisualGameViewModel instead of duplicating
+  // story exit/combat-availability rules on the frontend.
+  useEffect(() => {
+    if (viewMode !== 'visual' || !gameState) return;
+    let cancelled = false;
+    getVisualViewModel(gameState).then(vm => {
+      if (!cancelled) setVisualViewModel(vm);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewMode, gameState]);
 
   const handleDeath = useCallback((state: GameState) => {
     if (isDying) return;
@@ -164,17 +179,6 @@ function HomeContent() {
     setViewMode(newMode);
     localStorage.setItem('dungeon_portal_view_mode', newMode);
   }, [viewMode]);
-
-  const handleSpellCast = useCallback((spell: string) => {
-    if (gameState) executeTurn(`cast ${spell}`, gameState);
-  }, [gameState, executeTurn]);
-
-  const handleWeaponAttack = useCallback((weapon?: string) => {
-    if (gameState) {
-      const command = weapon ? `attack with ${weapon}` : 'attack';
-      executeTurn(command, gameState);
-    }
-  }, [gameState, executeTurn]);
 
   const handleItemUse = useCallback((item: string) => {
     if (gameState) executeTurn(`use ${item}`, gameState);
@@ -376,7 +380,7 @@ function HomeContent() {
     <main className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden relative">
 
       {/* MOBILE HEADER */}
-      {(viewMode === 'text' || !gameState?.isCombatActive) && (
+      {viewMode === 'text' && (
         <div className="md:hidden absolute top-0 left-0 right-0 h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 z-10">
           <span className="font-bold text-amber-500">Dungeon Portal</span>
           <div className="flex items-center gap-2">
@@ -415,7 +419,7 @@ function HomeContent() {
       )}
 
       {/* LEFT: Sidebar (Desktop) */}
-      {(viewMode === 'text' || !gameState?.isCombatActive) && (
+      {viewMode === 'text' && (
         <div className="w-[320px] hidden md:block h-full border-r border-slate-800">
           <LeftSidebar state={gameState} onItemUse={handleItemUse} />
         </div>
@@ -423,9 +427,7 @@ function HomeContent() {
 
       {/* CENTER: Chat Area */}
       <div className={`flex-1 flex flex-col w-full p-4 pt-16 md:pt-4 relative h-full ${
-        viewMode === 'visual' && gameState?.isCombatActive
-          ? 'max-w-full'
-          : 'max-w-4xl mx-auto'
+        viewMode === 'visual' ? 'max-w-full' : 'max-w-4xl mx-auto'
       }`}>
         {/* Desktop top bar */}
         <div className="hidden md:flex items-center justify-between mb-2 text-sm text-slate-400">
@@ -458,46 +460,22 @@ function HomeContent() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-6 p-4 scrollbar-thin scrollbar-thumb-slate-700 pb-32">
-          {/* Visual Combat Mode */}
-          {viewMode === 'visual' && gameState?.isCombatActive && (
-            <div className="space-y-4">
-              <BattlefieldView
-                entities={gameState.nearbyEntities}
-                playerHp={gameState.hp}
-                playerMaxHp={gameState.maxHp}
-                playerAc={gameState.ac}
-                playerName={gameState.character.name}
-                isCombatActive={gameState.isCombatActive}
-                onEntityClick={(entity) => {
-                  if (entity.status === 'alive' && !isLoading) {
-                    const safeName = entity.name.replace(/[^a-zA-Z0-9\s-]/g, '').toLowerCase();
-                    setInput(`attack ${safeName}`);
-                    focusInput();
-                  }
-                }}
-              />
-
-              <VisualGameBar
-                gameState={gameState}
-                onInventoryOpen={() => setIsInventoryOpen(true)}
-                onSpellCast={handleSpellCast}
-                onWeaponAttack={handleWeaponAttack}
-                onItemUse={handleItemUse}
-                isProcessing={isLoading}
-              />
-
-              <NarrationLog
-                entries={gameState.log}
-                maxEntries={8}
-                showMode
-                compact
-              />
-            </div>
+        <div className={`flex-1 overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-slate-700 ${
+          viewMode === 'visual' ? 'p-0 pb-4' : 'p-4 pb-32'
+        }`}>
+          {/* Visual Dungeon Shell (Phase 0) */}
+          {viewMode === 'visual' && !isDead && (
+            <VisualDungeonShell
+              gameState={gameState}
+              viewModel={visualViewModel}
+              isLoading={isLoading}
+              onCommand={(command) => executeTurn(command, gameState)}
+              onInventoryOpen={() => setIsInventoryOpen(true)}
+            />
           )}
 
           {/* Text Mode Messages */}
-          {(viewMode === 'text' || !gameState?.isCombatActive) && messages.map((m, i) => {
+          {viewMode === 'text' && messages.map((m, i) => {
             if (m.role === 'user') {
               return (
                 <div key={i} className="flex justify-end">
@@ -540,6 +518,31 @@ function HomeContent() {
                 {deathCountdown !== null && deathCountdown > 0 ? `Redirecting in: ${deathCountdown}` : 'Redirecting...'}
               </p>
             </div>
+          ) : viewMode === 'visual' ? (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setIsAdvancedInputOpen(prev => !prev)}
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                {isAdvancedInputOpen ? 'Hide advanced command input' : 'Advanced command input…'}
+              </button>
+              {isAdvancedInputOpen && (
+                <form onSubmit={handleTurn} className="flex gap-2 mt-2">
+                  <input
+                    ref={inputRef}
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded p-3 text-sm focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-600"
+                    placeholder="What do you do?"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <button type="submit" disabled={isLoading || !input.trim()} className="bg-amber-600 hover:bg-amber-700 text-slate-900 font-bold px-6 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm">
+                    ACT
+                  </button>
+                </form>
+              )}
+            </div>
           ) : (
             <>
               <CommandHints
@@ -577,7 +580,7 @@ function HomeContent() {
       </div>
 
       {/* RIGHT: Sidebar (Desktop) */}
-      {(viewMode === 'text' || !gameState?.isCombatActive) && (
+      {viewMode === 'text' && (
         <div className="w-[350px] hidden md:block h-full border-l border-slate-800">
           <RightSidebar state={gameState} onInsertCommand={(cmd) => { setInput(cmd); focusInput(); }} />
         </div>
