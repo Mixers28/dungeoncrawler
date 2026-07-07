@@ -4,6 +4,38 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-08 - Codex - M1 Story Exit Context Slice
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game/turn-context.ts`
+- `lib/game/engine/index.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Moved the successful story-exit transition writes behind `TurnContext`.
+- Required exit item consumption, inventory change logs, scene visit counters, and final transition composition now flow through context helpers.
+- Existing locked-exit and branch/armory regression coverage remains green; added direct context regression for exit inventory/visit state.
+
+Contract changes:
+- New backend helpers: `removeActorInventoryItemByName`, `appendActorInventoryChange`, `incrementSessionSceneVisit`.
+- No frontend or public engine API changes.
+
+Validation:
+- `npm run db:migrate` passed.
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm run test:e2e` passed: 5/5 Playwright specs.
+
+Needs from other agent:
+- None blocking. This is backend-only scaffolding; visual contracts are unchanged.
+
 ## Handoff - 2026-07-08 - Codex - M1 Casting Context Slice
 
 Owner: Codex

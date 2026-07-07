@@ -17,11 +17,15 @@ import {
   addMonsterEffect,
   applyDamageToActor,
   applyDamageToMonsterTarget,
+  appendActorInventoryChange,
+  composeGameStateFromTurnContext,
   consumeActorSpellSlot,
   createTurnContextFromGameState,
   findActiveMonsterTarget,
   getMonsterTargetByIndex,
   healActor,
+  incrementSessionSceneVisit,
+  removeActorInventoryItemByName,
   setActorMinimumAc,
   syncTurnContextFromGameState,
 } from '../turn-context';
@@ -803,6 +807,7 @@ async function _updateGameState(
   // Advance turn counter and clear expired effects before resolving actions
   newState.turnCounter = (currentState.turnCounter || 0) + 1;
   expireEffects(newState);
+  const turnContext = createTurnContextFromGameState(newState);
 
   let currentScene = getSceneById(currentState.storySceneId);
   if (!currentScene && newState.location.toLowerCase().includes('gate')) {
@@ -863,19 +868,21 @@ async function _updateGameState(
       }
     }
     if (target) {
+      syncTurnContextFromGameState(turnContext, newState);
       if (sceneExit.consumeItem) {
-        newState.inventory = newState.inventory.filter(i => i.name.toLowerCase() !== sceneExit.consumeItem!.toLowerCase());
-        newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${sceneExit.consumeItem}`].slice(-10);
+        newState.inventory = removeActorInventoryItemByName(turnContext, sceneExit.consumeItem);
+        newState.inventoryChangeLog = appendActorInventoryChange(turnContext, `Used ${sceneExit.consumeItem}`);
       }
       if (target.group) {
-        const visits = (newState.sceneVisits || {})[target.group] || 0;
-        newState.sceneVisits = { ...(newState.sceneVisits || {}), [target.group]: visits + 1 };
+        newState.sceneVisits = incrementSessionSceneVisit(turnContext, target.group);
       }
       const summaryParts: string[] = [...exitSummaries];
       if (sceneExit.log) summaryParts.push(sceneExit.log);
       const { state: transitioned, roomDesc } = applySceneEntry(target.id, newState, summaryParts);
-      transitioned.lastActionSummary = summaryParts.join(' ').trim() || `You move to ${target.location}.`;
-      return { newState: transitioned, roomDesc, accountantFacts: summaryParts, eventSummary: transitioned.lastActionSummary, narrationMode: "ROOM_INTRO", rollLog: [] };
+      syncTurnContextFromGameState(turnContext, transitioned);
+      const transitionedState = composeGameStateFromTurnContext(turnContext);
+      transitionedState.lastActionSummary = summaryParts.join(' ').trim() || `You move to ${target.location}.`;
+      return { newState: transitionedState, roomDesc, accountantFacts: summaryParts, eventSummary: transitionedState.lastActionSummary, narrationMode: "ROOM_INTRO", rollLog: [] };
     }
   }
 
@@ -897,7 +904,6 @@ async function _updateGameState(
     parsedIntent.type === 'attack' || parsedIntent.type === 'castAbility'
       ? parsedIntent.target
       : undefined;
-  const turnContext = createTurnContextFromGameState(newState);
   const activeMonsterTarget = findActiveMonsterTarget(turnContext, requestedTargetName);
   const activeMonsterIndex = activeMonsterTarget.index;
   const activeMonster = activeMonsterTarget.entity;

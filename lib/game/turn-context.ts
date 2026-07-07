@@ -131,3 +131,34 @@ export function addMonsterEffect(
   );
   return updatedTarget;
 }
+
+export function removeActorInventoryItemByName(
+  context: TurnContext,
+  itemName: string
+): CharacterState['inventory'] {
+  context.actor.inventory = context.actor.inventory.filter(
+    item => item.name.toLowerCase() !== itemName.toLowerCase()
+  );
+  return context.actor.inventory;
+}
+
+export function appendActorInventoryChange(
+  context: TurnContext,
+  entry: string,
+  limit = 10
+): CharacterState['inventoryChangeLog'] {
+  context.actor.inventoryChangeLog = [...(context.actor.inventoryChangeLog || []), entry].slice(-limit);
+  return context.actor.inventoryChangeLog;
+}
+
+export function incrementSessionSceneVisit(
+  context: TurnContext,
+  sceneGroup: string
+): SessionState['sceneVisits'] {
+  const visits = (context.session.sceneVisits || {})[sceneGroup] || 0;
+  context.session.sceneVisits = {
+    ...(context.session.sceneVisits || {}),
+    [sceneGroup]: visits + 1,
+  };
+  return context.session.sceneVisits;
+}

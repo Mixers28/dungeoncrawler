@@ -9,11 +9,15 @@ import {
   addMonsterEffect,
   applyDamageToActor,
   applyDamageToMonsterTarget,
+  appendActorInventoryChange,
   consumeActorSpellSlot,
+  composeGameStateFromTurnContext,
   createTurnContextFromGameState,
   findActiveMonsterTarget,
   getMonsterTargetByIndex,
   healActor,
+  incrementSessionSceneVisit,
+  removeActorInventoryItemByName,
   setActorMinimumAc,
   syncTurnContextFromGameState,
 } from '../lib/game/turn-context';
@@ -415,6 +419,26 @@ async function testTurnContextAppliesActorAndMonsterSpellEffects() {
   assert.equal(context.session.nearbyEntities[0].effects[0].type, 'debuff');
 }
 
+async function testTurnContextAppliesStoryExitState() {
+  const state = await makeState();
+  const context = createTurnContextFromGameState({
+    ...state,
+    inventory: [
+      ...state.inventory,
+      { id: 'armory-key', name: 'Armory Key', type: 'key', quantity: 1, equipped: false },
+    ],
+  });
+
+  removeActorInventoryItemByName(context, 'Armory Key');
+  appendActorInventoryChange(context, 'Used Armory Key');
+  incrementSessionSceneVisit(context, 'future_act1_armory');
+  const recomposed = composeGameStateFromTurnContext(context);
+
+  assert.equal(recomposed.inventory.some(item => item.name === 'Armory Key'), false);
+  assert.deepEqual(recomposed.inventoryChangeLog, ['Used Armory Key']);
+  assert.equal(recomposed.sceneVisits.future_act1_armory, 1);
+}
+
 async function testVisualAssetManifestLoads() {
   assert.equal(visualAssetManifest.styleVersion, 'visual-phase0-v1');
   assert.ok(visualAssetManifest.assets.length > 0);
@@ -585,6 +609,7 @@ async function main() {
   await testTurnContextSyncsRetaliationState();
   await testTurnContextConsumesSpellSlotsAndHealsActor();
   await testTurnContextAppliesActorAndMonsterSpellEffects();
+  await testTurnContextAppliesStoryExitState();
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();
   await testVisualViewModelSoloContract();
