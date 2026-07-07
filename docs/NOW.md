@@ -7,8 +7,8 @@
 - Documentation has been unified around Drizzle/Postgres, Auth.js credentials, deterministic server actions, and JSON-driven story/rules data.
 - Recent engine fixes added equip/drop commands, owned-weapon validation, equipped-weapon default attacks, matching requested-weapon damage dice, and target-aware attacks.
 - Story Phase 1 is closed: authored hub/branch/boss progression now has unit regression coverage for gates, discoveries, branch completion, boss unlocks, and seeded variants.
-- Next product track: Visual Multiplayer Phase 0. Build an Eye-of-the-Beholder-inspired visual shell and asset pipeline before multiplayer state/session work.
-- Validation baseline is green: `npm run db:migrate`, `npm run test:unit`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm run test:e2e` pass locally.
+- Visual Multiplayer Phase 0 shell is functionally complete: `VisualDungeonShell` runs full-time (exploration + combat) against Codex's `buildVisualGameViewModel`, with button-driven movement/combat/inventory/spellbook drawers and no free-text requirement. Remaining Phase 0 work is asset seeding (only gate/hub/one branch/one boss variant have real art) and the multiplayer-readiness review.
+- Validation baseline is green: `npm run db:migrate`, `npm run test:unit`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm run test:e2e` (including new `e2e/visual-mode.spec.ts`) pass locally.
 - Next verification gap: walk the deploy checklist against the production environment.
 <!-- SUMMARY_END -->
 
@@ -35,13 +35,14 @@
    - Use `docs/deploy-checklist.md`.
    - Confirm Railway env vars, production migrations, login, persistence, combat, story navigation, and logs.
 
-4. **Start Visual Multiplayer Phase 0**
+4. **Finish Visual Multiplayer Phase 0**
    - Use `docs/visual-multiplayer-phase0.md`.
-   - Add asset manifest types and loader helpers.
-   - Build a single-player visual shell on current `GameState`.
-   - Move movement/actions/log into a compact first-person layout with drawers.
-   - Seed Act 1 visual assets and fallbacks.
-   - Add visual-mode smoke coverage.
+   - [x] Add asset manifest types and loader helpers.
+   - [x] Build a single-player visual shell on current `GameState`.
+   - [x] Move movement/actions/inventory/spellbook/log into a compact first-person layout with drawers.
+   - [ ] Seed remaining Act 1 visual assets (branches/boss variants/treasury/items) and fallbacks.
+   - [x] Add visual-mode smoke coverage (`e2e/visual-mode.spec.ts`).
+   - [ ] Multiplayer readiness review before starting Phase M1.
 
 ## Recently Completed
 
@@ -55,6 +56,9 @@
 - Visual Multiplayer Phase 0 plan added as the prerequisite for multiplayer implementation.
 - Codex/Claude ownership and handoff docs added for split backend/frontend work.
 - Visual backend contract added: asset manifest helpers and `buildVisualGameViewModel(state)` for Claude's shell.
+- `VisualDungeonShell` built and wired to the real view model: party rail, viewport, movement cluster, action tray, compact log, and inventory/spellbook drawers. Visual mode now runs full-time (exploration + combat), replacing the old combat-only overlay.
+- Per-threat attack targeting closed the loop: Codex added `VisualThreatView.attackAction`, Claude Code updated `DungeonViewport` to consume it instead of sanitizing monster names client-side.
+- `e2e/visual-mode.spec.ts` added: shell landmarks, movement dispatch, inventory drawer quick-use, spellbook drawer cast — all button-driven, zero free-text.
 
 ## E2E Notes
 

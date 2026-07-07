@@ -76,6 +76,7 @@ export const logEntrySchema = z.object({
   mode: narrationModeEnum,
   summary: z.string(),
   flavor: z.string().optional(),
+  actorName: z.string().optional(),
   createdAt: z.string().default(() => new Date().toISOString()),
   rolls: z.array(rollEventSchema).optional(),
 });

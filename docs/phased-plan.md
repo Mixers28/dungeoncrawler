@@ -133,15 +133,16 @@ Action items (Phase 2):
 - Phase M3 (party UI): actor-named logs, party controls, turn affordances, and balance knobs.
 
 Status:
-- Visual Phase 0 is selected as the next build target before multiplayer code. See `docs/visual-multiplayer-phase0.md`.
-- `docs/multiplayer-design.md` remains the architecture reference once the visual shell is validated.
+- Visual Phase 0 shell and controls are functionally complete: full-time visual mode (exploration + combat, not combat-only), movement/action/inventory/spellbook all button-driven against `buildVisualGameViewModel`, and e2e smoke coverage is green. See `docs/visual-multiplayer-phase0.md`.
+- Remaining before Phase 0 is fully closed: seed more Act 1 visual assets (only gate/hub/one branch/one boss variant + 2 monsters have real art; everything else falls back gracefully) and the multiplayer-readiness review pass.
+- `docs/multiplayer-design.md` remains the architecture reference for Phase M1+.
 
 Action items (Visual Phase 0):
 [x] Add asset manifest types, loader helpers, and a `GameState` → visual view model contract.
-[ ] Build a single-player `VisualDungeonShell` on top of current `GameState`.
-[ ] Move movement, combat, inventory, spellbook, and log into the compact visual shell/drawer model.
-[ ] Seed Act 1 visual assets and fallbacks.
-[ ] Add visual-mode smoke coverage.
+[x] Build a single-player `VisualDungeonShell` on top of current `GameState`.
+[x] Move movement, combat, inventory, spellbook, and log into the compact visual shell/drawer model.
+[ ] Seed Act 1 visual assets and fallbacks (partial — see status note above).
+[x] Add visual-mode smoke coverage (`e2e/visual-mode.spec.ts`: shell landmarks, movement, inventory drawer, spellbook drawer).
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
 - Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.

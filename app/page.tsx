@@ -435,6 +435,7 @@ function HomeContent() {
           <div className="flex items-center gap-2">
             <button
               onClick={toggleViewMode}
+              data-testid="toggle-view-mode"
               className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-3 py-2 rounded flex items-center gap-2 transition-colors"
               title={`Switch to ${viewMode === 'text' ? 'visual' : 'text'} mode`}
             >
@@ -470,7 +471,7 @@ function HomeContent() {
               viewModel={visualViewModel}
               isLoading={isLoading}
               onCommand={(command) => executeTurn(command, gameState)}
-              onInventoryOpen={() => setIsInventoryOpen(true)}
+              onOpenFullInventory={() => setIsInventoryOpen(true)}
             />
           )}
 

@@ -53,6 +53,94 @@
       "tags": ["act1", "branch"]
     },
     {
+      "id": "future_hallway_branch_v2",
+      "kind": "scene",
+      "path": "/scene-cache/hallway_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "branch"]
+    },
+    {
+      "id": "future_shrine_branch_v1",
+      "kind": "scene",
+      "path": "/prologue/ruins.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "branch", "shrine"]
+    },
+    {
+      "id": "future_shrine_branch_v2",
+      "kind": "scene",
+      "path": "/prologue/ruins.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "branch", "shrine"]
+    },
+    {
+      "id": "future_cellar_branch_v1",
+      "kind": "scene",
+      "path": "/scene-cache/hallway_zombie_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "branch", "cellar"]
+    },
+    {
+      "id": "future_cellar_branch_v2",
+      "kind": "scene",
+      "path": "/scene-cache/ante_chamber_armoured_zombie_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "branch", "cellar"]
+    },
+    {
+      "id": "future_armory_side_v1",
+      "kind": "scene",
+      "path": "/scene-cache/ante_chamber_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "side", "armory"]
+    },
+    {
+      "id": "future_armory_side_v2",
+      "kind": "scene",
+      "path": "/scene-cache/ante_chamber_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "side", "armory"]
+    },
+    {
+      "id": "future_cache_side_v1",
+      "kind": "scene",
+      "path": "/prologue/ruins.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "side", "cache"]
+    },
+    {
+      "id": "future_cache_side_v2",
+      "kind": "scene",
+      "path": "/prologue/ruins.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "side", "cache"]
+    },
+    {
+      "id": "future_sanctum_side_v1",
+      "kind": "scene",
+      "path": "/prologue/ruins.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "side", "sanctum"]
+    },
+    {
+      "id": "future_sanctum_side_v2",
+      "kind": "scene",
+      "path": "/prologue/ruins.png",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "side", "sanctum"]
+    },
+    {
       "id": "future_bossroom_v1",
       "kind": "scene",
       "path": "/scene-cache/sunken_throne_v2.jpg",
@@ -61,20 +149,172 @@
       "tags": ["act1", "boss"]
     },
     {
+      "id": "future_bossroom_v2",
+      "kind": "scene",
+      "path": "/scene-cache/sunken_throne_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "boss"]
+    },
+    {
+      "id": "future_treasury_v1",
+      "kind": "scene",
+      "path": "/scene-cache/treasury_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "treasury"]
+    },
+    {
+      "id": "future_treasury_v2",
+      "kind": "scene",
+      "path": "/scene-cache/treasury_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "treasury"]
+    },
+    {
+      "id": "courtyard_v1",
+      "kind": "scene",
+      "path": "/scene-cache/courtyard_v1.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "legacy", "hub"]
+    },
+    {
+      "id": "courtyard_v2",
+      "kind": "scene",
+      "path": "/scene-cache/courtyard_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "legacy", "hub"]
+    },
+    {
+      "id": "hallway_v1",
+      "kind": "scene",
+      "path": "/scene-cache/hallway_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "legacy", "branch"]
+    },
+    {
+      "id": "hallway_v2",
+      "kind": "scene",
+      "path": "/scene-cache/hallway_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "legacy", "branch"]
+    },
+    {
+      "id": "antechamber_v1",
+      "kind": "scene",
+      "path": "/scene-cache/ante_chamber_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "legacy", "antechamber"]
+    },
+    {
+      "id": "antechamber_v2",
+      "kind": "scene",
+      "path": "/scene-cache/ante_chamber_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "legacy", "antechamber"]
+    },
+    {
+      "id": "bossroom_v1",
+      "kind": "scene",
+      "path": "/scene-cache/sunken_throne_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "legacy", "boss"]
+    },
+    {
+      "id": "bossroom_v2",
+      "kind": "scene",
+      "path": "/scene-cache/sunken_throne_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "legacy", "boss"]
+    },
+    {
+      "id": "treasury_v1",
+      "kind": "scene",
+      "path": "/scene-cache/treasury_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "legacy", "treasury"]
+    },
+    {
+      "id": "treasury_v2",
+      "kind": "scene",
+      "path": "/scene-cache/treasury_v2.jpg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "existing",
+      "tags": ["act1", "legacy", "treasury"]
+    },
+    {
+      "id": "fallback_monster",
+      "kind": "monster",
+      "path": "/visual/monsters/fallback.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["fallback", "monster"]
+    },
+    {
       "id": "skeleton",
       "kind": "monster",
-      "path": "/file.svg",
+      "path": "/visual/monsters/fallback.svg",
       "styleVersion": "visual-phase0-v1",
       "source": "fallback",
       "tags": ["undead"]
     },
     {
+      "id": "skeleton_archer",
+      "kind": "monster",
+      "path": "/visual/monsters/fallback.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["undead", "ranged"]
+    },
+    {
+      "id": "skeleton_spearman",
+      "kind": "monster",
+      "path": "/visual/monsters/fallback.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["undead", "melee"]
+    },
+    {
       "id": "zombie",
       "kind": "monster",
-      "path": "/file.svg",
+      "path": "/visual/monsters/fallback.svg",
       "styleVersion": "visual-phase0-v1",
       "source": "fallback",
       "tags": ["undead"]
+    },
+    {
+      "id": "armoured_zombie",
+      "kind": "monster",
+      "path": "/visual/monsters/fallback.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["undead", "armored"]
+    },
+    {
+      "id": "fallen_knight",
+      "kind": "monster",
+      "path": "/visual/monsters/fallback.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["undead", "boss"]
+    },
+    {
+      "id": "cultist_acolyte",
+      "kind": "monster",
+      "path": "/visual/monsters/fallback.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["cultist"]
     },
     {
       "id": "fighter",
@@ -111,10 +351,42 @@
     {
       "id": "fallback_item",
       "kind": "item",
-      "path": "/file.svg",
+      "path": "/visual/items/fallback.svg",
       "styleVersion": "visual-phase0-v1",
       "source": "fallback",
       "tags": ["fallback", "item"]
+    },
+    {
+      "id": "healing_potion",
+      "kind": "item",
+      "path": "/visual/items/fallback.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["consumable", "potion"]
+    },
+    {
+      "id": "minor_healing_potion",
+      "kind": "item",
+      "path": "/visual/items/fallback.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["consumable", "potion"]
+    },
+    {
+      "id": "floor1complete",
+      "kind": "item",
+      "path": "/visual/items/fallback.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["key", "progression"]
+    },
+    {
+      "id": "rusted_key",
+      "kind": "item",
+      "path": "/visual/items/fallback.svg",
+      "styleVersion": "visual-phase0-v1",
+      "source": "fallback",
+      "tags": ["key"]
     }
   ]
 }

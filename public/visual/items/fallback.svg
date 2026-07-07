@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Item icon">
+  <rect width="256" height="256" rx="20" fill="#111827"/>
+  <path d="M80 78h96l-12 126H92L80 78Z" fill="#3f3f46"/>
+  <path d="M92 78c6-24 18-36 36-36s30 12 36 36" fill="none" stroke="#a3a3a3" stroke-width="14" stroke-linecap="round"/>
+  <path d="M103 111h50M100 145h56M97 179h62" stroke="#fbbf24" stroke-width="10" stroke-linecap="round"/>
+  <path d="M74 212h108" stroke="#6b7280" stroke-width="8" stroke-linecap="round"/>
+</svg>

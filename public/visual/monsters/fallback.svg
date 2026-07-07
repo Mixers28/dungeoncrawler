@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Monster silhouette">
+  <rect width="256" height="256" rx="20" fill="#111827"/>
+  <path d="M65 206c8-52 26-87 63-87s55 35 63 87H65Z" fill="#374151"/>
+  <path d="M82 121c4-40 23-68 46-68s42 28 46 68c-12 13-27 20-46 20s-34-7-46-20Z" fill="#4b5563"/>
+  <path d="M84 66 52 36l13 51M172 66l32-30-13 51" fill="#4b5563"/>
+  <circle cx="107" cy="105" r="8" fill="#f87171"/>
+  <circle cx="149" cy="105" r="8" fill="#f87171"/>
+  <path d="M106 130c14 8 30 8 44 0" stroke="#d1d5db" stroke-width="8" stroke-linecap="round"/>
+  <path d="M41 220h174" stroke="#6b7280" stroke-width="8" stroke-linecap="round"/>
+</svg>

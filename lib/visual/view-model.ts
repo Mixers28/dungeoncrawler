@@ -19,6 +19,8 @@ export type VisualAction = {
   reason?: string;
   direction?: VisualDirection;
   targetId?: string;
+  imagePath?: string;
+  imageAssetId?: string;
 };
 
 export type VisualPartySlot = {
@@ -61,6 +63,7 @@ export type VisualThreatView = {
   isAlive: boolean;
   imagePath: string;
   imageAssetId?: string;
+  attackAction?: VisualAction;
 };
 
 export type VisualLogEntry = {
@@ -262,15 +265,20 @@ function buildCombatActions(canAct: boolean, aliveThreat: boolean): VisualAction
 function buildInventoryActions(state: GameState, canAct: boolean): VisualAction[] {
   return state.inventory
     .filter(item => isConsumableItem(item))
-    .map(item => ({
-      id: `item-${normalizeVisualAssetId(item.id || item.name)}`,
-      kind: 'inventory' as const,
-      label: item.quantity > 1 ? `${item.name} x${item.quantity}` : item.name,
-      command: `use ${item.name.toLowerCase()}`,
-      enabled: canAct && item.quantity > 0,
-      reason: canAct ? undefined : 'You cannot act right now.',
-      targetId: item.id,
-    }));
+    .map(item => {
+      const asset = resolveVisualAsset('item', [item.id, item.name], 'fallback_item');
+      return {
+        id: `item-${normalizeVisualAssetId(item.id || item.name)}`,
+        kind: 'inventory' as const,
+        label: item.quantity > 1 ? `${item.name} x${item.quantity}` : item.name,
+        command: `use ${item.name.toLowerCase()}`,
+        enabled: canAct && item.quantity > 0,
+        reason: canAct ? undefined : 'You cannot act right now.',
+        targetId: item.id,
+        imagePath: asset?.path,
+        imageAssetId: asset?.id,
+      };
+    });
 }
 
 function buildSpellActions(state: GameState, canAct: boolean): VisualAction[] {
@@ -301,9 +309,9 @@ function resolvePortrait(state: GameState): { path?: string; asset?: VisualAsset
 }
 
 function resolveThreatImage(name: string, fallbackImageUrl?: string): { path: string; asset?: VisualAsset } {
-  const asset = resolveVisualAsset('monster', [name]);
-  if (asset && asset.source !== 'fallback') return { path: asset.path, asset };
-  return { path: fallbackImageUrl || asset?.path || FALLBACK_ASSET_PATH, asset: asset || undefined };
+  const asset = resolveVisualAsset('monster', [name], 'fallback_monster');
+  if (asset) return { path: asset.path, asset };
+  return { path: fallbackImageUrl || FALLBACK_ASSET_PATH };
 }
 
 function buildPartySlot(state: GameState, turnState: VisualTurnState): VisualPartySlot {
@@ -323,33 +331,57 @@ function buildPartySlot(state: GameState, turnState: VisualTurnState): VisualPar
   };
 }
 
-function buildThreatViews(state: GameState): VisualThreatView[] {
+function commandTargetName(name: string): string {
+  return name
+    .replace(/[^a-zA-Z0-9\s-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function buildThreatAttackAction(entityName: string, idx: number, canAct: boolean, isAlive: boolean): VisualAction {
+  const targetName = commandTargetName(entityName);
+  const enabled = canAct && isAlive;
+  return {
+    id: `attack-threat-${idx}-${normalizeVisualAssetId(entityName)}`,
+    kind: 'combat',
+    label: `Attack ${entityName}`,
+    command: targetName ? `attack ${targetName}` : 'attack',
+    enabled,
+    reason: enabled ? undefined : canAct ? 'Target is not active.' : 'You cannot act right now.',
+    targetId: `threat-${idx}-${normalizeVisualAssetId(entityName)}`,
+  };
+}
+
+function buildThreatViews(state: GameState, canAct: boolean): VisualThreatView[] {
   return (state.nearbyEntities || []).map((entity, idx) => {
     const image = resolveThreatImage(entity.name, entity.imageUrl);
+    const id = `threat-${idx}-${normalizeVisualAssetId(entity.name)}`;
+    const isAlive = entity.status === 'alive' && entity.hp > 0;
     return {
-      id: `threat-${idx}-${normalizeVisualAssetId(entity.name)}`,
+      id,
       name: entity.name,
       hp: entity.hp,
       maxHp: entity.maxHp,
       ac: entity.ac,
       status: entity.status,
-      isAlive: entity.status === 'alive' && entity.hp > 0,
+      isAlive,
       imagePath: image.path,
       imageAssetId: image.asset?.id,
+      attackAction: buildThreatAttackAction(entity.name, idx, canAct, isAlive),
     };
   });
 }
 
 function buildLogEntries(state: GameState): VisualLogEntry[] {
   return (state.log || []).slice(-12).map(entry => {
-    const maybeActor = entry as LogEntry & { actorName?: string };
     return {
       id: entry.id,
       summary: entry.summary,
       flavor: entry.flavor,
       mode: entry.mode,
       createdAt: entry.createdAt,
-      actorName: maybeActor.actorName,
+      actorName: entry.actorName,
     };
   });
 }
@@ -365,7 +397,7 @@ export function buildVisualGameViewModel(state: GameState): VisualGameViewModel 
     reason: canAct ? undefined : 'You are down.',
   };
   const sceneImage = resolveSceneImage(state, currentScene);
-  const threats = buildThreatViews(state);
+  const threats = buildThreatViews(state, canAct);
 
   return {
     mode: 'solo',

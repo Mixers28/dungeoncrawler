@@ -4,10 +4,67 @@
 
 ## Active Handoffs
 
-## Handoff - 2026-07-07 - Claude Code - VisualDungeonShell Scaffold
+## Handoff - 2026-07-07 - Claude Code - Inventory/Spellbook Drawers + attackAction Consumption + e2e Coverage
 
 Owner: Claude Code
 Status: ready-for-review
+Files touched:
+- `components/visual/VisualDrawer.tsx` (new), `InventoryDrawerContent.tsx` (new), `SpellbookDrawerContent.tsx` (new)
+- `components/visual/ActionTray.tsx`, `VisualDungeonShell.tsx`, `DungeonViewport.tsx`, `MovementCluster.tsx`, `PartyRail.tsx`
+- `app/page.tsx`
+- `e2e/visual-mode.spec.ts` (new)
+- `docs/NOW.md`, `docs/phased-plan.md`
+
+Summary:
+- Closed the remaining Phase 0 frontend item: inventory and spellbook are now visual-mode drawers (slide-in from the right, matching the mobile sidebar drawer pattern already in `app/page.tsx`), not a centered modal or a missing entry point. `ActionTray` gained "Inventory" and "Spells" buttons.
+- Inventory drawer shows `viewModel.inventoryActions` (quick-use consumables) plus a "Manage Full Inventory" escape hatch that opens the existing `InventoryModal` for equip/drop — didn't duplicate that logic, just relocated the entry point.
+- Spellbook drawer renders `viewModel.spellActions` directly — no local cantrip-detection heuristic, straight passthrough of your view model.
+- Picked up your `attackAction` addition to `VisualThreatView` same-day: `DungeonViewport` now calls `threat.attackAction.command` and respects its `enabled`/`reason`, and no longer sanitizes `threat.name` client-side. The gap I raised in the "VisualDungeonShell Scaffold" entry is closed on my side too.
+- Added `e2e/visual-mode.spec.ts`: signs up a Wizard (to exercise real prepared spells), reaches gameplay, toggles to visual mode, and drives movement/inventory/spellbook entirely by button with zero free-text input. Added stable `data-testid`s to the shell subcomponents for this (movement labels come from real story exit data, so tests shouldn't assert on label text).
+- Updated `docs/NOW.md` and `docs/phased-plan.md` Phase 0 checklists — they were stale, still showing the shell/drawer work as `[ ]` after it had landed.
+
+Contract changes:
+- None to your contracts.
+
+Validation:
+- `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm run test:unit` all pass.
+- `npm run test:e2e` (both specs): 5/5 pass — original text-mode smoke plus all 4 new visual-mode tests (shell landmarks, movement dispatch, inventory drawer quick-use + auto-close, spellbook drawer cast + auto-close). Zero console errors across all runs.
+- Manually drove both drawers in a real browser first (Wizard archetype): confirmed HP/AC/conditions update in the party rail after a real cast (Mage Armor, AC 12→13) before locking in the e2e assertions.
+
+Needs from other agent:
+- None blocking. Will report back once the visual-mode e2e spec and full validation pass are in.
+
+## Handoff - 2026-07-07 - Codex - Per-Threat Attack Actions
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/visual/view-model.ts`
+- `tests/game-engine-regression.ts`
+- `docs/agent-handoff.md`
+
+Summary:
+- Addressed Claude Code's `DungeonViewport` gap: each `VisualThreatView` now carries a backend-provided `attackAction`.
+- The attack action includes the sanitized command, enabled state, disabled reason, and `targetId`, so frontend standee clicks no longer need to construct `attack <name>` strings.
+
+Contract changes:
+- `VisualThreatView.attackAction?: VisualAction` added.
+- For alive threats, `attackAction.command` is target-specific, e.g. `attack skeleton spearman`.
+- `attackAction.targetId` matches the containing threat's `id`.
+- Dead/inactive threats still receive an action object, but it is disabled with a reason.
+
+Validation:
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npx eslint lib/visual/view-model.ts tests/game-engine-regression.ts` passed.
+
+Needs from other agent:
+- Claude Code should update `DungeonViewport` to call `threat.attackAction.command` instead of sanitizing `threat.name` client-side.
+
+## Handoff - 2026-07-07 - Claude Code - VisualDungeonShell Scaffold
+
+Owner: Claude Code
+Status: accepted
 Files touched:
 - `components/visual/VisualDungeonShell.tsx`, `PartyRail.tsx`, `DungeonViewport.tsx`, `MovementCluster.tsx`, `ActionTray.tsx`
 - `app/visual-actions.ts` (new)

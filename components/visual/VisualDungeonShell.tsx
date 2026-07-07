@@ -8,17 +8,22 @@ import { PartyRail } from './PartyRail';
 import { DungeonViewport } from './DungeonViewport';
 import { MovementCluster } from './MovementCluster';
 import { ActionTray } from './ActionTray';
+import { VisualDrawer } from './VisualDrawer';
+import { InventoryDrawerContent } from './InventoryDrawerContent';
+import { SpellbookDrawerContent } from './SpellbookDrawerContent';
 
 interface VisualDungeonShellProps {
   gameState: GameState;
   viewModel: VisualGameViewModel | null;
   isLoading: boolean;
   onCommand: (command: string) => void;
-  onInventoryOpen: () => void;
+  onOpenFullInventory: () => void;
 }
 
-export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand, onInventoryOpen }: VisualDungeonShellProps) {
+export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand, onOpenFullInventory }: VisualDungeonShellProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isInventoryDrawerOpen, setIsInventoryDrawerOpen] = useState(false);
+  const [isSpellbookDrawerOpen, setIsSpellbookDrawerOpen] = useState(false);
 
   if (!viewModel) {
     return (
@@ -32,10 +37,9 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
   const canAct = viewModel.turnState.canAct && !isLoading;
   const actionButtons = viewModel.turnState.mode === 'combat' ? viewModel.combatActions : viewModel.explorationActions;
 
-  const handleThreatClick = (threatName: string) => {
-    if (!canAct) return;
-    const safeName = threatName.replace(/[^a-zA-Z0-9\s-]/g, '').toLowerCase();
-    onCommand(`attack ${safeName}`);
+  const dispatchFromDrawer = (command: string, closeDrawer: () => void) => {
+    onCommand(command);
+    closeDrawer();
   };
 
   return (
@@ -52,7 +56,7 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
             scene={viewModel.scene}
             threats={viewModel.threats}
             isCombatActive={viewModel.turnState.mode === 'combat'}
-            onThreatClick={handleThreatClick}
+            onCommand={onCommand}
           />
         </div>
 
@@ -89,13 +93,32 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
         <ActionTray
           actions={actionButtons}
           onCommand={onCommand}
-          onInventoryOpen={onInventoryOpen}
-          inventoryDisabled={!canAct}
+          onInventoryOpen={() => setIsInventoryDrawerOpen(true)}
+          onSpellbookOpen={() => setIsSpellbookDrawerOpen(true)}
+          disabled={!canAct}
         />
-        <div className="max-h-32 md:max-h-none overflow-y-auto">
+        <div className="max-h-32 md:max-h-none overflow-y-auto" data-testid="log-strip">
           <NarrationLog entries={viewModel.logEntries} maxEntries={5} compact />
         </div>
       </div>
+
+      <VisualDrawer title="Inventory" isOpen={isInventoryDrawerOpen} onClose={() => setIsInventoryDrawerOpen(false)}>
+        <InventoryDrawerContent
+          actions={viewModel.inventoryActions}
+          onCommand={(command) => dispatchFromDrawer(command, () => setIsInventoryDrawerOpen(false))}
+          onOpenFullInventory={() => {
+            setIsInventoryDrawerOpen(false);
+            onOpenFullInventory();
+          }}
+        />
+      </VisualDrawer>
+
+      <VisualDrawer title="Spellbook" isOpen={isSpellbookDrawerOpen} onClose={() => setIsSpellbookDrawerOpen(false)}>
+        <SpellbookDrawerContent
+          actions={viewModel.spellActions}
+          onCommand={(command) => dispatchFromDrawer(command, () => setIsSpellbookDrawerOpen(false))}
+        />
+      </VisualDrawer>
     </div>
   );
 }

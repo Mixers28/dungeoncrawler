@@ -8,7 +8,7 @@ interface PartyRailProps {
 
 export function PartyRail({ slots }: PartyRailProps) {
   return (
-    <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
+    <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-1 md:pb-0" data-testid="party-rail">
       {slots.map(slot => {
         const hpPct = Math.max(0, Math.min(100, (slot.hp / Math.max(1, slot.maxHp)) * 100));
         return (

@@ -252,7 +252,41 @@ async function testVisualAssetManifestLoads() {
   assert.equal(visualAssetManifest.styleVersion, 'visual-phase0-v1');
   assert.ok(visualAssetManifest.assets.length > 0);
   assert.equal(getVisualAsset('scene', 'iron_gate_v1')?.path, '/scene-cache/the_iron_gate_v1.jpg');
+  assert.equal(getVisualAsset('monster', 'Fallen Knight')?.path, '/visual/monsters/fallback.svg');
+  assert.equal(getVisualAsset('item', 'Healing Potion')?.path, '/visual/items/fallback.svg');
   assert.equal(getVisualAsset('item', 'missing-item'), null);
+}
+
+async function testVisualAct1SceneManifestCoverage() {
+  const act1SceneIds = [
+    'iron_gate_v1',
+    'iron_gate_v2',
+    'future_courtyard_hub_v1',
+    'future_courtyard_hub_v2',
+    'future_hallway_branch_v1',
+    'future_hallway_branch_v2',
+    'future_shrine_branch_v1',
+    'future_shrine_branch_v2',
+    'future_cellar_branch_v1',
+    'future_cellar_branch_v2',
+    'future_armory_side_v1',
+    'future_armory_side_v2',
+    'future_cache_side_v1',
+    'future_cache_side_v2',
+    'future_sanctum_side_v1',
+    'future_sanctum_side_v2',
+    'future_bossroom_v1',
+    'future_bossroom_v2',
+    'future_treasury_v1',
+    'future_treasury_v2',
+  ];
+
+  for (const sceneId of act1SceneIds) {
+    const asset = getVisualAsset('scene', sceneId);
+    assert.ok(asset, `Missing visual scene asset for ${sceneId}`);
+    assert.notEqual(asset.id, 'fallback_scene');
+    assert.ok(asset.path.startsWith('/'), `Scene asset path must be public-rooted for ${sceneId}`);
+  }
 }
 
 async function testVisualViewModelSoloContract() {
@@ -317,6 +351,53 @@ async function testVisualViewModelConsumeItemGate() {
   assert.equal(unlockedArmory.enabled, true);
 }
 
+async function testVisualViewModelThreatAttackActions() {
+  const state = await makeState();
+  const combatState: GameState = {
+    ...state,
+    nearbyEntities: [makeMonster('Zombie', 20), makeMonster('Skeleton Spearman', 15)],
+    isCombatActive: true,
+  };
+
+  const view = buildVisualGameViewModel(combatState);
+
+  assert.equal(view.threats.length, 2);
+  assert.equal(view.threats[0].attackAction?.command, 'attack zombie');
+  assert.equal(view.threats[0].attackAction?.enabled, true);
+  assert.equal(view.threats[1].attackAction?.command, 'attack skeleton spearman');
+  assert.equal(view.threats[1].attackAction?.targetId, view.threats[1].id);
+  assert.equal(view.threats[1].imagePath, '/visual/monsters/fallback.svg');
+  assert.equal(view.threats[1].imageAssetId, 'skeleton_spearman');
+}
+
+async function testVisualViewModelInventoryActionAssets() {
+  const state = await makeState();
+  const view = buildVisualGameViewModel(state);
+  const potion = view.inventoryActions.find(action => /healing potion/i.test(action.label));
+
+  assert.ok(potion);
+  assert.equal(potion.imagePath, '/visual/items/fallback.svg');
+  assert.equal(potion.imageAssetId, 'healing_potion');
+}
+
+async function testVisualViewModelActorNamedLogs() {
+  const state = await makeState();
+  const view = buildVisualGameViewModel({
+    ...state,
+    log: [
+      {
+        id: 'log-actor',
+        mode: 'GENERAL',
+        summary: 'Ana searches the alcove.',
+        actorName: 'Ana',
+        createdAt: '2026-07-07T00:00:00.000Z',
+      },
+    ],
+  });
+
+  assert.equal(view.logEntries[0].actorName, 'Ana');
+}
+
 async function main() {
   await testParserInventoryCommands();
   await testEquipWeapon();
@@ -329,9 +410,13 @@ async function main() {
   await testPhase1DiscoveryAndBranchCompletion();
   await testPhase1SeededVariants();
   await testVisualAssetManifestLoads();
+  await testVisualAct1SceneManifestCoverage();
   await testVisualViewModelSoloContract();
   await testVisualViewModelGatesBossMovement();
   await testVisualViewModelConsumeItemGate();
+  await testVisualViewModelThreatAttackActions();
+  await testVisualViewModelInventoryActionAssets();
+  await testVisualViewModelActorNamedLogs();
 
   console.log('game-engine regression tests passed');
 }
