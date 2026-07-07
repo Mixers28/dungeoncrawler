@@ -3,11 +3,12 @@ import { parseActionIntentWithKnown } from '../lib/5e/intents';
 import { parseIntent } from '../lib/game/intent';
 import { runGameTurn } from '../lib/game/engine';
 import { buildNewGameState } from '../lib/game/state';
+import { composeGameStateForSolo, splitGameStateForSolo } from '../lib/game/state-split';
 import { resolveWeaponId } from '../lib/items';
 import { getSceneById, pickSceneVariant } from '../lib/story';
 import { getVisualAsset, visualAssetManifest } from '../lib/visual/assets';
 import { buildVisualGameViewModel } from '../lib/visual/view-model';
-import type { Entity, GameState } from '../lib/game-schema';
+import { characterStateSchema, gameStateSchema, sessionStateSchema, type Entity, type GameState } from '../lib/game-schema';
 
 function makeMonster(name: string, hp = 20): Entity {
   return {
@@ -248,6 +249,62 @@ async function testPhase1SeededVariants() {
   assert.notEqual(firstPick.id, differentPick.id);
 }
 
+async function testSoloStateSplitRoundTrip() {
+  const state = await makeState();
+  const parsed = gameStateSchema.parse({
+    ...state,
+    log: [
+      {
+        id: 'log-actor',
+        mode: 'GENERAL',
+        summary: 'Ana opens the gate.',
+        actorName: 'Ana',
+        createdAt: '2026-07-07T00:00:00.000Z',
+      },
+    ],
+  });
+  const { session, character } = splitGameStateForSolo(parsed);
+  const recomposed = composeGameStateForSolo(session, character);
+
+  assert.deepEqual(recomposed, parsed);
+  assert.equal(session.turnOrder[0], 'solo');
+  assert.equal(session.currentTurnPlayerId, 'solo');
+  assert.equal(character.playerId, 'solo');
+  assert.equal(session.log[0].actorName, 'Ana');
+}
+
+async function testSoloStateSplitFieldOwnership() {
+  const state = await makeState();
+  const combatState: GameState = {
+    ...state,
+    storySceneId: 'future_hallway_branch_v1',
+    storyFlags: ['gate_opened'],
+    nearbyEntities: [makeMonster('Zombie', 12)],
+    isCombatActive: true,
+    inventory: [
+      ...state.inventory,
+      { id: 'test-key', name: 'Iron Key', type: 'key', quantity: 1, equipped: false },
+    ],
+  };
+  const { session, character } = splitGameStateForSolo(combatState);
+
+  sessionStateSchema.parse(session);
+  characterStateSchema.parse(character);
+  assert.equal(session.storySceneId, 'future_hallway_branch_v1');
+  assert.deepEqual(session.storyFlags, ['gate_opened']);
+  assert.equal(session.nearbyEntities[0].name, 'Zombie');
+  assert.equal(character.inventory.some(item => item.name === 'Iron Key'), true);
+  assert.equal(character.hp, combatState.hp);
+}
+
+async function testSoloStateSplitDyingCharacterCannotAct() {
+  const state = await makeState();
+  const { session, character } = splitGameStateForSolo({ ...state, hp: 0 });
+
+  assert.equal(character.hp, 0);
+  assert.equal(session.currentTurnPlayerId, null);
+}
+
 async function testVisualAssetManifestLoads() {
   assert.equal(visualAssetManifest.styleVersion, 'visual-phase0-v1');
   assert.ok(visualAssetManifest.assets.length > 0);
@@ -409,6 +466,9 @@ async function main() {
   await testPhase1ConsumeItemGate();
   await testPhase1DiscoveryAndBranchCompletion();
   await testPhase1SeededVariants();
+  await testSoloStateSplitRoundTrip();
+  await testSoloStateSplitFieldOwnership();
+  await testSoloStateSplitDyingCharacterCannotAct();
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();
   await testVisualViewModelSoloContract();

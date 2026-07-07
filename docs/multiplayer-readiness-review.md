@@ -29,13 +29,13 @@ session state and per-player character state behind a party-of-one shim.
 ## Phase M1 Entry Criteria
 
 - Keep single-player save loading and e2e behavior unchanged.
-- Introduce `SessionState` and `CharacterState` schemas beside the current
+- [x] Introduce `SessionState` and `CharacterState` schemas beside the current
   `GameState` schema.
-- Add compose/split helpers so a party-of-one can still call the current engine
+- [x] Add compose/split helpers so a party-of-one can still call the current engine
   while slices are migrated.
-- Preserve `buildVisualGameViewModel(state)` for solo until a session-aware
+- [x] Preserve `buildVisualGameViewModel(state)` for solo until a session-aware
   adapter exists.
-- Add a session-aware view-model adapter only after the state split has stable
+- [ ] Add a session-aware view-model adapter only after the state split has stable
   tests.
 
 ## Known Follow-Ups

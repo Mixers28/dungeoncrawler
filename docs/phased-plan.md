@@ -135,6 +135,7 @@ Action items (Phase 2):
 Status:
 - Visual Phase 0 is functionally closed: full-time visual mode (exploration + combat, not combat-only), movement/action/inventory/spellbook all button-driven against `buildVisualGameViewModel`, Act 1 manifest coverage with deterministic placeholders, e2e smoke coverage, and the multiplayer-readiness review are complete. See `docs/visual-multiplayer-phase0.md` and `docs/multiplayer-readiness-review.md`.
 - Generated final art remains polish; the functional requirement is local assets plus graceful fallbacks.
+- Phase M1 has started with schemas and a party-of-one compatibility shim: `SessionState`, `CharacterState`, `splitGameStateForSolo`, and `composeGameStateForSolo` now have regression coverage.
 - `docs/multiplayer-design.md` remains the architecture reference for Phase M1+.
 
 Action items (Visual Phase 0):
@@ -144,6 +145,13 @@ Action items (Visual Phase 0):
 [x] Seed Act 1 visual manifest coverage and fallbacks.
 [x] Add visual-mode smoke coverage (`e2e/visual-mode.spec.ts`: shell landmarks, movement, inventory drawer, spellbook drawer).
 [x] Complete multiplayer-readiness review.
+
+Action items (Phase M1):
+[x] Add `SessionState` and `CharacterState` schemas beside current `GameState`.
+[x] Add party-of-one split/compose helpers.
+[x] Add round-trip regression coverage for solo compatibility.
+[ ] Migrate combat state access onto the split model behind the party-of-one shim.
+[ ] Migrate casting, story/exits, loot/economy, and sheet fields in separate slices.
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
 - Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.

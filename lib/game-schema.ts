@@ -171,7 +171,65 @@ export const gameStateSchema = z.object({
   log: z.array(logEntrySchema).default([]),
 });
 
+export const sessionStateSchema = gameStateSchema.pick({
+  worldSeed: true,
+  storySceneId: true,
+  location: true,
+  storyFlags: true,
+  storyAct: true,
+  currentFloor: true,
+  sceneVisits: true,
+  nearbyEntities: true,
+  isCombatActive: true,
+  quests: true,
+  sceneRegistry: true,
+  roomRegistry: true,
+  monsterRegistry: true,
+  locationHistory: true,
+  currentImage: true,
+  turnCounter: true,
+  log: true,
+}).extend({
+  turnOrder: z.array(z.string()).default([]),
+  currentTurnPlayerId: z.string().nullable().default(null),
+  version: z.number().int().nonnegative().default(0),
+});
+
+export const characterStateSchema = gameStateSchema.pick({
+  hp: true,
+  maxHp: true,
+  ac: true,
+  tempAcBonus: true,
+  gold: true,
+  level: true,
+  xp: true,
+  xpToNext: true,
+  character: true,
+  inventory: true,
+  equippedWeaponId: true,
+  equippedArmorId: true,
+  lastActionSummary: true,
+  narrativeHistory: true,
+  inventoryChangeLog: true,
+  lastRolls: true,
+  abilityScores: true,
+  skills: true,
+  knownSpells: true,
+  preparedSpells: true,
+  spellSlots: true,
+  spellcastingAbility: true,
+  spellAttackBonus: true,
+  spellSaveDc: true,
+  activeEffects: true,
+  totalKills: true,
+}).extend({
+  playerId: z.string().min(1),
+  userId: z.string().nullable().default(null),
+});
+
 export type Entity = z.infer<typeof entitySchema>;
 export type GameState = z.infer<typeof gameStateSchema>;
+export type SessionState = z.infer<typeof sessionStateSchema>;
+export type CharacterState = z.infer<typeof characterStateSchema>;
 export type LogEntry = z.infer<typeof logEntrySchema>;
 export type NarrationMode = z.infer<typeof narrationModeEnum>;

@@ -4,6 +4,40 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-07 - Codex - M1 State Split Starter
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game-schema.ts`
+- `lib/game/state-split.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/multiplayer-readiness-review.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Added `SessionState` and `CharacterState` schemas beside the current `GameState`.
+- Added pure party-of-one adapters: `splitGameStateForSolo(state)` and `composeGameStateForSolo(session, character)`.
+- Added regression coverage that proves solo split/compose round-trips exactly, preserves actor-named logs, keeps world/combat fields on the session side, keeps inventory/HP on the character side, and clears `currentTurnPlayerId` when the solo character is down.
+
+Contract changes:
+- New exported types/schemas: `sessionStateSchema`, `characterStateSchema`, `SessionState`, `CharacterState`.
+- New exported backend helpers: `SOLO_PLAYER_ID`, `splitGameStateForSolo`, `composeGameStateForSolo`.
+- No runtime engine or save-load behavior changed yet.
+
+Validation:
+- `npm run db:migrate` passed.
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm run test:e2e` passed: 5/5 Playwright specs.
+
+Needs from other agent:
+- Claude Code should treat this as backend-only scaffolding for now; frontend should continue using the existing visual view model until a session-aware adapter lands.
+
 ## Handoff - 2026-07-07 - Codex - Phase 0 Backend Closure + M1 Readiness
 
 Owner: Codex
