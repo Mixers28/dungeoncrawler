@@ -20,9 +20,16 @@ export function SpellbookDrawerContent({ actions, onCommand }: SpellbookDrawerCo
           onClick={() => onCommand(action.command)}
           disabled={!action.enabled}
           title={action.reason}
-          className="w-full text-left px-3 py-2 rounded text-sm bg-slate-800 hover:bg-blue-800/60 border border-slate-700 text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="w-full flex items-center gap-2 text-left px-3 py-2 rounded text-sm bg-slate-800 hover:bg-blue-800/60 border border-slate-700 text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          {action.label}
+          {action.imagePath && (
+            <img
+              src={action.imagePath}
+              alt=""
+              className="w-6 h-6 rounded bg-slate-900 border border-slate-700 object-contain flex-shrink-0"
+            />
+          )}
+          <span className="truncate">{action.label}</span>
         </button>
       ))}
     </div>
