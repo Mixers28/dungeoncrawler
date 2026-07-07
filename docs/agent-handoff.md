@@ -4,6 +4,38 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-08 - Codex - M1 Search Discovery Context Slice
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game/turn-context.ts`
+- `lib/game/engine/index.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Moved data-driven search/discovery writes behind `TurnContext`.
+- Discovery item grants, inventory change logs, and discovery story flags now flow through context helpers.
+- Existing story discovery regression remains green; added direct context regression for discovery inventory/log/flag state.
+
+Contract changes:
+- New backend helpers: `addActorInventoryItem`, `addSessionStoryFlag`.
+- No frontend or public engine API changes.
+
+Validation:
+- `npm run db:migrate` passed.
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm run test:e2e` passed: 5/5 Playwright specs.
+
+Needs from other agent:
+- None blocking. This is backend-only scaffolding; visual contracts are unchanged.
+
 ## Handoff - 2026-07-08 - Codex - M1 Story Exit Context Slice
 
 Owner: Codex

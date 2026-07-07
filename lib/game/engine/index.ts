@@ -14,7 +14,9 @@ import { type CoreActionIntent, type GameIntent, type TradeIntent } from '../int
 import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, computeArmorClassFromInventory, resolveRoomDescription, resolveSceneImage } from '../state';
 import {
   addActorEffect,
+  addActorInventoryItem,
   addMonsterEffect,
+  addSessionStoryFlag,
   applyDamageToActor,
   applyDamageToMonsterTarget,
   appendActorInventoryChange,
@@ -1376,6 +1378,7 @@ async function _updateGameState(
 
   // 6a-ii. SCENE DISCOVERY (keys/maps found via search/investigate, data-driven from story JSON)
   if (wantsSearch || wantsInvestigate) {
+    syncTurnContextFromGameState(turnContext, newState);
     const sceneForDiscovery = getSceneById(newState.storySceneId);
     for (const disc of sceneForDiscovery?.discovery || []) {
       const alreadyFound = newState.storyFlags.includes(disc.onceFlag)
@@ -1383,12 +1386,15 @@ async function _updateGameState(
       if (alreadyFound) continue;
       if (Math.random() >= (disc.chance ?? 1)) continue;
       const itemType = /key|sigil|map/i.test(disc.item) ? 'key' as const : 'misc' as const;
-      newState.inventory = [
-        ...newState.inventory,
-        { id: `disc-${Date.now().toString(36)}`, name: disc.item, type: itemType, quantity: 1, equipped: false },
-      ];
-      newState.storyFlags = [...newState.storyFlags, disc.onceFlag];
-      newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Found ${disc.item} at ${newState.location}`].slice(-10);
+      newState.inventory = addActorInventoryItem(turnContext, {
+        id: `disc-${Date.now().toString(36)}`,
+        name: disc.item,
+        type: itemType,
+        quantity: 1,
+        equipped: false,
+      });
+      newState.storyFlags = addSessionStoryFlag(turnContext, disc.onceFlag);
+      newState.inventoryChangeLog = appendActorInventoryChange(turnContext, `Found ${disc.item} at ${newState.location}`);
       summaryParts.push(disc.log || `Your search turns up ${disc.item}.`);
       foundSearchItems = true;
     }

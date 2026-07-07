@@ -8,7 +8,7 @@
 - Recent engine fixes added equip/drop commands, owned-weapon validation, equipped-weapon default attacks, matching requested-weapon damage dice, and target-aware attacks.
 - Story Phase 1 is closed: authored hub/branch/boss progression now has unit regression coverage for gates, discoveries, branch completion, boss unlocks, and seeded variants.
 - Visual Multiplayer Phase 0 is functionally closed: `VisualDungeonShell` runs full-time (exploration + combat) against Codex's `buildVisualGameViewModel`, with button-driven movement/combat/inventory/spellbook drawers, Act 1 manifest coverage/placeholders, and a multiplayer-readiness review.
-- Visual Multiplayer Phase M1 has started: `SessionState` and `CharacterState` schemas now exist beside `GameState`, with lossless party-of-one split/compose helpers, `TurnContext` combat/casting/story-exit helpers, and regression coverage.
+- Visual Multiplayer Phase M1 has started: `SessionState` and `CharacterState` schemas now exist beside `GameState`, with lossless party-of-one split/compose helpers, `TurnContext` combat/casting/story/search helpers, and regression coverage.
 - Validation baseline is green: `npm run db:migrate`, `npm run test:unit`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm run test:e2e` (including new `e2e/visual-mode.spec.ts`) pass locally.
 - Next verification gap: walk the deploy checklist against the production environment.
 <!-- SUMMARY_END -->
@@ -53,7 +53,8 @@
    - [x] Move solo monster retaliation actor-damage reads/writes behind `TurnContext`.
    - [x] Route casting spell-slot, healing, self-effect, and enemy-effect writes through `TurnContext`.
    - [x] Route successful story exit item consumption, inventory logs, scene visits, and transition composition through `TurnContext`.
-   - [ ] Start the next engine migration slice: search/discovery or loot/economy state access.
+   - [x] Route search/discovery item grants, inventory logs, and story flags through `TurnContext`.
+   - [ ] Start the next engine migration slice: loot/economy state access.
 
 ## Recently Completed
 
@@ -77,6 +78,7 @@
 - Solo monster retaliation now reads active monsters and applies actor HP damage through `TurnContext`; session round batching remains a Phase M2 change.
 - Casting state access now routes spell slots, healing, self effects, minimum AC, and enemy effects through `TurnContext`.
 - Successful story exits now consume required items, append inventory change logs, increment scene visits, and compose transitioned state through `TurnContext`.
+- Search/discovery now grants discovered items, appends inventory logs, and sets discovery flags through `TurnContext`.
 
 ## E2E Notes
 

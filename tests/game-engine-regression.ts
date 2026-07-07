@@ -6,7 +6,9 @@ import { buildNewGameState } from '../lib/game/state';
 import { composeGameStateForSolo, splitGameStateForSolo } from '../lib/game/state-split';
 import {
   addActorEffect,
+  addActorInventoryItem,
   addMonsterEffect,
+  addSessionStoryFlag,
   applyDamageToActor,
   applyDamageToMonsterTarget,
   appendActorInventoryChange,
@@ -439,6 +441,26 @@ async function testTurnContextAppliesStoryExitState() {
   assert.equal(recomposed.sceneVisits.future_act1_armory, 1);
 }
 
+async function testTurnContextAppliesDiscoveryState() {
+  const state = await makeState();
+  const context = createTurnContextFromGameState(state);
+
+  addActorInventoryItem(context, {
+    id: 'disc-test',
+    name: 'Armory Key',
+    type: 'key',
+    quantity: 1,
+    equipped: false,
+  });
+  addSessionStoryFlag(context, 'found_armory_key');
+  appendActorInventoryChange(context, 'Found Armory Key at Hallway');
+  const recomposed = composeGameStateFromTurnContext(context);
+
+  assert.equal(recomposed.inventory.some(item => item.name === 'Armory Key'), true);
+  assert.equal(recomposed.storyFlags.includes('found_armory_key'), true);
+  assert.deepEqual(recomposed.inventoryChangeLog, ['Found Armory Key at Hallway']);
+}
+
 async function testVisualAssetManifestLoads() {
   assert.equal(visualAssetManifest.styleVersion, 'visual-phase0-v1');
   assert.ok(visualAssetManifest.assets.length > 0);
@@ -610,6 +632,7 @@ async function main() {
   await testTurnContextConsumesSpellSlotsAndHealsActor();
   await testTurnContextAppliesActorAndMonsterSpellEffects();
   await testTurnContextAppliesStoryExitState();
+  await testTurnContextAppliesDiscoveryState();
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();
   await testVisualViewModelSoloContract();

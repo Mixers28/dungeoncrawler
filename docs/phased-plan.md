@@ -155,7 +155,8 @@ Action items (Phase M1):
 [ ] Add session round-batch monster handling in Phase M2 after session tables exist.
 [x] Migrate casting spell-slot, healing, actor-effect, and enemy-effect writes onto `TurnContext`.
 [x] Migrate successful story exit item consumption, scene visits, and transition composition onto `TurnContext`.
-[ ] Migrate search/discovery, loot/economy, and sheet fields in separate slices.
+[x] Migrate search/discovery item grants, inventory logs, and story flags onto `TurnContext`.
+[ ] Migrate loot/economy and sheet fields in separate slices.
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
 - Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.

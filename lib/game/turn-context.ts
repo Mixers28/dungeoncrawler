@@ -151,6 +151,21 @@ export function appendActorInventoryChange(
   return context.actor.inventoryChangeLog;
 }
 
+export function addActorInventoryItem(
+  context: TurnContext,
+  item: CharacterState['inventory'][number]
+): CharacterState['inventory'] {
+  context.actor.inventory = [...(context.actor.inventory || []), item];
+  return context.actor.inventory;
+}
+
+export function addSessionStoryFlag(context: TurnContext, flag: string): SessionState['storyFlags'] {
+  if (!context.session.storyFlags.includes(flag)) {
+    context.session.storyFlags = [...context.session.storyFlags, flag];
+  }
+  return context.session.storyFlags;
+}
+
 export function incrementSessionSceneVisit(
   context: TurnContext,
   sceneGroup: string
