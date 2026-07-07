@@ -8,7 +8,7 @@
 - Recent engine fixes added equip/drop commands, owned-weapon validation, equipped-weapon default attacks, matching requested-weapon damage dice, and target-aware attacks.
 - Story Phase 1 is closed: authored hub/branch/boss progression now has unit regression coverage for gates, discoveries, branch completion, boss unlocks, and seeded variants.
 - Visual Multiplayer Phase 0 is functionally closed: `VisualDungeonShell` runs full-time (exploration + combat) against Codex's `buildVisualGameViewModel`, with button-driven movement/combat/inventory/spellbook drawers, Act 1 manifest coverage/placeholders, and a multiplayer-readiness review.
-- Visual Multiplayer Phase M1 has started: `SessionState` and `CharacterState` schemas now exist beside `GameState`, with lossless party-of-one split/compose helpers, `TurnContext` combat target/damage helpers, and regression coverage.
+- Visual Multiplayer Phase M1 has started: `SessionState` and `CharacterState` schemas now exist beside `GameState`, with lossless party-of-one split/compose helpers, `TurnContext` combat target/damage/retaliation helpers, and regression coverage.
 - Validation baseline is green: `npm run db:migrate`, `npm run test:unit`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm run test:e2e` (including new `e2e/visual-mode.spec.ts`) pass locally.
 - Next verification gap: walk the deploy checklist against the production environment.
 <!-- SUMMARY_END -->
@@ -50,7 +50,8 @@
    - [x] Add party-of-one compose/split helpers for the current engine.
    - [x] Add regression coverage proving solo split/compose round-trips without changing saves.
    - [x] Begin engine migration slices: active monster target selection and damage now route through `TurnContext`.
-   - [ ] Move monster retaliation/round handling behind `TurnContext`.
+   - [x] Move solo monster retaliation actor-damage reads/writes behind `TurnContext`.
+   - [ ] Start the next engine migration slice: casting state access.
 
 ## Recently Completed
 
@@ -71,6 +72,7 @@
 - Multiplayer readiness review added in `docs/multiplayer-readiness-review.md`; next backend work is Phase M1 state split.
 - M1 state split starter slice added: `sessionStateSchema`, `characterStateSchema`, and `splitGameStateForSolo`/`composeGameStateForSolo` with round-trip tests.
 - First M1 combat-access slice added: `TurnContext` helpers now own active monster targeting and monster HP/status damage application.
+- Solo monster retaliation now reads active monsters and applies actor HP damage through `TurnContext`; session round batching remains a Phase M2 change.
 
 ## E2E Notes
 

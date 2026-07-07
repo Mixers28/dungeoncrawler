@@ -12,7 +12,14 @@ import { getConsumableEffect, isConsumableItem, isUndeadOrFiend } from '../../co
 import { rollDice, rollD20 } from '../dice';
 import { type CoreActionIntent, type GameIntent, type TradeIntent } from '../intent';
 import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, computeArmorClassFromInventory, resolveRoomDescription, resolveSceneImage } from '../state';
-import { applyDamageToMonsterTarget, createTurnContextFromGameState, findActiveMonsterTarget } from '../turn-context';
+import {
+  applyDamageToActor,
+  applyDamageToMonsterTarget,
+  createTurnContextFromGameState,
+  findActiveMonsterTarget,
+  getMonsterTargetByIndex,
+  syncTurnContextFromGameState,
+} from '../turn-context';
 import { type RollEvent } from '../../game-schema';
 
 
@@ -1299,7 +1306,8 @@ async function _updateGameState(
   let monsterAttackRoll = 0;
   let monsterDamageRoll = 0;
   let monsterDamageNotation = "";
-  const currentActiveMonster = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
+  syncTurnContextFromGameState(turnContext, newState);
+  const currentActiveMonster = getMonsterTargetByIndex(turnContext, activeMonsterIndex).entity;
   const monsterStillAlive = currentActiveMonster && currentActiveMonster.status === 'alive';
   const monsterIsActive = newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend';
   if (monsterStillAlive && monsterIsActive && actionIntent !== 'run') {
@@ -1320,7 +1328,7 @@ async function _updateGameState(
       const baneNote = hasBane ? ` (Bane -${banePenalty})` : '';
       if (monsterAttackRoll >= playerAc) {
         monsterDamageRoll = rollDice(monsterDamageNotation);
-        newState.hp = Math.max(0, newState.hp - monsterDamageRoll);
+        newState.hp = applyDamageToActor(turnContext, monsterDamageRoll);
         rollLog.push({ label: `${currentActiveMonster.name}${baneNote}`, d20: rawMonsterD20, modifier: monsterBonus, total: monsterAttackRoll, against: playerAc, outcome: rawMonsterD20 === 20 ? 'crit' : 'hit', damage: monsterDamageRoll, damageDice: monsterDamageNotation });
         summaryParts.push(`${currentActiveMonster.name} hits you for ${monsterDamageRoll} damage.`);
       } else {

@@ -4,6 +4,62 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-07 - Codex - M1 Monster Retaliation Context Slice
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game/turn-context.ts`
+- `lib/game/engine/index.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Moved the solo monster retaliation slice further behind `TurnContext`.
+- Added helpers for context sync, monster-by-index reads, and actor HP damage.
+- The monster turn now syncs the context from `newState`, reads the active monster through `getMonsterTargetByIndex`, and applies hit damage through `applyDamageToActor`.
+
+Contract changes:
+- New backend helpers: `syncTurnContextFromGameState`, `getMonsterTargetByIndex`, `applyDamageToActor`.
+- No frontend or public engine API changes.
+- Session round-batch monster handling remains deferred until Phase M2 session tables/turn order exist.
+
+Validation:
+- `npm run db:migrate` passed.
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm run test:e2e` passed: 5/5 Playwright specs.
+
+Needs from other agent:
+- None blocking. Claude's parse-cost note from the prior review is still valid as more slices move through the context.
+
+## Handoff - 2026-07-08 - Claude Code - Review of M1 State Split + Combat Context Slice
+
+Owner: Claude Code
+Status: accepted
+Files touched:
+- None (review only)
+
+Summary:
+- Reviewed `c9572ba` (M1 State Split Starter) and `76b689f` (M1 Combat Context Slice) as requested. Verdict: solid, low-risk, well-tested, no blocking issues.
+- `sessionStateSchema`/`characterStateSchema` are built with `gameStateSchema.pick({...})`, not hand-copied field lists, so they can't silently drift from `GameState` — matches the field split table in `docs/multiplayer-design.md`. New fields (`turnOrder`, `currentTurnPlayerId`, `version`, `playerId`, `userId`) are additive via `.extend()`, not renames.
+- `testSoloStateSplitRoundTrip` asserting `composeGameStateForSolo(splitGameStateForSolo(state))` deep-equals the original state is exactly the right test for this kind of split refactor — it would catch any field silently dropped or mismapped in either direction.
+- `76b689f`'s combat-context routing is a faithful mechanical refactor: `runGameTurn(state, intent)`'s external signature is unchanged, only the monster-targeting/damage slice moved through `TurnContext`, consistent with the "do it in slices" plan.
+- No impact on my frontend surface — `buildVisualGameViewModel`'s signature and `GameState`'s shape are both unchanged, so no action needed on my side today.
+
+Contract changes:
+- None.
+
+Validation:
+- Re-ran `npx tsc --noEmit`, `npm run lint`, `npm run test:unit` against the current tree myself; all pass.
+
+Needs from other agent:
+- Non-blocking perf note: `createTurnContextFromGameState` calls `splitGameStateForSolo`, which runs a full `gameStateSchema.parse(state)` on every attack/cast turn now, not just at load/save time. Harmless today (state is already valid, parsing is idempotent), but as more of `_updateGameState` migrates through `TurnContext` slice by slice, this could add up to multiple full-state parses per turn. Worth considering a cache/dedupe of the parse across slices within a single turn once more slices land — not urgent now.
+
 ## Handoff - 2026-07-07 - Codex - M1 Combat Context Slice
 
 Owner: Codex

@@ -4,7 +4,14 @@ import { parseIntent } from '../lib/game/intent';
 import { runGameTurn } from '../lib/game/engine';
 import { buildNewGameState } from '../lib/game/state';
 import { composeGameStateForSolo, splitGameStateForSolo } from '../lib/game/state-split';
-import { applyDamageToMonsterTarget, createTurnContextFromGameState, findActiveMonsterTarget } from '../lib/game/turn-context';
+import {
+  applyDamageToActor,
+  applyDamageToMonsterTarget,
+  createTurnContextFromGameState,
+  findActiveMonsterTarget,
+  getMonsterTargetByIndex,
+  syncTurnContextFromGameState,
+} from '../lib/game/turn-context';
 import { resolveWeaponId } from '../lib/items';
 import { getSceneById, pickSceneVariant } from '../lib/story';
 import { getVisualAsset, visualAssetManifest } from '../lib/visual/assets';
@@ -338,6 +345,36 @@ async function testTurnContextKillsMonsterTarget() {
   assert.equal(context.session.nearbyEntities[0].status, 'dead');
 }
 
+async function testTurnContextReadsMonsterByIndexAndDamagesActor() {
+  const state = await makeState();
+  const context = createTurnContextFromGameState({
+    ...state,
+    hp: 9,
+    nearbyEntities: [makeMonster('Zombie', 5), makeMonster('Skeleton Archer', 8)],
+    isCombatActive: true,
+  });
+  const target = getMonsterTargetByIndex(context, 1);
+  const remainingHp = applyDamageToActor(context, 4);
+
+  assert.equal(target.entity?.name, 'Skeleton Archer');
+  assert.equal(remainingHp, 5);
+  assert.equal(context.actor.hp, 5);
+}
+
+async function testTurnContextSyncsRetaliationState() {
+  const state = await makeState();
+  const context = createTurnContextFromGameState(state);
+  syncTurnContextFromGameState(context, {
+    ...state,
+    hp: 6,
+    nearbyEntities: [makeMonster('Zombie', 5)],
+    isCombatActive: true,
+  });
+
+  assert.equal(context.actor.hp, 6);
+  assert.equal(getMonsterTargetByIndex(context, 0).entity?.name, 'Zombie');
+}
+
 async function testVisualAssetManifestLoads() {
   assert.equal(visualAssetManifest.styleVersion, 'visual-phase0-v1');
   assert.ok(visualAssetManifest.assets.length > 0);
@@ -504,6 +541,8 @@ async function main() {
   await testSoloStateSplitDyingCharacterCannotAct();
   await testTurnContextFindsAndDamagesMonsterTarget();
   await testTurnContextKillsMonsterTarget();
+  await testTurnContextReadsMonsterByIndexAndDamagesActor();
+  await testTurnContextSyncsRetaliationState();
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();
   await testVisualViewModelSoloContract();

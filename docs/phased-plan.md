@@ -151,7 +151,8 @@ Action items (Phase M1):
 [x] Add party-of-one split/compose helpers.
 [x] Add round-trip regression coverage for solo compatibility.
 [x] Migrate active monster target selection and damage application onto `TurnContext` behind the party-of-one shim.
-[ ] Move monster retaliation/round handling behind `TurnContext`.
+[x] Move solo monster retaliation actor-damage reads/writes behind `TurnContext`.
+[ ] Add session round-batch monster handling in Phase M2 after session tables exist.
 [ ] Migrate casting, story/exits, loot/economy, and sheet fields in separate slices.
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)

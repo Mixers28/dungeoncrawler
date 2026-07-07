@@ -24,6 +24,13 @@ export function composeGameStateFromTurnContext(context: TurnContext): GameState
   return composeGameStateForSolo(context.session, context.actor);
 }
 
+export function syncTurnContextFromGameState(context: TurnContext, state: GameState): TurnContext {
+  const { session, character } = splitGameStateForSolo(state);
+  context.session = session;
+  context.actor = character;
+  return context;
+}
+
 export function findActiveMonsterTarget(context: TurnContext, requestedTargetName?: string): MonsterTargetRef {
   const requestedTargetIndex = requestedTargetName
     ? context.session.nearbyEntities.findIndex(entity =>
@@ -39,6 +46,13 @@ export function findActiveMonsterTarget(context: TurnContext, requestedTargetNam
   return {
     index: activeIndex,
     entity: activeIndex >= 0 ? context.session.nearbyEntities[activeIndex] : null,
+  };
+}
+
+export function getMonsterTargetByIndex(context: TurnContext, targetIndex: number): MonsterTargetRef {
+  return {
+    index: targetIndex,
+    entity: targetIndex >= 0 ? context.session.nearbyEntities[targetIndex] : null,
   };
 }
 
@@ -65,4 +79,9 @@ export function applyDamageToMonsterTarget(
     entity: updatedTarget,
     status: updatedHp <= 0 ? 'kill' : 'hit',
   };
+}
+
+export function applyDamageToActor(context: TurnContext, damage: number): number {
+  context.actor.hp = Math.max(0, context.actor.hp - damage);
+  return context.actor.hp;
 }
