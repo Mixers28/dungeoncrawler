@@ -135,7 +135,7 @@ Action items (Phase 2):
 Status:
 - Visual Phase 0 is functionally closed: full-time visual mode (exploration + combat, not combat-only), movement/action/inventory/spellbook all button-driven against `buildVisualGameViewModel`, Act 1 manifest coverage with deterministic placeholders, e2e smoke coverage, and the multiplayer-readiness review are complete. See `docs/visual-multiplayer-phase0.md` and `docs/multiplayer-readiness-review.md`.
 - Generated final art remains polish; the functional requirement is local assets plus graceful fallbacks.
-- Phase M1 has started with schemas and a party-of-one compatibility shim: `SessionState`, `CharacterState`, `splitGameStateForSolo`, and `composeGameStateForSolo` now have regression coverage.
+- Phase M1 has started with schemas, a party-of-one compatibility shim, and first combat-access helpers: `SessionState`, `CharacterState`, `splitGameStateForSolo`, `composeGameStateForSolo`, and `TurnContext` target/damage helpers now have regression coverage.
 - `docs/multiplayer-design.md` remains the architecture reference for Phase M1+.
 
 Action items (Visual Phase 0):
@@ -150,7 +150,8 @@ Action items (Phase M1):
 [x] Add `SessionState` and `CharacterState` schemas beside current `GameState`.
 [x] Add party-of-one split/compose helpers.
 [x] Add round-trip regression coverage for solo compatibility.
-[ ] Migrate combat state access onto the split model behind the party-of-one shim.
+[x] Migrate active monster target selection and damage application onto `TurnContext` behind the party-of-one shim.
+[ ] Move monster retaliation/round handling behind `TurnContext`.
 [ ] Migrate casting, story/exits, loot/economy, and sheet fields in separate slices.
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)

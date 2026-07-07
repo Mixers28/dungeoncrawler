@@ -12,6 +12,7 @@ import { getConsumableEffect, isConsumableItem, isUndeadOrFiend } from '../../co
 import { rollDice, rollD20 } from '../dice';
 import { type CoreActionIntent, type GameIntent, type TradeIntent } from '../intent';
 import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, computeArmorClassFromInventory, resolveRoomDescription, resolveSceneImage } from '../state';
+import { applyDamageToMonsterTarget, createTurnContextFromGameState, findActiveMonsterTarget } from '../turn-context';
 import { type RollEvent } from '../../game-schema';
 
 
@@ -884,17 +885,10 @@ async function _updateGameState(
     parsedIntent.type === 'attack' || parsedIntent.type === 'castAbility'
       ? parsedIntent.target
       : undefined;
-  const requestedTargetIndex = requestedTargetName
-    ? newState.nearbyEntities.findIndex(e =>
-        e.status === 'alive' &&
-        (normalizeName(e.name).includes(normalizeName(requestedTargetName)) ||
-          normalizeName(requestedTargetName).includes(normalizeName(e.name)))
-      )
-    : -1;
-  const activeMonsterIndex = requestedTargetIndex >= 0
-    ? requestedTargetIndex
-    : newState.nearbyEntities.findIndex(e => e.status === 'alive');
-  const activeMonster = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
+  const turnContext = createTurnContextFromGameState(newState);
+  const activeMonsterTarget = findActiveMonsterTarget(turnContext, requestedTargetName);
+  const activeMonsterIndex = activeMonsterTarget.index;
+  const activeMonster = activeMonsterTarget.entity;
 
   // 4. PLAYER TURN
   let playerAttackRoll = 0;
@@ -918,13 +912,9 @@ async function _updateGameState(
   const monsterWasAlive = activeMonster?.status === 'alive';
   const applyDamageToActiveMonster = (damage: number) => {
     if (!activeMonster) return;
-    const updatedHp = Math.max(0, activeMonster.hp - damage);
-    newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) =>
-      idx === activeMonsterIndex
-        ? { ...activeMonster, hp: updatedHp, status: updatedHp <= 0 ? 'dead' : activeMonster.status }
-        : entity
-    );
-    combatOutcome = updatedHp <= 0 ? 'kill' : 'hit';
+    const result = applyDamageToMonsterTarget(turnContext, activeMonsterIndex, damage);
+    newState.nearbyEntities = turnContext.session.nearbyEntities;
+    combatOutcome = result.status;
   };
 
   attemptedSearch = wantsSearch;

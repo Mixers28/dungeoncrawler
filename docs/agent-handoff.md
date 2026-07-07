@@ -4,6 +4,38 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-07 - Codex - M1 Combat Context Slice
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game/turn-context.ts`
+- `lib/game/engine/index.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Added `TurnContext` helpers for party-of-one combat access.
+- Routed active monster target selection and monster HP/status damage application through the context while keeping `runGameTurn(state, intent)` unchanged.
+- Added direct regressions for target matching, hit damage, and kill status transitions through the session side of the context.
+
+Contract changes:
+- New backend helpers: `createTurnContextFromGameState`, `composeGameStateFromTurnContext`, `findActiveMonsterTarget`, `applyDamageToMonsterTarget`.
+- Runtime combat behavior should be unchanged; this is internal M1 scaffolding for later session-aware combat.
+
+Validation:
+- `npm run db:migrate` passed.
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm run test:e2e` passed: 5/5 Playwright specs.
+
+Needs from other agent:
+- None blocking. This is backend-only scaffolding; Claude can continue using the existing visual view model.
+
 ## Handoff - 2026-07-07 - Codex - M1 State Split Starter
 
 Owner: Codex

@@ -4,6 +4,7 @@ import { parseIntent } from '../lib/game/intent';
 import { runGameTurn } from '../lib/game/engine';
 import { buildNewGameState } from '../lib/game/state';
 import { composeGameStateForSolo, splitGameStateForSolo } from '../lib/game/state-split';
+import { applyDamageToMonsterTarget, createTurnContextFromGameState, findActiveMonsterTarget } from '../lib/game/turn-context';
 import { resolveWeaponId } from '../lib/items';
 import { getSceneById, pickSceneVariant } from '../lib/story';
 import { getVisualAsset, visualAssetManifest } from '../lib/visual/assets';
@@ -305,6 +306,38 @@ async function testSoloStateSplitDyingCharacterCannotAct() {
   assert.equal(session.currentTurnPlayerId, null);
 }
 
+async function testTurnContextFindsAndDamagesMonsterTarget() {
+  const state = await makeState();
+  const context = createTurnContextFromGameState({
+    ...state,
+    nearbyEntities: [makeMonster('Zombie', 20), makeMonster('Skeleton Spearman', 15)],
+    isCombatActive: true,
+  });
+  const target = findActiveMonsterTarget(context, 'spearman');
+  const result = applyDamageToMonsterTarget(context, target.index, 7);
+
+  assert.equal(target.index, 1);
+  assert.equal(target.entity?.name, 'Skeleton Spearman');
+  assert.equal(result.status, 'hit');
+  assert.equal(context.session.nearbyEntities[0].hp, 20);
+  assert.equal(context.session.nearbyEntities[1].hp, 8);
+}
+
+async function testTurnContextKillsMonsterTarget() {
+  const state = await makeState();
+  const context = createTurnContextFromGameState({
+    ...state,
+    nearbyEntities: [makeMonster('Zombie', 5)],
+    isCombatActive: true,
+  });
+  const target = findActiveMonsterTarget(context);
+  const result = applyDamageToMonsterTarget(context, target.index, 5);
+
+  assert.equal(result.status, 'kill');
+  assert.equal(context.session.nearbyEntities[0].hp, 0);
+  assert.equal(context.session.nearbyEntities[0].status, 'dead');
+}
+
 async function testVisualAssetManifestLoads() {
   assert.equal(visualAssetManifest.styleVersion, 'visual-phase0-v1');
   assert.ok(visualAssetManifest.assets.length > 0);
@@ -469,6 +502,8 @@ async function main() {
   await testSoloStateSplitRoundTrip();
   await testSoloStateSplitFieldOwnership();
   await testSoloStateSplitDyingCharacterCannotAct();
+  await testTurnContextFindsAndDamagesMonsterTarget();
+  await testTurnContextKillsMonsterTarget();
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();
   await testVisualViewModelSoloContract();
