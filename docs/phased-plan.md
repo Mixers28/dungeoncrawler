@@ -133,16 +133,17 @@ Action items (Phase 2):
 - Phase M3 (party UI): actor-named logs, party controls, turn affordances, and balance knobs.
 
 Status:
-- Visual Phase 0 shell and controls are functionally complete: full-time visual mode (exploration + combat, not combat-only), movement/action/inventory/spellbook all button-driven against `buildVisualGameViewModel`, and e2e smoke coverage is green. See `docs/visual-multiplayer-phase0.md`.
-- Remaining before Phase 0 is fully closed: seed more Act 1 visual assets (only gate/hub/one branch/one boss variant + 2 monsters have real art; everything else falls back gracefully) and the multiplayer-readiness review pass.
+- Visual Phase 0 is functionally closed: full-time visual mode (exploration + combat, not combat-only), movement/action/inventory/spellbook all button-driven against `buildVisualGameViewModel`, Act 1 manifest coverage with deterministic placeholders, e2e smoke coverage, and the multiplayer-readiness review are complete. See `docs/visual-multiplayer-phase0.md` and `docs/multiplayer-readiness-review.md`.
+- Generated final art remains polish; the functional requirement is local assets plus graceful fallbacks.
 - `docs/multiplayer-design.md` remains the architecture reference for Phase M1+.
 
 Action items (Visual Phase 0):
 [x] Add asset manifest types, loader helpers, and a `GameState` → visual view model contract.
 [x] Build a single-player `VisualDungeonShell` on top of current `GameState`.
 [x] Move movement, combat, inventory, spellbook, and log into the compact visual shell/drawer model.
-[ ] Seed Act 1 visual assets and fallbacks (partial — see status note above).
+[x] Seed Act 1 visual manifest coverage and fallbacks.
 [x] Add visual-mode smoke coverage (`e2e/visual-mode.spec.ts`: shell landmarks, movement, inventory drawer, spellbook drawer).
+[x] Complete multiplayer-readiness review.
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
 - Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.

@@ -4,6 +4,43 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-07 - Codex - Phase 0 Backend Closure + M1 Readiness
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `data/visual/asset-manifest.json`
+- `public/visual/monsters/fallback.svg`
+- `public/visual/items/fallback.svg`
+- `lib/game-schema.ts`
+- `lib/visual/view-model.ts`
+- `tests/game-engine-regression.ts`
+- `docs/multiplayer-readiness-review.md`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Closed the remaining backend Phase 0 gaps: Act 1 visual manifest coverage, deterministic monster/item placeholder fallbacks, item action image metadata, and persisted actor-name support for future shared logs.
+- Added the multiplayer-readiness review and moved the backend roadmap to Phase M1 state split.
+
+Contract changes:
+- `VisualAction.imagePath` and `VisualAction.imageAssetId` are optional fields for asset-backed actions.
+- `logEntrySchema.actorName?: string` is now persisted instead of only tolerated by the visual adapter.
+- Unknown or missing monster art resolves through `fallback_monster` instead of pointing at absent monster-cache files.
+
+Validation:
+- `npm run db:migrate` passed.
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm run test:e2e` passed: 5/5 Playwright specs.
+
+Needs from other agent:
+- Claude Code can optionally render `VisualAction.imagePath` in inventory/spell drawers; no frontend change is required for correctness.
+- Claude Code should review `docs/multiplayer-readiness-review.md` for UI fit before M1 starts.
+
 ## Handoff - 2026-07-07 - Claude Code - Inventory/Spellbook Drawers + attackAction Consumption + e2e Coverage
 
 Owner: Claude Code
