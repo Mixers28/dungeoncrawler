@@ -3,22 +3,27 @@ import { parseActionIntentWithKnown } from '../lib/5e/intents';
 import { parseIntent } from '../lib/game/intent';
 import { runGameTurn } from '../lib/game/engine';
 import { buildNewGameState } from '../lib/game/state';
-import { composeGameStateForSolo, splitGameStateForSolo } from '../lib/game/state-split';
+import { composeGameStateForSolo, splitGameStateForSolo, splitGameStateForSoloTrusted } from '../lib/game/state-split';
 import {
   addActorEffect,
   addActorInventoryItem,
+  addOrStackActorInventoryItem,
   addMonsterEffect,
   addSessionStoryFlag,
+  adjustActorGold,
   applyDamageToActor,
   applyDamageToMonsterTarget,
   appendActorInventoryChange,
   consumeActorSpellSlot,
   composeGameStateFromTurnContext,
   createTurnContextFromGameState,
+  decrementActorInventoryItemAtIndex,
   findActiveMonsterTarget,
+  getActorSheetFields,
   getMonsterTargetByIndex,
   healActor,
   incrementSessionSceneVisit,
+  markSessionEntityLooted,
   removeActorInventoryItemByName,
   setActorMinimumAc,
   syncTurnContextFromGameState,
@@ -324,6 +329,53 @@ async function testSoloStateSplitDyingCharacterCannotAct() {
   assert.equal(session.currentTurnPlayerId, null);
 }
 
+async function testTrustedSoloStateSplitMatchesValidatedCompose() {
+  const state = await makeState();
+  const parsed = gameStateSchema.parse({
+    ...state,
+    hp: 7,
+    gold: 5,
+    storyFlags: ['gate_opened'],
+    sceneVisits: { future_act1_hallway: 2 },
+    nearbyEntities: [
+      {
+        ...makeMonster('Skeleton Archer', 11),
+        effects: [{ name: 'Bane', type: 'debuff', expiresAtTurn: 5 }],
+        position: { x: 1, y: 2 },
+      },
+    ],
+    inventory: [
+      ...state.inventory,
+      { id: 'trusted-potion', name: 'Healing Potion', type: 'potion', quantity: 2, equipped: false },
+    ],
+    spellSlots: {
+      level_1: { current: 1, max: 2 },
+    },
+    log: [
+      {
+        id: 'trusted-log',
+        mode: 'GENERAL',
+        summary: 'A precise state check.',
+        createdAt: '2026-07-08T00:00:00.000Z',
+        rolls: [{ label: 'Check', d20: 10, modifier: 2, total: 12, against: 10, outcome: 'hit' }],
+      },
+    ],
+  });
+
+  const trusted = splitGameStateForSoloTrusted(parsed);
+  const recomposed = composeGameStateForSolo(trusted.session, trusted.character);
+
+  assert.deepEqual(recomposed, parsed);
+
+  trusted.session.nearbyEntities[0].effects[0].name = 'Mutated';
+  trusted.character.inventory[0].name = 'Mutated Item';
+  trusted.character.spellSlots.level_1.current = 0;
+
+  assert.equal(parsed.nearbyEntities[0].effects[0].name, 'Bane');
+  assert.notEqual(parsed.inventory[0].name, 'Mutated Item');
+  assert.equal(parsed.spellSlots.level_1.current, 1);
+}
+
 async function testTurnContextFindsAndDamagesMonsterTarget() {
   const state = await makeState();
   const context = createTurnContextFromGameState({
@@ -459,6 +511,81 @@ async function testTurnContextAppliesDiscoveryState() {
   assert.equal(recomposed.inventory.some(item => item.name === 'Armory Key'), true);
   assert.equal(recomposed.storyFlags.includes('found_armory_key'), true);
   assert.deepEqual(recomposed.inventoryChangeLog, ['Found Armory Key at Hallway']);
+}
+
+async function testTurnContextAppliesLootEconomyState() {
+  const state = await makeState();
+  const context = createTurnContextFromGameState({
+    ...state,
+    gold: 3,
+    inventory: [
+      { id: 'torch', name: 'Torch', type: 'misc', quantity: 2, equipped: false },
+    ],
+    nearbyEntities: [{ ...makeMonster('Skeleton', 0), status: 'dead', hp: 0 }],
+  });
+
+  assert.equal(adjustActorGold(context, 5), 8);
+  addOrStackActorInventoryItem(context, {
+    id: 'torch-loot',
+    name: 'Torch',
+    type: 'misc',
+    quantity: 1,
+    equipped: false,
+  });
+  decrementActorInventoryItemAtIndex(context, 0);
+  markSessionEntityLooted(context, 0);
+  const recomposed = composeGameStateFromTurnContext(context);
+
+  assert.equal(recomposed.gold, 8);
+  assert.equal(recomposed.inventory.find(item => item.name === 'Torch')?.quantity, 2);
+  assert.equal(recomposed.nearbyEntities[0].name, 'Skeleton (looted)');
+}
+
+async function testTurnContextProvidesSheetFields() {
+  const state = await makeState();
+  const context = createTurnContextFromGameState({
+    ...state,
+    skills: ['perception'],
+    knownSpells: ['fire bolt'],
+    preparedSpells: ['fire bolt'],
+    spellSlots: {
+      level_1: { current: 1, max: 2 },
+    },
+  });
+  const sheet = getActorSheetFields(context);
+
+  sheet.skills.push('mutated copy');
+  sheet.spellSlots.level_1.current = 0;
+
+  assert.equal(context.actor.skills.includes('mutated copy'), false);
+  assert.equal(context.actor.spellSlots.level_1.current, 1);
+  assert.deepEqual(getActorSheetFields(context).knownSpells, ['fire bolt']);
+}
+
+async function testCheckSheetUsesReferenceFacts() {
+  const state = await makeState();
+  const sheetState: GameState = {
+    ...state,
+    character: {
+      ...state.character,
+      class: 'wizard',
+    },
+    skills: ['arcana'],
+    knownSpells: ['fire bolt'],
+    preparedSpells: ['mage armor'],
+    spellSlots: {
+      level_1: { current: 1, max: 2 },
+    },
+  };
+  const { logEntry } = await turn(sheetState, 'check skills');
+
+  assert.equal(logEntry.mode, 'SHEET');
+  assert.match(logEntry.summary, /Class: Wizard/i);
+  assert.match(logEntry.summary, /Arcana \(INT\)/);
+  assert.match(logEntry.summary, /Equipped weapon:/);
+  assert.match(logEntry.summary, /Fire Bolt \(cantrip\)/);
+  assert.match(logEntry.summary, /Mage Armor \(1st level\)/);
+  assert.match(logEntry.summary, /level 1: 1\/2/);
 }
 
 async function testVisualAssetManifestLoads() {
@@ -625,6 +752,7 @@ async function main() {
   await testSoloStateSplitRoundTrip();
   await testSoloStateSplitFieldOwnership();
   await testSoloStateSplitDyingCharacterCannotAct();
+  await testTrustedSoloStateSplitMatchesValidatedCompose();
   await testTurnContextFindsAndDamagesMonsterTarget();
   await testTurnContextKillsMonsterTarget();
   await testTurnContextReadsMonsterByIndexAndDamagesActor();
@@ -633,6 +761,9 @@ async function main() {
   await testTurnContextAppliesActorAndMonsterSpellEffects();
   await testTurnContextAppliesStoryExitState();
   await testTurnContextAppliesDiscoveryState();
+  await testTurnContextAppliesLootEconomyState();
+  await testTurnContextProvidesSheetFields();
+  await testCheckSheetUsesReferenceFacts();
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();
   await testVisualViewModelSoloContract();

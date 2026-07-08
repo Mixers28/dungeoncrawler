@@ -1,11 +1,24 @@
 import type { Entity } from '../game-schema';
 import { type CharacterState, type GameState, type SessionState } from '../game-schema';
-import { composeGameStateForSolo, splitGameStateForSolo } from './state-split';
+import { composeGameStateForSolo, splitGameStateForSolo, splitGameStateForSoloTrusted } from './state-split';
 
 export type TurnContext = {
   session: SessionState;
   actor: CharacterState;
 };
+
+export type ActorSheetFields = Pick<
+  CharacterState,
+  | 'character'
+  | 'skills'
+  | 'knownSpells'
+  | 'preparedSpells'
+  | 'spellSlots'
+  | 'inventory'
+  | 'equippedWeaponId'
+  | 'equippedArmorId'
+  | 'abilityScores'
+>;
 
 export type MonsterTargetRef = {
   index: number;
@@ -25,10 +38,26 @@ export function composeGameStateFromTurnContext(context: TurnContext): GameState
 }
 
 export function syncTurnContextFromGameState(context: TurnContext, state: GameState): TurnContext {
-  const { session, character } = splitGameStateForSolo(state);
+  const { session, character } = splitGameStateForSoloTrusted(state);
   context.session = session;
   context.actor = character;
   return context;
+}
+
+export function getActorSheetFields(context: TurnContext): ActorSheetFields {
+  return {
+    character: { ...context.actor.character },
+    skills: [...(context.actor.skills || [])],
+    knownSpells: [...(context.actor.knownSpells || [])],
+    preparedSpells: [...(context.actor.preparedSpells || [])],
+    spellSlots: Object.fromEntries(
+      Object.entries(context.actor.spellSlots || {}).map(([key, slot]) => [key, { ...slot }])
+    ),
+    inventory: (context.actor.inventory || []).map(item => ({ ...item })),
+    equippedWeaponId: context.actor.equippedWeaponId,
+    equippedArmorId: context.actor.equippedArmorId,
+    abilityScores: { ...(context.actor.abilityScores || {}) },
+  };
 }
 
 export function findActiveMonsterTarget(context: TurnContext, requestedTargetName?: string): MonsterTargetRef {
@@ -84,6 +113,12 @@ export function applyDamageToMonsterTarget(
 export function applyDamageToActor(context: TurnContext, damage: number): number {
   context.actor.hp = Math.max(0, context.actor.hp - damage);
   return context.actor.hp;
+}
+
+export function adjustActorGold(context: TurnContext, amount: number): number {
+  if (!Number.isFinite(amount) || amount === 0) return context.actor.gold;
+  context.actor.gold = Math.max(0, (context.actor.gold || 0) + amount);
+  return context.actor.gold;
 }
 
 export function healActor(context: TurnContext, amount: number): number {
@@ -159,6 +194,40 @@ export function addActorInventoryItem(
   return context.actor.inventory;
 }
 
+export function addOrStackActorInventoryItem(
+  context: TurnContext,
+  item: CharacterState['inventory'][number]
+): CharacterState['inventory'] {
+  const itemIndex = context.actor.inventory.findIndex(
+    entry => entry.name.toLowerCase() === item.name.toLowerCase()
+  );
+  if (itemIndex < 0) {
+    return addActorInventoryItem(context, item);
+  }
+  context.actor.inventory = context.actor.inventory.map((entry, idx) =>
+    idx === itemIndex
+      ? { ...entry, quantity: entry.quantity + item.quantity }
+      : entry
+  );
+  return context.actor.inventory;
+}
+
+export function decrementActorInventoryItemAtIndex(
+  context: TurnContext,
+  itemIndex: number,
+  amount = 1
+): CharacterState['inventory'] {
+  const item = context.actor.inventory[itemIndex];
+  if (!item || amount <= 0) return context.actor.inventory;
+  const remainingQty = Math.max(0, item.quantity - amount);
+  context.actor.inventory = remainingQty > 0
+    ? context.actor.inventory.map((entry, idx) =>
+        idx === itemIndex ? { ...entry, quantity: remainingQty } : entry
+      )
+    : context.actor.inventory.filter((_, idx) => idx !== itemIndex);
+  return context.actor.inventory;
+}
+
 export function addSessionStoryFlag(context: TurnContext, flag: string): SessionState['storyFlags'] {
   if (!context.session.storyFlags.includes(flag)) {
     context.session.storyFlags = [...context.session.storyFlags, flag];
@@ -176,4 +245,16 @@ export function incrementSessionSceneVisit(
     [sceneGroup]: visits + 1,
   };
   return context.session.sceneVisits;
+}
+
+export function markSessionEntityLooted(
+  context: TurnContext,
+  entityIndex: number
+): SessionState['nearbyEntities'] {
+  const entity = context.session.nearbyEntities[entityIndex];
+  if (!entity || entity.name.toLowerCase().includes('looted')) return context.session.nearbyEntities;
+  context.session.nearbyEntities = context.session.nearbyEntities.map((entry, idx) =>
+    idx === entityIndex ? { ...entry, name: `${entry.name} (looted)` } : entry
+  );
+  return context.session.nearbyEntities;
 }

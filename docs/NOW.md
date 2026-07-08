@@ -8,7 +8,7 @@
 - Recent engine fixes added equip/drop commands, owned-weapon validation, equipped-weapon default attacks, matching requested-weapon damage dice, and target-aware attacks.
 - Story Phase 1 is closed: authored hub/branch/boss progression now has unit regression coverage for gates, discoveries, branch completion, boss unlocks, and seeded variants.
 - Visual Multiplayer Phase 0 is functionally closed: `VisualDungeonShell` runs full-time (exploration + combat) against Codex's `buildVisualGameViewModel`, with button-driven movement/combat/inventory/spellbook drawers, Act 1 manifest coverage/placeholders, and a multiplayer-readiness review.
-- Visual Multiplayer Phase M1 has started: `SessionState` and `CharacterState` schemas now exist beside `GameState`, with lossless party-of-one split/compose helpers, `TurnContext` combat/casting/story/search helpers, and regression coverage.
+- Visual Multiplayer Phase M1 has started: `SessionState` and `CharacterState` schemas now exist beside `GameState`, with lossless party-of-one split/compose helpers, `TurnContext` combat/casting/story/search/loot/economy/sheet helpers, trusted in-turn context sync, and regression coverage.
 - Validation baseline is green: `npm run db:migrate`, `npm run test:unit`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm run test:e2e` (including new `e2e/visual-mode.spec.ts`) pass locally.
 - Next verification gap: walk the deploy checklist against the production environment.
 <!-- SUMMARY_END -->
@@ -54,7 +54,10 @@
    - [x] Route casting spell-slot, healing, self-effect, and enemy-effect writes through `TurnContext`.
    - [x] Route successful story exit item consumption, inventory logs, scene visits, and transition composition through `TurnContext`.
    - [x] Route search/discovery item grants, inventory logs, and story flags through `TurnContext`.
-   - [ ] Start the next engine migration slice: loot/economy state access.
+   - [x] Start the next engine migration slice: loot/economy state access.
+   - [x] Start the next engine migration slice: sheet fields.
+   - [x] Review Phase M1 context parse/sync costs before Phase M2 session tables.
+   - [ ] Start Phase M2 session tables and join-by-code flow.
 
 ## Recently Completed
 
@@ -79,6 +82,9 @@
 - Casting state access now routes spell slots, healing, self effects, minimum AC, and enemy effects through `TurnContext`.
 - Successful story exits now consume required items, append inventory change logs, increment scene visits, and compose transitioned state through `TurnContext`.
 - Search/discovery now grants discovered items, appends inventory logs, and sets discovery flags through `TurnContext`.
+- Loot/economy state access started: trader buy/sell and corpse looting now mutate actor/session fields through `TurnContext`.
+- Sheet field access now reads class, skills, gear, spell lists, and slots through a `TurnContext` actor sheet snapshot.
+- Phase M1 parse/sync review closed: initial `TurnContext` creation still validates the hydrated `GameState`, while in-turn resyncs now use a trusted split helper that avoids repeated full-state Zod parses.
 
 ## E2E Notes
 

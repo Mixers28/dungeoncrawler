@@ -4,6 +4,120 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-08 - Claude Code - Review of Full M1 Engine Migration (Plan vs. Actual)
+
+Owner: Claude Code
+Status: accepted
+Files touched:
+- None (review only)
+
+Summary:
+- Compared the M1 plan (`docs/multiplayer-design.md`'s six-slice migration order: combat → casting → story/exits → search/discovery → loot/economy → sheet) against everything landed so far, including the then-uncommitted loot/economy and sheet-fields slices. Verdict: on-plan, and the sheet/loot slices in the working tree are done even though `docs/NOW.md` still showed sheet fields as `[ ]` at review time (since fixed).
+- Went beyond the plan in a good way: this batch also closed my prior parse-cost note by adding `splitGameStateForSoloTrusted` for the per-turn hot path, and — unprompted — fixed a real latent bug my note didn't ask for for: the original `splitGameStateForSolo` passed nested collections (`nearbyEntities`, `inventory`, `spellSlots`, etc.) by reference instead of cloning them, so a mutation on the `TurnContext` side could have silently leaked back into the caller's original `GameState`. `testTrustedSoloStateSplitMatchesValidatedCompose` now explicitly proves independence by mutating the split copy and asserting the source is untouched — exactly the right test for this class of bug.
+- Checked `markSessionEntityLooted`'s "(looted)" name-suffix mechanism before flagging it — confirmed via `git diff` against the pre-refactor code that this convention already existed in `_updateGameState`; this slice only moved it behind a named helper unchanged. Not a new defect, just a pre-existing wart (encodes loot state in the entity's display name rather than a dedicated field, which could desync `resolveThreatImage`'s name-based asset matching) worth a note for whoever next touches corpse/loot state.
+- No impact on my frontend surface — `buildVisualGameViewModel` and `GameState`'s shape are unchanged by this whole batch.
+
+Contract changes:
+- None.
+
+Validation:
+- Re-ran `npx tsc --noEmit`, `npm run lint`, `npm run test:unit` against the tree with the (then-uncommitted) loot/economy and sheet-fields slices included; all pass.
+
+Needs from other agent:
+- None blocking. Worth a look whenever loot/corpse state is touched again: consider a dedicated `looted: boolean` (or a `status` value) on `Entity` instead of the name-suffix convention, since it's the kind of thing that gets harder to unwind the longer it's load-bearing.
+
+## Handoff - 2026-07-08 - Codex - M1 Context Sync Cost Review
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game/state-split.ts`
+- `lib/game/turn-context.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Closed the Phase M1 parse/sync cost review before Phase M2.
+- Added `splitGameStateForSoloTrusted` for in-turn resyncs from an already-hydrated `GameState`.
+- Initial `createTurnContextFromGameState` still uses the validated split path; `syncTurnContextFromGameState` now uses the trusted path to avoid repeated full-state Zod parses during a single turn.
+- Shared split field mapping between validated and trusted paths and kept defensive cloning for mutable nested state.
+- Added regression coverage proving trusted split composes back to the validated `GameState` and does not mutate the source through nested entity effects, inventory, or spell slots.
+
+Contract changes:
+- New backend helper: `splitGameStateForSoloTrusted`.
+- No frontend or public engine API changes.
+
+Validation:
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+
+Needs from other agent:
+- None blocking. Phase M1 scaffolding is ready for Phase M2 session tables/join-by-code work.
+
+## Handoff - 2026-07-08 - Codex - M1 Sheet Context Slice
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game/turn-context.ts`
+- `lib/game/engine/index.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Moved sheet-field access behind `TurnContext`.
+- `check skills` now reads class, skills, equipped gear, known/prepared spells, and slots through a defensive actor sheet snapshot.
+- Added direct context regression for copied sheet fields and turn-level coverage for reference-backed sheet output.
+
+Contract changes:
+- New backend helper: `getActorSheetFields`.
+- No frontend or public engine API changes.
+
+Validation:
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+
+Needs from other agent:
+- None blocking. This is backend-only scaffolding; visual contracts are unchanged.
+- Parse/sync review is now closed by the follow-up M1 Context Sync Cost Review handoff above.
+
+## Handoff - 2026-07-08 - Codex - M1 Loot Economy Context Slice
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game/turn-context.ts`
+- `lib/game/engine/index.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Moved the first loot/economy state writes behind `TurnContext`.
+- Trader buy/sell now routes gold and inventory quantity changes through actor context helpers.
+- Corpse looting now routes gold, item grants, and looted corpse marking through actor/session context helpers.
+- Added direct context regression for gold, stacked inventory, decrementing inventory, and looted entity state.
+
+Contract changes:
+- New backend helpers: `adjustActorGold`, `addOrStackActorInventoryItem`, `decrementActorInventoryItemAtIndex`, `markSessionEntityLooted`.
+- No frontend or public engine API changes.
+
+Validation:
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+
+Needs from other agent:
+- None blocking. This is backend-only scaffolding; visual contracts are unchanged.
+- Remaining M1 migration slice is sheet fields.
+
 ## Handoff - 2026-07-08 - Codex - M1 Search Discovery Context Slice
 
 Owner: Codex

@@ -14,34 +14,45 @@ export type SoloStateSplit = {
   character: CharacterState;
 };
 
-export function splitGameStateForSolo(state: GameState, playerId = SOLO_PLAYER_ID): SoloStateSplit {
-  const parsed = gameStateSchema.parse(state);
+function buildSoloStateSplit(parsed: GameState, playerId: string): SoloStateSplit {
   const currentTurnPlayerId = parsed.hp > 0 ? playerId : null;
 
   return {
-    session: sessionStateSchema.parse({
+    session: {
       worldSeed: parsed.worldSeed,
       storySceneId: parsed.storySceneId,
       location: parsed.location,
-      storyFlags: parsed.storyFlags,
+      storyFlags: [...parsed.storyFlags],
       storyAct: parsed.storyAct,
       currentFloor: parsed.currentFloor,
-      sceneVisits: parsed.sceneVisits,
-      nearbyEntities: parsed.nearbyEntities,
+      sceneVisits: { ...parsed.sceneVisits },
+      nearbyEntities: parsed.nearbyEntities.map(entity => ({
+        ...entity,
+        effects: (entity.effects || []).map(effect => ({ ...effect })),
+        ...(entity.position ? { position: { ...entity.position } } : {}),
+      })),
       isCombatActive: parsed.isCombatActive,
-      quests: parsed.quests,
-      sceneRegistry: parsed.sceneRegistry,
-      roomRegistry: parsed.roomRegistry,
-      monsterRegistry: parsed.monsterRegistry,
-      locationHistory: parsed.locationHistory,
+      quests: parsed.quests.map(quest => ({
+        ...quest,
+        objectives: quest.objectives.map(objective => ({ ...objective })),
+      })),
+      sceneRegistry: { ...parsed.sceneRegistry },
+      roomRegistry: { ...parsed.roomRegistry },
+      monsterRegistry: Object.fromEntries(
+        Object.entries(parsed.monsterRegistry).map(([key, value]) => [key, { ...value }])
+      ),
+      locationHistory: [...parsed.locationHistory],
       currentImage: parsed.currentImage,
       turnCounter: parsed.turnCounter,
-      log: parsed.log,
+      log: parsed.log.map(entry => ({
+        ...entry,
+        ...(entry.rolls ? { rolls: entry.rolls.map(roll => ({ ...roll })) } : {}),
+      })),
       turnOrder: [playerId],
       currentTurnPlayerId,
       version: 0,
-    }),
-    character: characterStateSchema.parse({
+    },
+    character: {
       playerId,
       userId: null,
       hp: parsed.hp,
@@ -52,26 +63,41 @@ export function splitGameStateForSolo(state: GameState, playerId = SOLO_PLAYER_I
       level: parsed.level,
       xp: parsed.xp,
       xpToNext: parsed.xpToNext,
-      character: parsed.character,
-      inventory: parsed.inventory,
+      character: { ...parsed.character },
+      inventory: parsed.inventory.map(item => ({ ...item })),
       equippedWeaponId: parsed.equippedWeaponId,
       equippedArmorId: parsed.equippedArmorId,
       lastActionSummary: parsed.lastActionSummary,
-      narrativeHistory: parsed.narrativeHistory,
-      inventoryChangeLog: parsed.inventoryChangeLog,
-      lastRolls: parsed.lastRolls,
-      abilityScores: parsed.abilityScores,
-      skills: parsed.skills,
-      knownSpells: parsed.knownSpells,
-      preparedSpells: parsed.preparedSpells,
-      spellSlots: parsed.spellSlots,
+      narrativeHistory: [...parsed.narrativeHistory],
+      inventoryChangeLog: [...parsed.inventoryChangeLog],
+      lastRolls: { ...parsed.lastRolls },
+      abilityScores: { ...parsed.abilityScores },
+      skills: [...parsed.skills],
+      knownSpells: [...parsed.knownSpells],
+      preparedSpells: [...parsed.preparedSpells],
+      spellSlots: Object.fromEntries(
+        Object.entries(parsed.spellSlots).map(([key, slot]) => [key, { ...slot }])
+      ),
       spellcastingAbility: parsed.spellcastingAbility,
       spellAttackBonus: parsed.spellAttackBonus,
       spellSaveDc: parsed.spellSaveDc,
-      activeEffects: parsed.activeEffects,
+      activeEffects: parsed.activeEffects.map(effect => ({ ...effect })),
       totalKills: parsed.totalKills,
-    }),
+    },
   };
+}
+
+export function splitGameStateForSolo(state: GameState, playerId = SOLO_PLAYER_ID): SoloStateSplit {
+  const parsed = gameStateSchema.parse(state);
+  const split = buildSoloStateSplit(parsed, playerId);
+  return {
+    session: sessionStateSchema.parse(split.session),
+    character: characterStateSchema.parse(split.character),
+  };
+}
+
+export function splitGameStateForSoloTrusted(state: GameState, playerId = SOLO_PLAYER_ID): SoloStateSplit {
+  return buildSoloStateSplit(state, playerId);
 }
 
 export function composeGameStateForSolo(session: SessionState, character: CharacterState): GameState {

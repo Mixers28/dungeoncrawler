@@ -15,21 +15,27 @@ import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, com
 import {
   addActorEffect,
   addActorInventoryItem,
+  addOrStackActorInventoryItem,
   addMonsterEffect,
   addSessionStoryFlag,
+  adjustActorGold,
   applyDamageToActor,
   applyDamageToMonsterTarget,
   appendActorInventoryChange,
   composeGameStateFromTurnContext,
   consumeActorSpellSlot,
   createTurnContextFromGameState,
+  decrementActorInventoryItemAtIndex,
   findActiveMonsterTarget,
+  getActorSheetFields,
   getMonsterTargetByIndex,
   healActor,
   incrementSessionSceneVisit,
+  markSessionEntityLooted,
   removeActorInventoryItemByName,
   setActorMinimumAc,
   syncTurnContextFromGameState,
+  type TurnContext,
 } from '../turn-context';
 import { type RollEvent } from '../../game-schema';
 
@@ -590,8 +596,10 @@ function dropInventoryItem(state: GameState, itemName: string): string {
 
 function resolveTradeIntent(
   state: GameState,
-  tradeIntent: TradeIntent
+  tradeIntent: TradeIntent,
+  context: TurnContext
 ): { eventSummary: string; narrationMode: NarrationMode } {
+  syncTurnContextFromGameState(context, state);
   const trader = getTraderAtLocation(state.location);
   const narrationMode: NarrationMode = 'GENERAL';
 
@@ -617,22 +625,18 @@ function resolveTradeIntent(
       return { eventSummary, narrationMode };
     }
 
-    awardGold(state, -invEntry.price);
+    state.gold = adjustActorGold(context, -invEntry.price);
     const weaponDef = weaponsById[invEntry.itemId] || equipmentWeaponsByName[invEntry.itemId];
     const armorDef = armorById[invEntry.itemId] || equipmentArmorByName[invEntry.itemId];
     const displayName = weaponDef?.name || armorDef?.name || invEntry.itemId.replace(/_/g, ' ');
     const itemType = weaponDef ? 'weapon' : armorDef ? 'armor' : 'potion';
-    const existingIdx = state.inventory.findIndex(item => item.name.toLowerCase() === displayName.toLowerCase());
-    if (existingIdx >= 0) {
-      state.inventory = state.inventory.map((item, idx) =>
-        idx === existingIdx ? { ...item, quantity: item.quantity + 1 } : item
-      );
-    } else {
-      state.inventory = [
-        ...state.inventory,
-        { id: `shop-${Date.now().toString(36)}`, name: displayName, type: itemType, quantity: 1, equipped: false },
-      ];
-    }
+    state.inventory = addOrStackActorInventoryItem(context, {
+      id: `shop-${Date.now().toString(36)}`,
+      name: displayName,
+      type: itemType,
+      quantity: 1,
+      equipped: false,
+    });
 
     if (weaponDef) {
       state.inventory = state.inventory.map(item =>
@@ -672,15 +676,8 @@ function resolveTradeIntent(
     const traderPrice = trader.inventory.find(item => item.itemId.toLowerCase() === itemName)?.price;
     const basePrice = traderPrice ?? 2;
     const sellPrice = Math.max(1, Math.floor(basePrice * trader.buybackRate));
-    awardGold(state, sellPrice);
-    const remainingQty = Math.max(0, invItem.quantity - 1);
-    if (remainingQty === 0) {
-      state.inventory = state.inventory.filter((_, idx) => idx !== invIdx);
-    } else {
-      state.inventory = state.inventory.map((item, idx) =>
-        idx === invIdx ? { ...item, quantity: remainingQty } : item
-      );
-    }
+    state.gold = adjustActorGold(context, sellPrice);
+    state.inventory = decrementActorInventoryItemAtIndex(context, invIdx);
     const eventSummary = `You sell ${invItem.name} for ${sellPrice} gold. You now have ${state.gold} gold.`;
     return { eventSummary, narrationMode };
   }
@@ -1247,40 +1244,43 @@ async function _updateGameState(
     summaryParts.push("You flee the encounter.");
   } else if (parsedIntent.type === 'checkSheet') {
     // All sheet facts are enriched from the 5e reference layer, never invented.
-    const sheetClassRef = getClassReference(classKey);
+    const sheet = getActorSheetFields(turnContext);
+    const sheetClassKey = (sheet.character?.class || 'fighter').toLowerCase();
+    const sheetSpellCatalog = sheetClassKey === 'cleric' ? clericSpellsByName : wizardSpellsByName;
+    const sheetClassRef = getClassReference(sheetClassKey);
     const describeSkill = (raw: string) => {
       const ref = skillsByName[raw.toLowerCase().replace(/_/g, ' ')];
       return ref ? `${ref.name} (${ref.ability})` : raw;
     };
     const describeSpell = (raw: string) => {
-      const def = spellCatalog[normalizeSpellName(raw)];
+      const def = sheetSpellCatalog[normalizeSpellName(raw)];
       if (!def) return raw;
       const level = def.level.toLowerCase() === 'cantrip' ? 'cantrip' : `${def.level} level`;
       return `${def.name} (${level})`;
     };
-    const skills = newState.skills?.length ? newState.skills.map(describeSkill).join(', ') : 'None';
-    const equippedWeapon = newState.inventory.find(i => i.type === 'weapon' && i.equipped)
-      || newState.inventory.find(i => i.type === 'weapon');
+    const skills = sheet.skills?.length ? sheet.skills.map(describeSkill).join(', ') : 'None';
+    const equippedWeapon = sheet.inventory.find(i => i.type === 'weapon' && i.equipped)
+      || sheet.inventory.find(i => i.type === 'weapon');
     const weaponRef = equippedWeapon ? weaponsByName[normalizeWeaponName(equippedWeapon.name)] : undefined;
     const weaponText = equippedWeapon
       ? (weaponRef ? `${equippedWeapon.name} — ${weaponRef.damage} (${weaponRef.category})` : equippedWeapon.name)
       : 'None';
-    const equippedArmor = newState.inventory.find(i => i.type === 'armor' && i.equipped)
-      || newState.inventory.find(i => i.type === 'armor');
+    const equippedArmor = sheet.inventory.find(i => i.type === 'armor' && i.equipped)
+      || sheet.inventory.find(i => i.type === 'armor');
     const armorRef = equippedArmor ? armorByName[equippedArmor.name.toLowerCase()] : undefined;
     const armorText = equippedArmor
       ? (armorRef ? `${equippedArmor.name} — AC ${armorRef.baseAC} (${armorRef.category})` : equippedArmor.name)
       : 'None';
     const profText = `weapons — ${sheetClassRef.weaponProficiencyTokens.join(', ') || 'none'}; armor — ${sheetClassRef.armorProficiencyTokens.join(', ') || 'none'}`;
-    const known = newState.knownSpells?.length ? newState.knownSpells.map(describeSpell).join(', ') : 'None';
-    const prepared = newState.preparedSpells?.length ? newState.preparedSpells.map(describeSpell).join(', ') : 'None';
-    const slotText = Object.entries(newState.spellSlots || {})
+    const known = sheet.knownSpells?.length ? sheet.knownSpells.map(describeSpell).join(', ') : 'None';
+    const prepared = sheet.preparedSpells?.length ? sheet.preparedSpells.map(describeSpell).join(', ') : 'None';
+    const slotText = Object.entries(sheet.spellSlots || {})
       .map(([lvl, data]) => `${lvl.replace('_', ' ')}: ${data.current}/${data.max}`)
       .join('; ');
     summaryParts.push(`Class: ${sheetClassRef.name}. Skills: ${skills}. Equipped weapon: ${weaponText}. Armor: ${armorText}. Proficiencies: ${profText}. Spells known: ${known}. Spells prepared: ${prepared}. Slots: ${slotText || 'None'}.`);
   } else {
     if (intent.tradeIntent) {
-      const tradeResult = resolveTradeIntent(newState, intent.tradeIntent);
+      const tradeResult = resolveTradeIntent(newState, intent.tradeIntent, turnContext);
       stuntModeOverride = tradeResult.narrationMode;
       summaryParts.push(tradeResult.eventSummary);
     } else {
@@ -1446,8 +1446,10 @@ async function _updateGameState(
   // 8b. LOOT CORPSES (simple generic loot)
   const wantsLoot = /(loot|rummage|pick over|salvage)/i.test(userAction);
   attemptedLoot = wantsLoot;
-  const deadCorpse = newState.nearbyEntities.find(e => e.status === 'dead' && !e.name.toLowerCase().includes('looted'));
+  const deadCorpseIndex = newState.nearbyEntities.findIndex(e => e.status === 'dead' && !e.name.toLowerCase().includes('looted'));
+  const deadCorpse = deadCorpseIndex >= 0 ? newState.nearbyEntities[deadCorpseIndex] : null;
   if (wantsLoot && deadCorpse) {
+    syncTurnContextFromGameState(turnContext, newState);
     const monsterLootMap: Record<string, string> = {
       'skeleton': '5e_minor_undead_treasure',
       'zombie': '5e_minor_undead_treasure',
@@ -1467,7 +1469,7 @@ async function _updateGameState(
     const newItems: GameState['inventory'] = [];
     if (loot) {
       goldFind = loot.coins.gp || 0;
-      if (goldFind > 0) awardGold(newState, goldFind);
+      if (goldFind > 0) newState.gold = adjustActorGold(turnContext, goldFind);
       if (loot.items.length > 0) {
         for (const it of loot.items) {
           newItems.push({
@@ -1488,14 +1490,13 @@ async function _updateGameState(
         quantity: 1,
         equipped: false,
       });
-      awardGold(newState, goldFind);
+      newState.gold = adjustActorGold(turnContext, goldFind);
     }
-    newState.inventory = [...newState.inventory, ...newItems];
+    for (const item of newItems) {
+      newState.inventory = addActorInventoryItem(turnContext, item);
+    }
     foundLootItems = goldFind > 0 || newItems.length > 0;
-    // Mark corpse as looted
-    newState.nearbyEntities = newState.nearbyEntities.map(e =>
-      e === deadCorpse ? { ...e, name: `${e.name} (looted)` } : e
-    );
+    newState.nearbyEntities = markSessionEntityLooted(turnContext, deadCorpseIndex);
     newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Looted ${deadCorpse.name}: +${goldFind} gold${newItems.length ? ', +' + newItems.map(i => `${i.quantity}x ${i.name}`).join(', ') : ''}`].slice(-10);
     const parts = [];
     if (goldFind > 0) parts.push(`${goldFind} gold`);

@@ -135,7 +135,7 @@ Action items (Phase 2):
 Status:
 - Visual Phase 0 is functionally closed: full-time visual mode (exploration + combat, not combat-only), movement/action/inventory/spellbook all button-driven against `buildVisualGameViewModel`, Act 1 manifest coverage with deterministic placeholders, e2e smoke coverage, and the multiplayer-readiness review are complete. See `docs/visual-multiplayer-phase0.md` and `docs/multiplayer-readiness-review.md`.
 - Generated final art remains polish; the functional requirement is local assets plus graceful fallbacks.
-- Phase M1 has started with schemas, a party-of-one compatibility shim, and first combat-access helpers: `SessionState`, `CharacterState`, `splitGameStateForSolo`, `composeGameStateForSolo`, and `TurnContext` target/damage helpers now have regression coverage.
+- Phase M1 has started with schemas, a party-of-one compatibility shim, sliced `TurnContext` access for combat, casting, story/search, loot/economy, and sheet state, plus trusted in-turn context sync. `SessionState`, `CharacterState`, `splitGameStateForSolo`, `splitGameStateForSoloTrusted`, `composeGameStateForSolo`, and context helpers have regression coverage.
 - `docs/multiplayer-design.md` remains the architecture reference for Phase M1+.
 
 Action items (Visual Phase 0):
@@ -156,7 +156,10 @@ Action items (Phase M1):
 [x] Migrate casting spell-slot, healing, actor-effect, and enemy-effect writes onto `TurnContext`.
 [x] Migrate successful story exit item consumption, scene visits, and transition composition onto `TurnContext`.
 [x] Migrate search/discovery item grants, inventory logs, and story flags onto `TurnContext`.
-[ ] Migrate loot/economy and sheet fields in separate slices.
+[x] Migrate loot/economy state access onto `TurnContext`.
+[x] Migrate sheet fields onto `TurnContext`.
+[x] Review Phase M1 context parse/sync costs before Phase M2 session tables.
+[ ] Start Phase M2 session tables and join-by-code flow.
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
 - Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.
