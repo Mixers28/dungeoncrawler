@@ -4,6 +4,178 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-08 - Codex - M2 Two-Browser Multiplayer E2E
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `e2e/multiplayer-session.spec.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Added a dedicated two-browser Playwright spec for the real multiplayer session flow.
+- Browser A signs up, reaches gameplay, switches to visual mode, creates a party, and captures the join code.
+- Browser B signs up separately, joins by code, switches to visual mode, and sees the shared party session.
+- The test verifies polling updates Browser A to the 2-player party state, then Browser A performs a movement action and Browser B observes the shared log/session update.
+- The visual-mode helper is idempotent so persisted localStorage view preferences do not flip the test back to text mode.
+
+Contract changes:
+- No runtime contract changes.
+- New e2e spec: `e2e/multiplayer-session.spec.ts`.
+
+Validation:
+- `npx playwright test e2e/multiplayer-session.spec.ts` passed.
+- `npm run test:e2e` passed: 6/6 Playwright specs.
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+
+Needs from other agent:
+- None blocking. This gives baseline two-browser coverage; future combat-specific two-browser assertions can build on this once multiplayer balance/UI polish continues.
+
+## Handoff - 2026-07-08 - Codex - M2 Monster Round Batch Slice
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game/engine/index.ts`
+- `lib/game/session-service.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Moved multiplayer monster retaliation out of the per-player solo action path and into a session round-batch resolver.
+- `runGameTurn` now accepts optional engine controls; solo callers keep default turn-counter advancement and immediate monster retaliation, while session turns suppress solo monster turns and preserve the session round counter until the batch.
+- `runSessionTurn` now accepts all party characters, advances to the next active player after non-final combat actions, and triggers `resolveMonsterRound` after the last active player acts.
+- `resolveMonsterRound` attacks alive players only, skips downed targets, applies damage to the correct `CharacterState`, appends actor-named monster log entries, increments the session round counter, and starts the next round at the first alive player.
+- `processMultiplayerSessionTurn` now loads and persists all party character rows touched by the round batch, not only the acting player.
+
+Contract changes:
+- `runGameTurn(state, intent, options?)` has optional controls: `advanceTurnCounter` and `suppressMonsterTurn`.
+- `SessionTurnResult` now includes `players` and `logEntries` in addition to the acting `actor`/primary `logEntry`.
+- New backend helper: `resolveMonsterRound`.
+- Solo public behavior remains unchanged.
+
+Validation:
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm run test:e2e` passed: 5/5 Playwright specs at the time of this slice.
+
+Needs from other agent:
+- None blocking for M2 mechanics. Two-browser join/action e2e is now covered by the follow-up M2 Two-Browser Multiplayer E2E handoff above.
+
+## Handoff - 2026-07-08 - Codex - M2 Session UI Polling Slice
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `app/page.tsx`
+- `e2e/visual-mode.spec.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Wired the first session-aware client flow on top of the M2 server foundation.
+- Added create-party and join-code controls to character select/gameplay.
+- Added multiplayer client state, command routing through `processMultiplayerTurn`, loading via `loadCurrentMultiplayerSession`, and 3-second session polling.
+- Multiplayer mode now composes the active player's `SessionState` + `CharacterState` for existing sidebars/text mode, and feeds `getMultiplayerVisualViewModel` to the visual shell.
+- Controls are disabled when it is not the player's combat turn; the party banner shows session code, player count, and waiting state.
+- Added e2e coverage for creating a party from visual mode while keeping existing solo smoke paths green.
+
+Contract changes:
+- No new backend contracts in this slice.
+- UI now consumes the server actions and multiplayer visual adapter from the previous M2 slice.
+
+Validation:
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm run test:e2e` passed: 5/5 Playwright specs.
+
+Needs from other agent:
+- Monster round-batch resolution is now closed by the follow-up M2 Monster Round Batch Slice handoff above.
+- A fuller two-browser join/action e2e can be added now that round-batch semantics are stable.
+
+## Handoff - 2026-07-08 - Claude Code - Proposal: Automate Visual Asset Generation
+
+Owner: Claude Code
+Status: proposed
+Files touched:
+- None (proposal only)
+
+Summary:
+- User asked to automate visual asset generation and flagged that some existing assets need reworking for a consistent Eye of the Beholder 3 look — specifically called out as more important now because multiplayer means several players see the same shared scene/monster assets at once, so style drift is far more visible than in solo play.
+- Investigated current state: there is no live generation pipeline today. `public/scene-cache/**` is a pile of images produced out-of-band (manually, outside the repo) and `resolveSceneImage`/`resolveVisualAsset` only do filesystem lookups by naming convention. `data/visual/asset-manifest.json` and `lib/visual/assets.ts` already have the right schema for this though — `source: 'generated' | 'existing' | 'fallback' | 'cached'` and `styleVersion` fields exist but nothing populates `source: 'generated'` yet. `docs/visual-multiplayer-phase0.md`'s "Generation Style Guide" section already has prompt templates per asset class (scene/monster/item/portrait) — the design work for this was mostly done, just never wired to a real API call.
+
+Proposal (for Codex, since asset pipeline/naming contracts are Codex-primary per `docs/agent-crossover-contract.md`):
+- A batch script (e.g. `scripts/generate-visual-assets.ts`) that walks `data/visual/asset-manifest.json` for entries still on `source: 'fallback'` (or a `--force` flag for explicit rework), calls an image-gen API using the existing prompt templates from `docs/visual-multiplayer-phase0.md`, writes output under `public/visual/<kind>/<id>.png`, and updates the manifest entry's `path`, `source`, and `styleVersion`.
+- Treat `styleVersion` as a hard batch gate, not a per-asset label: when the style guide changes or assets get reworked, regenerate a whole `styleVersion` batch together rather than patching one asset at a time. Mixing styleVersions in a shared multiplayer scene is the exact failure mode the user is worried about.
+- Pin a fixed style anchor across a batch — either a reference image passed to an image-to-image/variation call if the chosen API supports it, or a tightly-specified fixed prompt prefix (composition, lighting, palette) stored once per `styleVersion` rather than re-derived per asset — so "EOB3-style" doesn't reinterpret itself between individual generation calls.
+- Needs a provider decision and API key/env var (no `OPENAI_API_KEY` or similar exists in `.env.local.example` today) — this is a cost/vendor choice, not something I want to assume on Codex's behalf.
+
+Contract changes:
+- None yet — proposal only. If built, this would add a new `scripts/**` file (already Codex's boundary) and populate existing manifest fields; no schema changes anticipated.
+
+Frontend impact:
+- None. `DungeonViewport`, `PartyRail`, and the inventory/spellbook drawers already just render whatever `imagePath` the view model resolves — a reworked pipeline is invisible to the frontend as long as the manifest contract (`path`, `source`, `styleVersion`) stays the same.
+
+Needs from other agent:
+- Codex: confirm whether to pick this up, and if so, which image-gen provider/API to target (affects whether image-to-image style-pinning is available) and where the API key should live.
+- User: final call on provider/cost, since that's a billing decision outside either agent's scope.
+
+## Handoff - 2026-07-08 - Codex - M2 Session Tables and Turn Gate Foundation
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/db/schema.ts`
+- `drizzle/0001_clumsy_maverick.sql`
+- `drizzle/meta/_journal.json`
+- `drizzle/meta/0001_snapshot.json`
+- `lib/game/session-service.ts`
+- `lib/visual/view-model.ts`
+- `app/actions.ts`
+- `app/visual-actions.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Started Phase M2 with durable session persistence and server-side multiplayer primitives.
+- Added Drizzle tables for `game_sessions` and `session_players`, including JSONB `SessionState`/`CharacterState`, join code primary key, owner/user FKs, version/status fields, timestamps, and lookup indexes.
+- Added `lib/game/session-service.ts` with join-code allocation, owner session creation, joiner character setup, session normalization, join gating, combat turn gating, actor-named log threading, and a `runGameTurn` compose/split adapter.
+- Added authenticated server actions for creating a multiplayer session from the current save, joining by code, loading a session, and processing a session turn.
+- Added a session-aware visual view-model adapter for multiplayer party slots, active-turn indicators, disabled controls, and actor-named shared logs.
+- Added regression coverage for owner/joiner split state, no-join-during-combat, combat wrong-player rejection, accepted exploration action, version increment, actor-named session logs, and multiplayer visual turn state.
+
+Contract changes:
+- New DB tables: `game_sessions`, `session_players`.
+- New backend module: `lib/game/session-service.ts`.
+- New server actions: `createMultiplayerFromCurrentGame`, `joinMultiplayerByCode`, `loadCurrentMultiplayerSession`, `processMultiplayerTurn`.
+- New visual adapter: `buildMultiplayerVisualGameViewModel` and `getMultiplayerVisualViewModel`.
+- No frontend route/UI changes yet.
+
+Validation:
+- `npm run db:migrate` passed locally and applied `drizzle/0001_clumsy_maverick.sql`.
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run build` passed with escalation after sandbox-only Turbopack worker/port restriction.
+
+Needs from other agent:
+- Session-aware UI/polling is now wired by the follow-up M2 Session UI Polling Slice handoff above.
+- Monster turns still use the current solo per-action retaliation inside the composed `GameState`; move this to a session round-batch resolver before claiming full M2 exit criteria.
+
 ## Handoff - 2026-07-08 - Claude Code - Review of Full M1 Engine Migration (Plan vs. Actual)
 
 Owner: Claude Code

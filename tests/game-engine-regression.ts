@@ -5,6 +5,14 @@ import { runGameTurn } from '../lib/game/engine';
 import { buildNewGameState } from '../lib/game/state';
 import { composeGameStateForSolo, splitGameStateForSolo, splitGameStateForSoloTrusted } from '../lib/game/state-split';
 import {
+  addPlayerToSession,
+  createCharacterStateForJoiner,
+  createSessionStateForOwner,
+  normalizeSessionTurnState,
+  resolveMonsterRound,
+  runSessionTurn,
+} from '../lib/game/session-service';
+import {
   addActorEffect,
   addActorInventoryItem,
   addOrStackActorInventoryItem,
@@ -31,7 +39,7 @@ import {
 import { resolveWeaponId } from '../lib/items';
 import { getSceneById, pickSceneVariant } from '../lib/story';
 import { getVisualAsset, visualAssetManifest } from '../lib/visual/assets';
-import { buildVisualGameViewModel } from '../lib/visual/view-model';
+import { buildMultiplayerVisualGameViewModel, buildVisualGameViewModel } from '../lib/visual/view-model';
 import { characterStateSchema, gameStateSchema, sessionStateSchema, type Entity, type GameState } from '../lib/game-schema';
 
 function makeMonster(name: string, hp = 20): Entity {
@@ -175,6 +183,24 @@ async function testAttackHonorsTarget() {
 
   assert.equal(newState.nearbyEntities[0].hp, 20);
   assert.ok(newState.nearbyEntities[1].hp < 20);
+}
+
+async function testSoloMonsterRetaliationStillOccurs() {
+  const state = await makeState();
+  const combatState: GameState = {
+    ...state,
+    hp: 10,
+    nearbyEntities: [{ ...makeMonster('Zombie', 20), attackBonus: 30, damageDice: '1d1' }],
+    isCombatActive: true,
+  };
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  try {
+    const { newState } = await turn(combatState, 'defend');
+    assert.equal(newState.hp, 9);
+  } finally {
+    Math.random = originalRandom;
+  }
 }
 
 async function testPhase1HubBranchAndBossGates() {
@@ -588,6 +614,215 @@ async function testCheckSheetUsesReferenceFacts() {
   assert.match(logEntry.summary, /level 1: 1\/2/);
 }
 
+async function testMultiplayerSessionOwnerAndJoinerState() {
+  const ownerState = await makeState();
+  const joinerState = await buildNewGameState('wizard');
+  const { session, owner } = createSessionStateForOwner(ownerState, 'owner-user');
+  const joiner = createCharacterStateForJoiner(joinerState, 'joiner-user');
+  const joinedSession = addPlayerToSession(session, 'joiner-user');
+
+  sessionStateSchema.parse(joinedSession);
+  characterStateSchema.parse(owner);
+  characterStateSchema.parse(joiner);
+  assert.deepEqual(joinedSession.turnOrder, ['owner-user', 'joiner-user']);
+  assert.equal(joinedSession.currentTurnPlayerId, null);
+  assert.equal(owner.playerId, 'owner-user');
+  assert.equal(owner.userId, 'owner-user');
+  assert.equal(joiner.playerId, 'joiner-user');
+  assert.equal(joiner.character.class, 'Wizard');
+}
+
+async function testMultiplayerSessionRejectsJoinDuringCombat() {
+  const state = await makeState();
+  const { session } = createSessionStateForOwner({
+    ...state,
+    nearbyEntities: [makeMonster('Zombie', 10)],
+    isCombatActive: true,
+  }, 'owner-user');
+
+  assert.throws(() => addPlayerToSession(session, 'joiner-user'), /out of combat/i);
+  const normalized = normalizeSessionTurnState(session);
+  assert.equal(normalized.currentTurnPlayerId, 'owner-user');
+}
+
+async function testMultiplayerSessionTurnGateRejectsWrongActor() {
+  const state = await makeState();
+  const { session, owner } = createSessionStateForOwner({
+    ...state,
+    nearbyEntities: [makeMonster('Zombie', 10)],
+    isCombatActive: true,
+  }, 'owner-user');
+  const joiner = createCharacterStateForJoiner(await buildNewGameState('rogue'), 'joiner-user');
+  const combatSession = {
+    ...session,
+    turnOrder: ['owner-user', 'joiner-user'],
+    currentTurnPlayerId: 'owner-user',
+  };
+
+  const blocked = await runSessionTurn(combatSession, joiner, 'attack');
+
+  assert.equal(owner.playerId, 'owner-user');
+  assert.equal(blocked.accepted, false);
+  assert.match(blocked.reason || '', /owner-user/);
+  assert.equal(blocked.session.currentTurnPlayerId, 'owner-user');
+}
+
+async function testMultiplayerSessionTurnAcceptsExplorationAction() {
+  const state = await makeState();
+  const { session, owner } = createSessionStateForOwner(state, 'owner-user');
+  const result = await runSessionTurn(session, owner, 'look around');
+
+  assert.equal(result.accepted, true);
+  assert.equal(result.session.currentTurnPlayerId, null);
+  assert.equal(result.session.version, 1);
+  assert.equal(result.actor.playerId, 'owner-user');
+  assert.equal(result.actor.userId, 'owner-user');
+  assert.equal(result.logEntry.actorName, owner.character.name);
+  assert.equal(result.session.log.at(-1)?.actorName, owner.character.name);
+}
+
+async function testMultiplayerMonsterBatchRunsAfterLastPlayer() {
+  const state = await makeState();
+  const { session, owner } = createSessionStateForOwner({
+    ...state,
+    hp: 10,
+    nearbyEntities: [{ ...makeMonster('Zombie', 20), attackBonus: 30, damageDice: '1d1' }],
+    isCombatActive: true,
+  }, 'owner-user');
+  const joiner = {
+    ...createCharacterStateForJoiner(await buildNewGameState('wizard'), 'joiner-user'),
+    hp: 10,
+    maxHp: 10,
+  };
+  const combatSession = {
+    ...session,
+    turnOrder: ['owner-user', 'joiner-user'],
+    currentTurnPlayerId: 'owner-user',
+    turnCounter: 0,
+  };
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  try {
+    const first = await runSessionTurn(combatSession, { ...owner, hp: 10, maxHp: 10 }, 'defend', [
+      { ...owner, hp: 10, maxHp: 10 },
+      joiner,
+    ]);
+
+    assert.equal(first.accepted, true);
+    assert.equal(first.session.currentTurnPlayerId, 'joiner-user');
+    assert.equal(first.session.turnCounter, 0);
+    assert.equal(first.players.find(player => player.playerId === 'owner-user')?.hp, 10);
+    assert.equal(first.logEntries.some(entry => entry.actorName === 'Zombie'), false);
+
+    const second = await runSessionTurn(first.session, joiner, 'defend', first.players);
+
+    assert.equal(second.accepted, true);
+    assert.equal(second.session.turnCounter, 1);
+    assert.equal(second.session.currentTurnPlayerId, 'owner-user');
+    assert.equal(second.players.find(player => player.playerId === 'owner-user')?.hp, 9);
+    assert.equal(second.players.find(player => player.playerId === 'joiner-user')?.hp, 10);
+    assert.equal(second.logEntries.some(entry => entry.actorName === 'Zombie' && /hits/i.test(entry.summary)), true);
+  } finally {
+    Math.random = originalRandom;
+  }
+}
+
+async function testMultiplayerMonsterBatchSkipsDownedTargets() {
+  const state = await makeState();
+  const { session, owner } = createSessionStateForOwner({
+    ...state,
+    nearbyEntities: [{ ...makeMonster('Zombie', 20), attackBonus: 30, damageDice: '1d1' }],
+    isCombatActive: true,
+  }, 'owner-user');
+  const joiner = {
+    ...createCharacterStateForJoiner(await buildNewGameState('wizard'), 'joiner-user'),
+    hp: 10,
+    maxHp: 10,
+  };
+  const downedOwner = {
+    ...owner,
+    hp: 0,
+    maxHp: 10,
+  };
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  try {
+    const result = resolveMonsterRound({
+      ...session,
+      turnOrder: ['owner-user', 'joiner-user'],
+      currentTurnPlayerId: 'joiner-user',
+      turnCounter: 0,
+    }, [downedOwner, joiner]);
+
+    assert.equal(result.players.find(player => player.playerId === 'owner-user')?.hp, 0);
+    assert.equal(result.players.find(player => player.playerId === 'joiner-user')?.hp, 9);
+    assert.match(result.logEntries[0]?.summary || '', /Wizard|Adventurer/);
+  } finally {
+    Math.random = originalRandom;
+  }
+}
+
+async function testMultiplayerDownedActorCannotAct() {
+  const state = await makeState();
+  const { session, owner } = createSessionStateForOwner({
+    ...state,
+    nearbyEntities: [makeMonster('Zombie', 20)],
+    isCombatActive: true,
+  }, 'owner-user');
+  const downedOwner = {
+    ...owner,
+    hp: 0,
+  };
+
+  const result = await runSessionTurn({
+    ...session,
+    currentTurnPlayerId: 'owner-user',
+  }, downedOwner, 'attack', [downedOwner]);
+
+  assert.equal(result.accepted, false);
+  assert.match(result.reason || '', /down/i);
+}
+
+async function testMultiplayerVisualViewModelUsesPartyAndTurnState() {
+  const state = await makeState();
+  const { session, owner } = createSessionStateForOwner({
+    ...state,
+    nearbyEntities: [makeMonster('Zombie', 10)],
+    isCombatActive: true,
+  }, 'owner-user');
+  const joiner = createCharacterStateForJoiner(await buildNewGameState('wizard'), 'joiner-user');
+  const combatSession = {
+    ...session,
+    turnOrder: ['owner-user', 'joiner-user'],
+    currentTurnPlayerId: 'owner-user',
+  };
+
+  const ownerView = buildMultiplayerVisualGameViewModel({
+    session: combatSession,
+    you: owner,
+    players: [
+      { userId: 'owner-user', character: owner },
+      { userId: 'joiner-user', character: joiner },
+    ],
+  });
+  const joinerView = buildMultiplayerVisualGameViewModel({
+    session: combatSession,
+    you: joiner,
+    players: [
+      { userId: 'owner-user', character: owner },
+      { userId: 'joiner-user', character: joiner },
+    ],
+  });
+
+  assert.equal(ownerView.mode, 'multiplayer');
+  assert.equal(ownerView.partySlots.length, 2);
+  assert.equal(ownerView.partySlots[0].isActiveTurn, true);
+  assert.equal(ownerView.turnState.canAct, true);
+  assert.equal(joinerView.turnState.canAct, false);
+  assert.match(joinerView.turnState.reason || '', /owner-user/);
+  assert.equal(joinerView.combatActions.every(action => !action.enabled), true);
+}
+
 async function testVisualAssetManifestLoads() {
   assert.equal(visualAssetManifest.styleVersion, 'visual-phase0-v1');
   assert.ok(visualAssetManifest.assets.length > 0);
@@ -745,6 +980,7 @@ async function main() {
   await testRejectUnownedWeapon();
   await testRequestedOwnedWeaponUsesMatchingDice();
   await testAttackHonorsTarget();
+  await testSoloMonsterRetaliationStillOccurs();
   await testPhase1HubBranchAndBossGates();
   await testPhase1ConsumeItemGate();
   await testPhase1DiscoveryAndBranchCompletion();
@@ -764,6 +1000,14 @@ async function main() {
   await testTurnContextAppliesLootEconomyState();
   await testTurnContextProvidesSheetFields();
   await testCheckSheetUsesReferenceFacts();
+  await testMultiplayerSessionOwnerAndJoinerState();
+  await testMultiplayerSessionRejectsJoinDuringCombat();
+  await testMultiplayerSessionTurnGateRejectsWrongActor();
+  await testMultiplayerSessionTurnAcceptsExplorationAction();
+  await testMultiplayerMonsterBatchRunsAfterLastPlayer();
+  await testMultiplayerMonsterBatchSkipsDownedTargets();
+  await testMultiplayerDownedActorCannotAct();
+  await testMultiplayerVisualViewModelUsesPartyAndTurnState();
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();
   await testVisualViewModelSoloContract();

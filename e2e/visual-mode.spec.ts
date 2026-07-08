@@ -56,6 +56,10 @@ test('visual mode: shell landmarks render with no console errors', async ({ page
   await expect(page.getByTestId('log-strip')).toBeVisible();
   await expect(page.getByText('YOU', { exact: true })).toBeVisible();
 
+  await page.getByRole('button', { name: 'Create Party' }).click();
+  await expect(page.getByText(/Party [A-Z2-9]{6}/)).toBeVisible();
+  await expect(page.getByTestId('party-rail')).toBeVisible();
+
   expect(consoleErrors).toEqual([]);
 });
 

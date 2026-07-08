@@ -41,6 +41,10 @@ import { type RollEvent } from '../../game-schema';
 
 
 // --- HELPERS ---
+export type RunGameTurnOptions = {
+  advanceTurnCounter?: boolean;
+  suppressMonsterTurn?: boolean;
+};
 
 function expireEffects(state: GameState) {
   const turn = state.turnCounter || 0;
@@ -753,7 +757,8 @@ function isWeaponAllowedForClass(weaponName: string | undefined, classKey: strin
 // DM principles: describe what the player perceives, let the player act, resolve fairly.
 async function _updateGameState(
   currentState: GameState,
-  intent: GameIntent
+  intent: GameIntent,
+  options: RunGameTurnOptions = {}
 ): Promise<{
   newState: GameState;
   roomDesc: string;
@@ -804,7 +809,11 @@ async function _updateGameState(
   };
 
   // Advance turn counter and clear expired effects before resolving actions
-  newState.turnCounter = (currentState.turnCounter || 0) + 1;
+  const shouldAdvanceTurnCounter = options.advanceTurnCounter ?? true;
+  const shouldResolveMonsterTurn = !(options.suppressMonsterTurn ?? false);
+  newState.turnCounter = shouldAdvanceTurnCounter
+    ? (currentState.turnCounter || 0) + 1
+    : (currentState.turnCounter || 0);
   expireEffects(newState);
   const turnContext = createTurnContextFromGameState(newState);
 
@@ -1308,7 +1317,7 @@ async function _updateGameState(
   const currentActiveMonster = getMonsterTargetByIndex(turnContext, activeMonsterIndex).entity;
   const monsterStillAlive = currentActiveMonster && currentActiveMonster.status === 'alive';
   const monsterIsActive = newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend';
-  if (monsterStillAlive && monsterIsActive && actionIntent !== 'run') {
+  if (shouldResolveMonsterTurn && monsterStillAlive && monsterIsActive && actionIntent !== 'run') {
     // Conditions that fully prevent the monster from acting this turn.
     const DISABLING_CONDITIONS = ['mage hand', 'stunned', 'paralyzed', 'held', 'frightened', 'sleep'];
     const disablingEffect = (currentActiveMonster.effects || []).find(e => DISABLING_CONDITIONS.includes(e.name.toLowerCase()));
@@ -1544,9 +1553,10 @@ async function _updateGameState(
 
 export async function runGameTurn(
   currentState: GameState,
-  intent: GameIntent
+  intent: GameIntent,
+  options: RunGameTurnOptions = {}
 ): Promise<{ newState: GameState; logEntry: LogEntry }> {
-  const { newState, roomDesc, accountantFacts: engineFacts, eventSummary, narrationMode, rollLog } = await _updateGameState(currentState, intent);
+  const { newState, roomDesc, accountantFacts: engineFacts, eventSummary, narrationMode, rollLog } = await _updateGameState(currentState, intent, options);
 
   const locationDescription = newState.roomRegistry[newState.location] || roomDesc || "An undefined space.";
   const { facts, eventSummary: accountantSummary } = buildAccountantFacts({

@@ -2,15 +2,25 @@
 
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Skull, ArrowRight, BookOpen, X, Eye, EyeOff } from 'lucide-react';
+import { Skull, ArrowRight, BookOpen, X, Eye, EyeOff, Users } from 'lucide-react';
 import type { GameState, LogEntry, NarrationMode, RollEvent } from '../lib/game-schema';
+import type { MultiplayerSessionSnapshot } from '../lib/game/session-service';
+import { composeGameStateForSolo } from '../lib/game/state-split';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { RightSidebar } from '../components/RightSidebar';
 import { InventoryModal } from '../components/InventoryModal';
 import { VisualDungeonShell } from '../components/visual/VisualDungeonShell';
 import type { VisualGameViewModel } from '../lib/visual/view-model';
-import { getVisualViewModel } from './visual-actions';
-import { createNewGame, processTurn, resetGame } from './actions';
+import { getMultiplayerVisualViewModel, getVisualViewModel } from './visual-actions';
+import {
+  createMultiplayerFromCurrentGame,
+  createNewGame,
+  joinMultiplayerByCode,
+  loadCurrentMultiplayerSession,
+  processMultiplayerTurn,
+  processTurn,
+  resetGame,
+} from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 import { saveScore } from '../lib/leaderboard';
 import { CommandHints } from '../components/CommandHints';
@@ -53,9 +63,11 @@ export default function Home() {
 function HomeContent() {
   const [input, setInput] = useState('');
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [multiplayerSession, setMultiplayerSession] = useState<MultiplayerSessionSnapshot | null>(null);
   const [visualViewModel, setVisualViewModel] = useState<VisualGameViewModel | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
   const [isDying, setIsDying] = useState(false);
   const [deathCountdown, setDeathCountdown] = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<ArchetypeKey | null>('fighter');
@@ -83,6 +95,37 @@ function HomeContent() {
       .map(([lvl, data]) => `${lvl.replace('_', ' ')} ${data.current}/${data.max}`)
       .join(' · ')
     : '';
+  const multiplayerCanAct = !multiplayerSession
+    || (
+      multiplayerSession.you.hp > 0
+      && (
+        !multiplayerSession.session.isCombatActive
+        || !multiplayerSession.session.currentTurnPlayerId
+        || multiplayerSession.session.currentTurnPlayerId === multiplayerSession.you.playerId
+      )
+    );
+  const actionDisabledReason = multiplayerSession && !multiplayerCanAct
+    ? multiplayerSession.you.hp <= 0
+      ? 'You are down.'
+      : `Waiting for ${multiplayerSession.session.currentTurnPlayerId || 'the party'}.`
+    : null;
+
+  const messagesFromLog = useCallback((log: LogEntry[]): Message[] =>
+    (log || []).map((entry) => ({
+      role: 'assistant',
+      summary: entry.actorName ? `${entry.actorName}: ${entry.summary}` : entry.summary,
+      flavor: entry.flavor,
+      mode: entry.mode,
+      createdAt: entry.createdAt,
+      rolls: entry.rolls,
+    })), []);
+
+  const applyMultiplayerSnapshot = useCallback((snapshot: MultiplayerSessionSnapshot) => {
+    setMultiplayerSession(snapshot);
+    setJoinCode(snapshot.code);
+    setGameState(composeGameStateForSolo(snapshot.session, snapshot.you));
+    setMessages(messagesFromLog(snapshot.session.log || []));
+  }, [messagesFromLog]);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -93,13 +136,41 @@ function HomeContent() {
   useEffect(() => {
     if (viewMode !== 'visual' || !gameState) return;
     let cancelled = false;
-    getVisualViewModel(gameState).then(vm => {
+    const loadViewModel = multiplayerSession
+      ? getMultiplayerVisualViewModel({
+          session: multiplayerSession.session,
+          you: multiplayerSession.you,
+          players: multiplayerSession.players.map(player => ({ userId: player.userId, character: player.character })),
+        })
+      : getVisualViewModel(gameState);
+    loadViewModel.then(vm => {
       if (!cancelled) setVisualViewModel(vm);
     });
     return () => {
       cancelled = true;
     };
-  }, [viewMode, gameState]);
+  }, [viewMode, gameState, multiplayerSession]);
+
+  useEffect(() => {
+    if (!multiplayerSession?.code) return;
+    let cancelled = false;
+    const poll = async () => {
+      if (isLoading) return;
+      try {
+        const fresh = await loadCurrentMultiplayerSession(multiplayerSession.code);
+        if (!cancelled && fresh && fresh.version !== multiplayerSession.version) {
+          applyMultiplayerSnapshot(fresh);
+        }
+      } catch (err) {
+        console.error('Session poll failed', err);
+      }
+    };
+    const interval = window.setInterval(poll, 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [applyMultiplayerSnapshot, isLoading, multiplayerSession?.code, multiplayerSession?.version]);
 
   const handleDeath = useCallback((state: GameState) => {
     if (isDying) return;
@@ -124,12 +195,43 @@ function HomeContent() {
   }, [isDying, router]);
 
   const executeTurn = useCallback(async (command: string, currentGameState: GameState) => {
+    if (multiplayerSession && !multiplayerCanAct) {
+      if (actionDisabledReason) setError(actionDisabledReason);
+      return;
+    }
     setInput('');
     focusInput();
     setIsLoading(true);
     setMessages(prev => [...prev, { role: 'user', content: command }]);
 
     try {
+      if (multiplayerSession) {
+        const result = await processMultiplayerTurn(multiplayerSession.code, command);
+        if (!result.accepted) {
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              summary: result.logEntry.summary,
+              flavor: result.logEntry.flavor,
+              mode: result.logEntry.mode,
+              createdAt: result.logEntry.createdAt,
+              rolls: result.logEntry.rolls,
+            },
+          ]);
+          return;
+        }
+        const fresh = await loadCurrentMultiplayerSession(multiplayerSession.code);
+        if (fresh) {
+          applyMultiplayerSnapshot(fresh);
+          const freshState = composeGameStateForSolo(fresh.session, fresh.you);
+          if (freshState.hp <= 0 && currentGameState.hp > 0) {
+            setTimeout(() => handleDeath(freshState), 500);
+          }
+        }
+        return;
+      }
+
       const { newState, logEntry } = await processTurn(command);
       setGameState(newState);
 
@@ -157,10 +259,10 @@ function HomeContent() {
       setIsLoading(false);
       focusInput();
     }
-  }, [handleDeath, focusInput]);
+  }, [actionDisabledReason, applyMultiplayerSnapshot, focusInput, handleDeath, multiplayerCanAct, multiplayerSession]);
 
   const handleQuickAction = useCallback((action: string) => {
-    if (isLoading || !gameState || isDying) return;
+    if (isLoading || !gameState || isDying || !multiplayerCanAct) return;
     if (!isQuickAction(action)) return;
 
     const commandMap: Record<QuickAction, string> = {
@@ -172,7 +274,7 @@ function HomeContent() {
 
     const command = commandMap[action];
     if (command) executeTurn(command, gameState);
-  }, [isLoading, gameState, isDying, executeTurn]);
+  }, [isLoading, gameState, isDying, multiplayerCanAct, executeTurn]);
 
   const toggleViewMode = useCallback(() => {
     const newMode = viewMode === 'text' ? 'visual' : 'text';
@@ -181,8 +283,8 @@ function HomeContent() {
   }, [viewMode]);
 
   const handleItemUse = useCallback((item: string) => {
-    if (gameState) executeTurn(`use ${item}`, gameState);
-  }, [gameState, executeTurn]);
+    if (gameState && multiplayerCanAct) executeTurn(`use ${item}`, gameState);
+  }, [gameState, multiplayerCanAct, executeTurn]);
 
   // Load view mode preference on mount
   useEffect(() => {
@@ -239,6 +341,7 @@ function HomeContent() {
 
       // createNewGame loads existing save from DB, or starts fresh if ?newRun=1
       const initialState = await createNewGame({ archetypeKey: selectedClass, forceNew: isNewRun });
+      setMultiplayerSession(null);
       setGameState(initialState);
 
       const restoredLog: Message[] = (initialState.log || []).map((entry: LogEntry) => ({
@@ -280,6 +383,7 @@ function HomeContent() {
         'fighter';
       setSelectedClass(preferredClass);
       const freshState = await resetGame(preferredClass);
+      setMultiplayerSession(null);
       setGameState(freshState);
       setShowIntro(true);
       setIntroStep(0);
@@ -293,8 +397,41 @@ function HomeContent() {
 
   async function handleTurn(e: React.FormEvent) {
     e.preventDefault();
-    if (!input.trim() || isLoading || !gameState) return;
+    if (!input.trim() || isLoading || !gameState || !multiplayerCanAct) return;
     await executeTurn(input, gameState);
+  }
+
+  async function handleCreateSession() {
+    if (!gameState || isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const snapshot = await createMultiplayerFromCurrentGame();
+      applyMultiplayerSnapshot(snapshot);
+      setViewMode('visual');
+    } catch (err) {
+      console.error('Create multiplayer session failed', err);
+      setError('Failed to create session. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleJoinSession() {
+    if (!joinCode.trim() || isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const snapshot = await joinMultiplayerByCode(joinCode, selectedClass || 'fighter');
+      applyMultiplayerSnapshot(snapshot);
+      setShowIntro(false);
+      setViewMode('visual');
+    } catch (err) {
+      console.error('Join multiplayer session failed', err);
+      setError('Failed to join session. Check the code and try again.');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   // 1. CHARACTER SELECT SCREEN
@@ -326,7 +463,30 @@ function HomeContent() {
               ))}
             </div>
             {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
-            <div className="flex justify-end mt-6">
+            <div className="mt-6 border-t border-slate-800 pt-4 flex flex-col md:flex-row gap-3 md:items-end md:justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-300">
+                  <Users size={16} />
+                  Join Party
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 8))}
+                    placeholder="CODE"
+                    className="w-32 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm uppercase tracking-widest focus:outline-none focus:border-amber-500"
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleJoinSession}
+                    disabled={isLoading || !joinCode.trim()}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Join
+                  </button>
+                </div>
+              </div>
               <button
                 onClick={handleStart}
                 disabled={isLoading}
@@ -461,6 +621,50 @@ function HomeContent() {
           </div>
         </div>
 
+        <div className="mb-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 border border-slate-800 bg-slate-900/70 rounded px-3 py-2 text-xs text-slate-300">
+          <div className="flex items-center gap-2 min-w-0">
+            <Users size={14} className="text-amber-500 flex-shrink-0" />
+            {multiplayerSession ? (
+              <>
+                <span className="font-semibold text-amber-400">Party {multiplayerSession.code}</span>
+                <span className="text-slate-500 truncate">
+                  {multiplayerSession.players.length} player{multiplayerSession.players.length === 1 ? '' : 's'}
+                  {actionDisabledReason ? ` · ${actionDisabledReason}` : ' · You can act'}
+                </span>
+              </>
+            ) : (
+              <span className="text-slate-400">Solo run</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {!multiplayerSession && (
+              <button
+                type="button"
+                onClick={handleCreateSession}
+                disabled={isLoading}
+                className="bg-amber-700 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Create Party
+              </button>
+            )}
+            <input
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 8))}
+              placeholder="CODE"
+              disabled={isLoading}
+              className="w-24 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 uppercase tracking-widest focus:outline-none focus:border-amber-500"
+            />
+            <button
+              type="button"
+              onClick={handleJoinSession}
+              disabled={isLoading || !joinCode.trim()}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Join
+            </button>
+          </div>
+        </div>
+
         <div className={`flex-1 overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-slate-700 ${
           viewMode === 'visual' ? 'p-0 pb-4' : 'p-4 pb-32'
         }`}>
@@ -536,9 +740,9 @@ function HomeContent() {
                     placeholder="What do you do?"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    disabled={isLoading}
+                    disabled={isLoading || !multiplayerCanAct}
                   />
-                  <button type="submit" disabled={isLoading || !input.trim()} className="bg-amber-600 hover:bg-amber-700 text-slate-900 font-bold px-6 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm">
+                  <button type="submit" disabled={isLoading || !input.trim() || !multiplayerCanAct} className="bg-amber-600 hover:bg-amber-700 text-slate-900 font-bold px-6 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm">
                     ACT
                   </button>
                 </form>
@@ -549,20 +753,20 @@ function HomeContent() {
               <CommandHints
                 gameState={gameState}
                 onCommand={(cmd) => executeTurn(cmd, gameState)}
-                isLoading={isLoading}
+                isLoading={isLoading || !multiplayerCanAct}
               />
               <form onSubmit={handleTurn} className="flex gap-2">
               <input
                 ref={inputRef}
                 className="flex-1 bg-slate-900 border border-slate-700 rounded p-4 focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-600"
-                placeholder="What do you do?"
+                placeholder={actionDisabledReason || 'What do you do?'}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoading || !multiplayerCanAct}
                 autoFocus
               />
               {lastSlots && <div className="hidden md:flex items-center text-xs text-slate-400 px-2">{lastSlots}</div>}
-              <button type="submit" disabled={isLoading || !input.trim()} className="bg-amber-600 hover:bg-amber-700 text-slate-900 font-bold px-8 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              <button type="submit" disabled={isLoading || !input.trim() || !multiplayerCanAct} className="bg-amber-600 hover:bg-amber-700 text-slate-900 font-bold px-8 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 ACT
               </button>
               <button

@@ -1,5 +1,6 @@
-import type { GameState, LogEntry } from '../game-schema';
+import type { CharacterState, GameState, LogEntry, SessionState } from '../game-schema';
 import { isConsumableItem } from '../consumables';
+import { composeGameStateForSolo } from '../game/state-split';
 import { getSceneById, pickSceneVariant, type StoryExit, type StoryScene } from '../story';
 import {
   normalizeVisualAssetId,
@@ -76,7 +77,7 @@ export type VisualLogEntry = {
 };
 
 export type VisualGameViewModel = {
-  mode: 'solo';
+  mode: 'solo' | 'multiplayer';
   scene: VisualSceneView;
   partySlots: VisualPartySlot[];
   turnState: VisualTurnState;
@@ -88,6 +89,11 @@ export type VisualGameViewModel = {
   threats: VisualThreatView[];
   logEntries: VisualLogEntry[];
   canUseTextFallback: boolean;
+};
+
+export type MultiplayerVisualPlayer = {
+  userId: string;
+  character: CharacterState;
 };
 
 const SOLO_PLAYER_ID = 'solo';
@@ -331,6 +337,30 @@ function buildPartySlot(state: GameState, turnState: VisualTurnState): VisualPar
   };
 }
 
+function buildMultiplayerPartySlot(
+  player: MultiplayerVisualPlayer,
+  youPlayerId: string,
+  turnState: VisualTurnState
+): VisualPartySlot {
+  const portrait = resolveVisualAsset('portrait', [
+    player.character.character?.archetypeKey,
+    player.character.character?.class,
+  ]);
+  return {
+    playerId: player.character.playerId,
+    displayName: player.character.character?.name || 'Adventurer',
+    className: player.character.character?.class || 'Adventurer',
+    hp: player.character.hp,
+    maxHp: player.character.maxHp,
+    ac: player.character.ac,
+    conditions: (player.character.activeEffects || []).map(effect => effect.name),
+    isYou: player.character.playerId === youPlayerId,
+    isActiveTurn: turnState.currentTurnPlayerId === player.character.playerId,
+    portraitAssetId: portrait?.id,
+    portraitPath: portrait?.path,
+  };
+}
+
 function commandTargetName(name: string): string {
   return name
     .replace(/[^a-zA-Z0-9\s-]/g, '')
@@ -418,6 +448,59 @@ export function buildVisualGameViewModel(state: GameState): VisualGameViewModel 
     spellActions: buildSpellActions(state, canAct),
     threats,
     logEntries: buildLogEntries(state),
+    canUseTextFallback: true,
+  };
+}
+
+export function buildMultiplayerVisualGameViewModel(params: {
+  session: SessionState;
+  you: CharacterState;
+  players: MultiplayerVisualPlayer[];
+}): VisualGameViewModel {
+  const { session, you, players } = params;
+  const composed = composeGameStateForSolo(session, you);
+  const currentScene = getSceneById(session.storySceneId);
+  const aliveThreat = (session.nearbyEntities || []).some(entity => entity.status === 'alive' && entity.hp > 0);
+  const isYourCombatTurn = !session.currentTurnPlayerId || session.currentTurnPlayerId === you.playerId;
+  const canAct = you.hp > 0 && (!session.isCombatActive || isYourCombatTurn);
+  const turnState: VisualTurnState = {
+    mode: session.isCombatActive ? 'combat' : 'exploration',
+    currentTurnPlayerId: session.currentTurnPlayerId,
+    canAct,
+    reason: canAct
+      ? undefined
+      : you.hp <= 0
+        ? 'You are down.'
+        : `Waiting for ${session.currentTurnPlayerId || 'the party'}.`,
+  };
+  const sceneImage = resolveSceneImage(composed, currentScene);
+  const knownPlayers = players.length > 0
+    ? players
+    : [{ userId: you.userId || you.playerId, character: you }];
+
+  return {
+    mode: 'multiplayer',
+    scene: {
+      sceneId: currentScene?.id || session.storySceneId,
+      location: currentScene?.location || session.location,
+      title: currentScene?.title,
+      description: currentScene?.description || session.roomRegistry[session.location] || session.location,
+      imagePath: sceneImage.path,
+      imageAssetId: sceneImage.asset?.id,
+    },
+    partySlots: knownPlayers.map(player => buildMultiplayerPartySlot(player, you.playerId, turnState)),
+    turnState,
+    movementActions: buildMovementActions(composed, currentScene, aliveThreat).map(action => ({
+      ...action,
+      enabled: action.enabled && canAct,
+      reason: action.enabled && !canAct ? turnState.reason : action.reason,
+    })),
+    explorationActions: buildExplorationActions(canAct, aliveThreat),
+    combatActions: buildCombatActions(canAct, aliveThreat),
+    inventoryActions: buildInventoryActions(composed, canAct),
+    spellActions: buildSpellActions(composed, canAct),
+    threats: buildThreatViews(composed, canAct),
+    logEntries: buildLogEntries(composed),
     canUseTextFallback: true,
   };
 }

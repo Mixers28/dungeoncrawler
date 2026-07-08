@@ -9,6 +9,15 @@ import { parseIntent } from '../lib/game/intent';
 import { runGameTurn } from '../lib/game/engine';
 import type { GameState, LogEntry } from '../lib/game-schema';
 import type { ArchetypeKey } from './characters';
+import {
+  createCharacterStateForJoiner,
+  createMultiplayerSession,
+  joinMultiplayerSession,
+  loadMultiplayerSession,
+  processMultiplayerSessionTurn,
+  type MultiplayerSessionSnapshot,
+  type SessionTurnResult,
+} from '../lib/game/session-service';
 
 type CreateOptions = { archetypeKey?: ArchetypeKey; forceNew?: boolean };
 
@@ -75,4 +84,45 @@ export async function processTurn(
 
 export async function resetGame(archetypeKey?: ArchetypeKey) {
   return createNewGame({ forceNew: true, archetypeKey });
+}
+
+export async function createMultiplayerFromCurrentGame(): Promise<MultiplayerSessionSnapshot> {
+  const userId = await getUserId();
+  const currentState = await loadSave(userId);
+  if (!currentState) throw new Error('No active game found. Start a new game first.');
+  return createMultiplayerSession(db, userId, currentState);
+}
+
+export async function joinMultiplayerByCode(
+  code: string,
+  archetypeKey?: ArchetypeKey
+): Promise<MultiplayerSessionSnapshot> {
+  if (typeof code !== 'string' || !code.trim()) {
+    throw new Error('Enter a session code.');
+  }
+  const userId = await getUserId();
+  const newState = await buildNewGameState(archetypeKey);
+  const character = createCharacterStateForJoiner(newState, userId);
+  return joinMultiplayerSession(db, code, userId, character);
+}
+
+export async function loadCurrentMultiplayerSession(code: string): Promise<MultiplayerSessionSnapshot | null> {
+  if (typeof code !== 'string' || !code.trim()) return null;
+  const userId = await getUserId();
+  return loadMultiplayerSession(db, code, userId);
+}
+
+export async function processMultiplayerTurn(
+  code: string,
+  userAction: string
+): Promise<SessionTurnResult> {
+  if (typeof userAction !== 'string' || userAction.length > 1000) {
+    throw new Error('Invalid action.');
+  }
+  if (typeof code !== 'string' || !code.trim()) {
+    throw new Error('Invalid session code.');
+  }
+  const userId = await getUserId();
+  const sanitized = userAction.trim().slice(0, 500);
+  return processMultiplayerSessionTurn(db, code, userId, sanitized);
 }

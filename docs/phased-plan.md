@@ -135,7 +135,8 @@ Action items (Phase 2):
 Status:
 - Visual Phase 0 is functionally closed: full-time visual mode (exploration + combat, not combat-only), movement/action/inventory/spellbook all button-driven against `buildVisualGameViewModel`, Act 1 manifest coverage with deterministic placeholders, e2e smoke coverage, and the multiplayer-readiness review are complete. See `docs/visual-multiplayer-phase0.md` and `docs/multiplayer-readiness-review.md`.
 - Generated final art remains polish; the functional requirement is local assets plus graceful fallbacks.
-- Phase M1 has started with schemas, a party-of-one compatibility shim, sliced `TurnContext` access for combat, casting, story/search, loot/economy, and sheet state, plus trusted in-turn context sync. `SessionState`, `CharacterState`, `splitGameStateForSolo`, `splitGameStateForSoloTrusted`, `composeGameStateForSolo`, and context helpers have regression coverage.
+- Phase M1 is functionally complete with schemas, a party-of-one compatibility shim, sliced `TurnContext` access for combat, casting, story/search, loot/economy, and sheet state, plus trusted in-turn context sync. `SessionState`, `CharacterState`, `splitGameStateForSolo`, `splitGameStateForSoloTrusted`, `composeGameStateForSolo`, and context helpers have regression coverage.
+- Phase M2 has started with durable `game_sessions`/`session_players` tables, join-code allocation, server-side create/join/load/session-turn helpers, session-aware visual view-model/UI/polling, and turn-gate regression coverage.
 - `docs/multiplayer-design.md` remains the architecture reference for Phase M1+.
 
 Action items (Visual Phase 0):
@@ -152,14 +153,18 @@ Action items (Phase M1):
 [x] Add round-trip regression coverage for solo compatibility.
 [x] Migrate active monster target selection and damage application onto `TurnContext` behind the party-of-one shim.
 [x] Move solo monster retaliation actor-damage reads/writes behind `TurnContext`.
-[ ] Add session round-batch monster handling in Phase M2 after session tables exist.
+[x] Add session round-batch monster handling in Phase M2 after session tables exist.
 [x] Migrate casting spell-slot, healing, actor-effect, and enemy-effect writes onto `TurnContext`.
 [x] Migrate successful story exit item consumption, scene visits, and transition composition onto `TurnContext`.
 [x] Migrate search/discovery item grants, inventory logs, and story flags onto `TurnContext`.
 [x] Migrate loot/economy state access onto `TurnContext`.
 [x] Migrate sheet fields onto `TurnContext`.
 [x] Review Phase M1 context parse/sync costs before Phase M2 session tables.
-[ ] Start Phase M2 session tables and join-by-code flow.
+[x] Start Phase M2 session tables and join-by-code flow.
+[x] Add session-aware party view-model adapter.
+[x] Add session-aware UI/polling.
+[x] Move monster turns to a session round-batch resolver.
+[x] Add two-browser multiplayer e2e coverage.
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
 - Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.
