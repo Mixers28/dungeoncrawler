@@ -97,6 +97,7 @@
 - Two-browser multiplayer e2e now covers owner signup/create party, joiner signup/join by code, polling to 2-player party state, shared movement, and shared log update.
 - Phase M3 balance knobs started: newly spawned live monsters in multiplayer sessions scale HP by party size (1.25x for 2 players, 1.5x for 3, 1.75x for 4+) while solo remains unchanged.
 - Antigravity (AGY) has been assigned visual asset generation/rework. Codex reviews manifest/schema/path compatibility; Claude Code reviews viewport/UI fit and style consistency. Asset generation is not complete yet; untracked scene PNGs exist under `public/visual/scenes/` but are not wired through the manifest.
+- Codex added the controlled OpenAI candidate-generation pipeline: `npm run assets:generate` writes dry-run/API candidates under ignored `public/visual/_candidates/` and never updates the manifest automatically.
 
 ## E2E Notes
 

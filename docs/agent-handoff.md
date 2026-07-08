@@ -4,6 +4,38 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-08 - Codex - Controlled OpenAI Asset Generation Pipeline
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `scripts/generate-visual-assets.ts`
+- `docs/visual-asset-generation.md`
+- `.env.local.example`
+- `.gitignore`
+- `package.json`
+
+Summary:
+- Added a controlled candidate-generation workflow for visual assets using the OpenAI Image API.
+- The script is dry-run by default and only calls the API when `--generate` is passed.
+- Candidate outputs go under `public/visual/_candidates/<batch-id>/...`, which is ignored by git so failed/generated review batches are not accidentally committed.
+- The script estimates output cost from the current OpenAI image pricing table and refuses to run if the estimate exceeds `--max-cost` or `ASSET_GEN_MAX_COST_USD`.
+- Prompts are generated from the manifest IDs with explicit anti-glyph requirements for monsters/items/portraits, avoiding the failed 32x32/64x64 scaled-sprite prompt pattern.
+
+Contract changes:
+- New npm command: `npm run assets:generate`.
+- Optional env vars documented in `.env.local.example`: `OPENAI_API_KEY`, `ASSET_GEN_MAX_COST_USD`, `ASSET_GEN_MODEL`, `ASSET_GEN_QUALITY`.
+- No manifest or final asset files are modified by the generator.
+
+Validation:
+- `npm run assets:generate -- --kind=monster --source=generated --limit=1 --candidates=1` passed as a dry run.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+
+Needs from other agent:
+- Antigravity: use this pipeline for regenerated monsters/items/portraits; review candidates before asking Codex to promote them.
+- Claude Code: review candidate assets in UI before manifest promotion.
+
 ## Handoff - 2026-07-08 - Antigravity (AGY) - EOB3 Style Visual Asset Batch v1
 
 Owner: Antigravity (AGY)
