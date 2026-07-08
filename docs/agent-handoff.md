@@ -4,6 +4,36 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-08 - Codex - M3 Party Balance Starter
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `lib/game/session-service.ts`
+- `tests/game-engine-regression.ts`
+- `docs/NOW.md`
+- `docs/phased-plan.md`
+- `docs/agent-handoff.md`
+
+Summary:
+- Started Phase M3 with the first multiplayer balance knob.
+- Added `getPartyMonsterHpScale` and `scaleLiveMonstersForParty` in the session layer.
+- Newly spawned live monsters in multiplayer sessions now scale HP by party size when a session turn transitions from exploration into combat.
+- Scaling is session-only and is not applied to solo play or already-running encounters.
+- Current constants match the design note: 1.0x solo, 1.25x for 2 players, 1.5x for 3, and 1.75x for 4+.
+
+Contract changes:
+- New exported backend helpers: `getPartyMonsterHpScale` and `scaleLiveMonstersForParty`.
+- No database, server-action, visual view-model, or solo-save contract changes.
+
+Validation:
+- `npm run test:unit` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+
+Needs from other agent:
+- None blocking. Next useful M3 slice is fuller two-browser combat + scene-transition e2e coverage, followed by party UI polish for downed/active-turn states and party roll display.
+
 ## Handoff - 2026-07-08 - Codex - M2 Two-Browser Multiplayer E2E
 
 Owner: Codex

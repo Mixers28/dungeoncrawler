@@ -8,7 +8,7 @@
 - Recent engine fixes added equip/drop commands, owned-weapon validation, equipped-weapon default attacks, matching requested-weapon damage dice, and target-aware attacks.
 - Story Phase 1 is closed: authored hub/branch/boss progression now has unit regression coverage for gates, discoveries, branch completion, boss unlocks, and seeded variants.
 - Visual Multiplayer Phase 0 is functionally closed: `VisualDungeonShell` runs full-time (exploration + combat) against Codex's `buildVisualGameViewModel`, with button-driven movement/combat/inventory/spellbook drawers, Act 1 manifest coverage/placeholders, and a multiplayer-readiness review.
-- Visual Multiplayer Phase M1 is functionally complete, and Phase M2 has started with session tables plus server-side create/join/load/turn-gate helpers for shared co-op sessions.
+- Visual Multiplayer Phase M1 and M2 are functionally complete for the local baseline; Phase M3 has started with session-only monster HP scaling for 2-4 player parties.
 - Validation baseline is green: `npm run db:migrate`, `npm run test:unit`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm run test:e2e` (including new `e2e/visual-mode.spec.ts`) pass locally.
 - Next verification gap: walk the deploy checklist against the production environment.
 <!-- SUMMARY_END -->
@@ -62,6 +62,7 @@
    - [x] Add session-aware UI/polling.
    - [x] Move monster turns to a session round-batch resolver.
    - [x] Add two-browser multiplayer e2e coverage.
+   - [x] Start Phase M3 balance knobs with party-size monster HP scaling for multiplayer sessions.
 
 ## Recently Completed
 
@@ -94,6 +95,7 @@
 - Session-aware UI/polling added: create/join controls, multiplayer command routing, 3-second session polling, disabled turn controls, and e2e coverage for creating a party from visual mode.
 - Multiplayer monster turns now resolve as a session round batch after the last active player acts; solo retaliation remains unchanged.
 - Two-browser multiplayer e2e now covers owner signup/create party, joiner signup/join by code, polling to 2-player party state, shared movement, and shared log update.
+- Phase M3 balance knobs started: newly spawned live monsters in multiplayer sessions scale HP by party size (1.25x for 2 players, 1.5x for 3, 1.75x for 4+) while solo remains unchanged.
 
 ## E2E Notes
 
@@ -104,7 +106,7 @@
 
 ## Scratchpad
 
-- `docs/multiplayer-design.md` is untracked at the time of this note; treat it as user work unless explicitly asked to edit it.
+- `docs/multiplayer-design.md` remains the architecture reference for Phase M1+.
 - `docs/visual-multiplayer-phase0.md` is the current UI/asset plan that bridges the existing solo game to the multiplayer design.
 - `docs/agent-crossover-contract.md` defines Codex backend ownership, Claude frontend ownership, and reciprocal audits.
 - `docs/agent-handoff.md` is the active communication ledger between agents.

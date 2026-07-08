@@ -8,9 +8,11 @@ import {
   addPlayerToSession,
   createCharacterStateForJoiner,
   createSessionStateForOwner,
+  getPartyMonsterHpScale,
   normalizeSessionTurnState,
   resolveMonsterRound,
   runSessionTurn,
+  scaleLiveMonstersForParty,
 } from '../lib/game/session-service';
 import {
   addActorEffect,
@@ -783,6 +785,34 @@ async function testMultiplayerDownedActorCannotAct() {
   assert.match(result.reason || '', /down/i);
 }
 
+async function testMultiplayerMonsterHpScaleForPartySize() {
+  assert.equal(getPartyMonsterHpScale(1), 1);
+  assert.equal(getPartyMonsterHpScale(2), 1.25);
+  assert.equal(getPartyMonsterHpScale(3), 1.5);
+  assert.equal(getPartyMonsterHpScale(4), 1.75);
+  assert.equal(getPartyMonsterHpScale(6), 1.75);
+}
+
+async function testMultiplayerMonsterHpScalingTouchesLiveMonstersOnly() {
+  const state = await makeState();
+  const { session } = createSessionStateForOwner({
+    ...state,
+    nearbyEntities: [
+      makeMonster('Zombie', 10),
+      { ...makeMonster('Skeleton', 8), hp: 0, status: 'dead' },
+    ],
+    isCombatActive: true,
+  }, 'owner-user');
+
+  const scaled = scaleLiveMonstersForParty(session, 3);
+
+  assert.equal(scaled.nearbyEntities[0].hp, 15);
+  assert.equal(scaled.nearbyEntities[0].maxHp, 15);
+  assert.equal(scaled.nearbyEntities[1].hp, 0);
+  assert.equal(scaled.nearbyEntities[1].maxHp, 8);
+  assert.equal(session.nearbyEntities[0].hp, 10);
+}
+
 async function testMultiplayerVisualViewModelUsesPartyAndTurnState() {
   const state = await makeState();
   const { session, owner } = createSessionStateForOwner({
@@ -1007,6 +1037,8 @@ async function main() {
   await testMultiplayerMonsterBatchRunsAfterLastPlayer();
   await testMultiplayerMonsterBatchSkipsDownedTargets();
   await testMultiplayerDownedActorCannotAct();
+  await testMultiplayerMonsterHpScaleForPartySize();
+  await testMultiplayerMonsterHpScalingTouchesLiveMonstersOnly();
   await testMultiplayerVisualViewModelUsesPartyAndTurnState();
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();

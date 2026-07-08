@@ -136,7 +136,8 @@ Status:
 - Visual Phase 0 is functionally closed: full-time visual mode (exploration + combat, not combat-only), movement/action/inventory/spellbook all button-driven against `buildVisualGameViewModel`, Act 1 manifest coverage with deterministic placeholders, e2e smoke coverage, and the multiplayer-readiness review are complete. See `docs/visual-multiplayer-phase0.md` and `docs/multiplayer-readiness-review.md`.
 - Generated final art remains polish; the functional requirement is local assets plus graceful fallbacks.
 - Phase M1 is functionally complete with schemas, a party-of-one compatibility shim, sliced `TurnContext` access for combat, casting, story/search, loot/economy, and sheet state, plus trusted in-turn context sync. `SessionState`, `CharacterState`, `splitGameStateForSolo`, `splitGameStateForSoloTrusted`, `composeGameStateForSolo`, and context helpers have regression coverage.
-- Phase M2 has started with durable `game_sessions`/`session_players` tables, join-code allocation, server-side create/join/load/session-turn helpers, session-aware visual view-model/UI/polling, and turn-gate regression coverage.
+- Phase M2 is functionally complete for the local baseline with durable `game_sessions`/`session_players` tables, join-code allocation, server-side create/join/load/session-turn helpers, session-aware visual view-model/UI/polling, monster round-batch resolution, and two-browser join/action e2e coverage.
+- Phase M3 has started with the first balance knob: newly spawned live monsters in multiplayer sessions scale HP by party size while solo encounters remain unchanged.
 - `docs/multiplayer-design.md` remains the architecture reference for Phase M1+.
 
 Action items (Visual Phase 0):
@@ -165,6 +166,12 @@ Action items (Phase M1):
 [x] Add session-aware UI/polling.
 [x] Move monster turns to a session round-batch resolver.
 [x] Add two-browser multiplayer e2e coverage.
+
+Action items (Phase M3):
+[x] Add session-only party-size monster HP scaling for newly spawned encounters.
+[ ] Add fuller two-browser combat + scene-transition e2e coverage.
+[ ] Tighten party UI affordances for active turn, downed players, and party roll display.
+[ ] Playtest a 2-player Act 1 hub-to-boss route and tune the first balance constants.
 
 ## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
 - Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.

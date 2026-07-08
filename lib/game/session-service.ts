@@ -45,6 +45,7 @@ export type SessionTurnResult = {
 
 const SESSION_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const SESSION_CODE_LENGTH = 6;
+const MAX_BALANCED_PARTY_SIZE = 4;
 
 function cloneSessionState(state: SessionState): SessionState {
   return sessionStateSchema.parse(state);
@@ -175,6 +176,31 @@ function getEffectiveActorAc(actor: CharacterState): number {
 
 function withUpdatedPlayer(players: CharacterState[], updated: CharacterState): CharacterState[] {
   return players.map(player => player.playerId === updated.playerId ? updated : player);
+}
+
+export function getPartyMonsterHpScale(partySize: number): number {
+  const effectivePartySize = Math.min(MAX_BALANCED_PARTY_SIZE, Math.max(1, Math.floor(partySize)));
+  return Math.max(1, 0.75 + (0.25 * effectivePartySize));
+}
+
+export function scaleLiveMonstersForParty(session: SessionState, partySize: number): SessionState {
+  const scale = getPartyMonsterHpScale(partySize);
+  if (scale === 1) return session;
+
+  return {
+    ...session,
+    nearbyEntities: (session.nearbyEntities || []).map(entity => {
+      const isLiveMonster = entity.status === 'alive' && entity.hp > 0;
+      if (!isLiveMonster) return entity;
+      const scaledMaxHp = Math.max(1, Math.ceil(entity.maxHp * scale));
+      const scaledHp = Math.max(1, Math.ceil(entity.hp * scale));
+      return {
+        ...entity,
+        hp: Math.min(scaledHp, scaledMaxHp),
+        maxHp: scaledMaxHp,
+      };
+    }),
+  };
 }
 
 export function resolveMonsterRound(
@@ -346,7 +372,7 @@ export async function runSessionTurn(
     ].slice(-50),
   };
   const split = splitGameStateForSoloTrusted(nextState, actor.playerId);
-  const sessionAfterAction = {
+  const rawSessionAfterAction = {
     ...split.session,
     turnOrder: normalizedSession.turnOrder,
     version: normalizedSession.version + 1,
@@ -356,6 +382,10 @@ export async function runSessionTurn(
     playerId: actor.playerId,
     userId: actor.userId,
   });
+  const combatStarted = !normalizedSession.isCombatActive && rawSessionAfterAction.isCombatActive;
+  const sessionAfterAction = combatStarted
+    ? scaleLiveMonstersForParty(rawSessionAfterAction, nextPlayers.length)
+    : rawSessionAfterAction;
   let nextSession = sessionAfterAction.isCombatActive
     ? {
         ...sessionAfterAction,
