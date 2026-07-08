@@ -1,8 +1,59 @@
 # Agent Handoff Ledger
 
-> Active communication file for Codex and Claude Code. Add newest entries near the top of each section. Keep entries short and specific.
+> Active communication file for Codex, Claude Code, and Antigravity (AGY). Add newest entries near the top of each section. Keep entries short and specific.
 
 ## Active Handoffs
+
+## Handoff - 2026-07-08 - Claude Code/Codex - Visual Asset Generation, Assigned to Antigravity (AGY)
+
+Owner: Antigravity (AGY)
+Status: assigned - not complete
+Files touched:
+- `docs/agent-handoff.md`
+- `docs/agent-crossover-contract.md`
+
+Summary:
+- Visual asset generation/rework (scenes, monsters, items, portraits) is assigned to Antigravity, not Codex. This supersedes the "Codex, please pick this up" framing in the prior proposal entry below; Codex should not duplicate this work.
+- Goal: give the game a consistent Eye of the Beholder 3-style look across shared scene/monster art. This matters more now than it did in solo play, because multiplayer means several players look at the same shared scene/monster assets at once.
+- Codex reviewed Claude's assignment on 2026-07-08 and corrected the ownership model in `docs/agent-crossover-contract.md`: Antigravity owns asset production and manifest asset-content updates; Codex owns schema/loader validation; Claude owns visual/UI fit review.
+- Current repo status: asset generation is not complete. `data/visual/asset-manifest.json` currently has 48 entries: 35 `existing`, 13 `fallback`, and 0 `generated`. Antigravity appears to have started untracked scene PNGs under `public/visual/scenes/`, but they are not committed and are not wired through the manifest yet.
+
+Read first (in order):
+1. `docs/visual-multiplayer-phase0.md` — the "Generation Style Guide" section has the EOB3-style prompt templates per asset class (scene backdrops, door states, monster standees, item icons, character portraits, UI frame pieces, status icons) and the "Asset Pipeline" section defines local path conventions.
+2. `lib/visual/assets.ts` — the manifest schema (Zod) that every asset entry must satisfy.
+3. `data/visual/asset-manifest.json` — the current manifest; most entries are still placeholders/fallbacks (`source: 'fallback'` or reused pre-existing art from `public/scene-cache/**`), not generated art.
+
+Contract every asset must follow:
+- File path: `public/visual/<kind>/<id>.png` where `<kind>` is `scenes`, `monsters`, `items`, or `portraits` (matches the existing `public/visual/` layout already used by fallback SVGs).
+- Manifest entry shape (see `visualAssetSchema` in `lib/visual/assets.ts`): `id`, `kind` (`scene | monster | item | portrait | ui`), `path`, `styleVersion`, `source: 'generated'`, `prompt` (the prompt actually used), optional `width`/`height`, optional `tags`.
+- `id` values must match what `lib/visual/view-model.ts` and the story data already reference (scene ids like `future_courtyard_hub_v1`, monster names normalized via `normalizeVisualAssetId`, etc.) — check `data/visual/asset-manifest.json` for the exact ids currently expected before generating anything, so new art actually gets picked up instead of silently falling back.
+
+The one rule that matters most for multiplayer:
+- Treat `styleVersion` as a hard batch gate, not a per-asset label. Regenerate a whole batch of assets together under one `styleVersion` string rather than reworking one asset at a time — mixing old-style and new-style assets in the same shared scene is the exact problem we're trying to avoid. Bump `styleVersion` repo-wide only when a full batch is ready to ship together.
+
+Frontend impact:
+- None required. `DungeonViewport`, `PartyRail`, and the inventory/spellbook drawers already just render whatever `imagePath` the view model resolves from the manifest — once entries move from fallback to real generated art with a matching `id`, they'll appear automatically with no frontend code changes.
+
+Antigravity duties:
+- Generate or rework the first complete visual batch for Act 1 shared gameplay: scene backdrops, monster standees, item icons, and class portraits already represented in `data/visual/asset-manifest.json`.
+- Write generated PNGs under `public/visual/scenes/`, `public/visual/monsters/`, `public/visual/items/`, and `public/visual/portraits/`.
+- Update manifest entries to `source: 'generated'`, real `/visual/...` paths, the batch `styleVersion`, actual prompts, and dimensions where known.
+- Preserve fallback entries and do not remove existing public assets unless a separate cleanup handoff is accepted.
+- Do not edit `lib/**`, `app/**`, `components/**`, DB schema, game logic, or tests. If a generation script is needed, propose its contract first for Codex review.
+
+Completion criteria:
+- Manifest parses through the existing Zod schema.
+- Every generated manifest path points to a committed file.
+- No manifest entry silently falls back because of mismatched IDs.
+- A single `styleVersion` covers the whole shipped batch.
+- Codex has signed off on manifest/schema/path compatibility.
+- Claude Code has signed off on viewport/UI visual fit and style consistency.
+
+Needs from other agent:
+- Antigravity: pick a `styleVersion` tag for the first full batch, generate/rework assets per the contract above, and update `data/visual/asset-manifest.json` accordingly.
+- Codex: after Antigravity lands assets, run schema/path/ID validation and relevant regression checks.
+- Claude Code: after Antigravity lands assets, inspect the generated assets in the visual UI across desktop/mobile and confirm style consistency/readability.
+- User: confirm which image-gen provider/API Antigravity will use, since that determines whether image-to-image style-pinning is available versus prompt-only generation.
 
 ## Handoff - 2026-07-08 - Codex - M3 Party Balance Starter
 
@@ -138,7 +189,7 @@ Needs from other agent:
 ## Handoff - 2026-07-08 - Claude Code - Proposal: Automate Visual Asset Generation
 
 Owner: Claude Code
-Status: proposed
+Status: superseded — reassigned to Antigravity (AGY), see the newer entry above. Codex: no action needed on this one.
 Files touched:
 - None (proposal only)
 

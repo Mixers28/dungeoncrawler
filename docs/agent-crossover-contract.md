@@ -9,15 +9,19 @@ description: Ownership, handoff, and cross-audit rules for Codex backend work an
 
 ## Purpose
 
-Codex and Claude Code will work in the same repo with separate primary ownership:
+Codex, Claude Code, and Antigravity (AGY) will work in the same repo with separate primary ownership:
 
 - Codex owns backend assembly, data contracts, deterministic game logic, persistence, validation, and backend audit.
 - Claude Code owns frontend UI implementation, visual layout, interaction design, responsive behavior, and frontend audit.
+- Antigravity owns visual asset generation/rework, style consistency, and manifest asset-content updates.
 
-Both agents review across the boundary:
+Agents review across their boundaries:
 
 - Codex audits frontend changes for contract misuse, missing state handling, broken commands, data-shape drift, and validation gaps.
 - Claude Code audits backend changes for UI fit, prop ergonomics, missing presentation fields, excessive coupling, and awkward user flows.
+- Codex audits Antigravity asset work for manifest schema validity, ID/path compatibility, missing fallback behavior, and generated files matching committed manifest paths.
+- Claude Code audits Antigravity asset work for visual fit in the dungeon viewport, party/inventory/spell UI, mobile/desktop framing, and style consistency.
+- Antigravity does not own game logic, DB schema, server actions, UI behavior, or generated code unless a separate handoff explicitly assigns it.
 
 The goal is not two isolated silos. The goal is one shared contract with clear ownership, explicit handoffs, and a second set of eyes on every boundary.
 
@@ -37,8 +41,10 @@ Read these first, in order:
 |---|---|---|---|
 | Game engine and deterministic rules | Codex | Claude Code | `lib/game/**`, `lib/5e/**`, `lib/story.ts`, `lib/rules.ts` |
 | DB schema, migrations, auth, server actions | Codex | Claude Code | `lib/db/**`, `drizzle/**`, `auth*.ts`, `app/actions.ts`, API routes |
-| Asset manifest schema and loader helpers | Codex | Claude Code | `data/visual/**`, `lib/visual/**`, public asset fallback rules |
-| Generated asset pipeline and naming contracts | Codex | Claude Code | Prompt/style metadata, cache paths, manifest validation |
+| Asset manifest schema and loader helpers | Codex | Claude Code | `lib/visual/**`, manifest schema, fallback rules, validation tests |
+| Generated asset production and rework | Antigravity (AGY) | Claude Code, Codex | `public/visual/**`, generated scene/monster/item/portrait PNGs, prompt metadata |
+| Visual asset manifest content | Antigravity (AGY) | Codex, Claude Code | `data/visual/asset-manifest.json`; Codex validates schema/IDs/paths, Claude validates UI fit |
+| Generated asset pipeline and naming contracts | Antigravity (AGY) | Codex, Claude Code | Prompt/style metadata, cache paths, manifest content; Codex owns schema contract |
 | Visual shell components and layout | Claude Code | Codex | `components/**`, visual-mode sections in `app/page.tsx`, CSS |
 | Responsive and interaction polish | Claude Code | Codex | Mobile/desktop layout, drawers, controls, accessibility |
 | E2E visual smoke flows | Shared | Shared | Claude writes UI flow; Codex verifies backend/state expectations |
@@ -68,6 +74,22 @@ Claude Code may edit:
 - `public/**` visual assets and placeholders
 - `e2e/**` when adding UI flow coverage
 - Docs
+
+Antigravity may edit:
+
+- `public/visual/**`
+- `data/visual/asset-manifest.json`
+- Docs handoff entries related to visual asset generation and QA
+
+Antigravity should avoid editing:
+
+- `lib/**`
+- `app/**`
+- `components/**`
+- `drizzle/**`
+- `tests/**` and `e2e/**`
+
+Exception: if asset generation requires a script, Antigravity must first add a handoff describing the proposed script contract, environment variables, provider assumptions, and output paths. Codex reviews that contract before code lands.
 
 Shared/high-conflict files:
 
@@ -154,6 +176,7 @@ Codex audits Claude frontend changes for:
 - Visual asset fallbacks cannot break gameplay.
 - E2E covers the new primary path.
 - No accidental regression to text-only required flow.
+- Antigravity assets referenced by the manifest resolve through existing loader helpers.
 
 Claude Code audits Codex backend changes for:
 
@@ -163,6 +186,21 @@ Claude Code audits Codex backend changes for:
 - Loading/error/empty states are representable.
 - Multiplayer turn ownership can be displayed cleanly.
 - Backend changes support visual-first flow rather than preserving text-first assumptions.
+
+Codex audits Antigravity asset changes for:
+
+- `data/visual/asset-manifest.json` parses with `visualAssetManifestSchema`.
+- Asset IDs match `normalizeVisualAssetId` expectations and existing story/view-model references.
+- Every manifest `path` points to a committed file under `public/visual/**` or another intentional public path.
+- `source`, `styleVersion`, `prompt`, and optional dimensions are present where required by the asset batch contract.
+- Fallback entries remain available and gameplay cannot break if an asset is missing.
+
+Claude Code audits Antigravity asset changes for:
+
+- Scene images frame correctly in `DungeonViewport` on desktop and mobile.
+- Monster standees, item icons, and portraits are readable at their rendered sizes.
+- Assets share one coherent batch style and do not mix incompatible lighting/palette/composition.
+- No generated image includes text, UI captions, watermarks, unreadable important affordances, or content that blocks gameplay clarity.
 
 ## Visual Phase 0 Split
 
