@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { parseActionIntentWithKnown } from '../lib/5e/intents';
 import { parseIntent } from '../lib/game/intent';
 import { runGameTurn } from '../lib/game/engine';
+import { isValidSessionCode, normalizeSessionCodeInput } from '../lib/game/session-code';
 import { buildNewGameState } from '../lib/game/state';
 import { composeGameStateForSolo, splitGameStateForSolo, splitGameStateForSoloTrusted } from '../lib/game/state-split';
 import {
@@ -813,6 +814,13 @@ async function testMultiplayerMonsterHpScalingTouchesLiveMonstersOnly() {
   assert.equal(session.nearbyEntities[0].hp, 10);
 }
 
+async function testSessionCodeValidationRejectsPartialCode() {
+  assert.equal(normalizeSessionCodeInput(' tm6sjl '), 'TM6SJL');
+  assert.equal(isValidSessionCode('TM6SJL'), true);
+  assert.equal(isValidSessionCode('TM6SL'), false);
+  assert.equal(isValidSessionCode(normalizeSessionCodeInput('TM6SL')), false);
+}
+
 async function testMultiplayerVisualViewModelUsesPartyAndTurnState() {
   const state = await makeState();
   const { session, owner } = createSessionStateForOwner({
@@ -1039,6 +1047,7 @@ async function main() {
   await testMultiplayerDownedActorCannotAct();
   await testMultiplayerMonsterHpScaleForPartySize();
   await testMultiplayerMonsterHpScalingTouchesLiveMonstersOnly();
+  await testSessionCodeValidationRejectsPartialCode();
   await testMultiplayerVisualViewModelUsesPartyAndTurnState();
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();

@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { buildNewGameState, hydrateState } from '../lib/game/state';
 import { parseIntent } from '../lib/game/intent';
 import { runGameTurn } from '../lib/game/engine';
+import { isValidSessionCode, normalizeSessionCodeInput } from '../lib/game/session-code';
 import type { GameState, LogEntry } from '../lib/game-schema';
 import type { ArchetypeKey } from './characters';
 import {
@@ -100,16 +101,22 @@ export async function joinMultiplayerByCode(
   if (typeof code !== 'string' || !code.trim()) {
     throw new Error('Enter a session code.');
   }
+  const normalizedCode = normalizeSessionCodeInput(code);
+  if (!isValidSessionCode(normalizedCode)) {
+    throw new Error('Party codes are exactly 6 characters.');
+  }
   const userId = await getUserId();
   const newState = await buildNewGameState(archetypeKey);
   const character = createCharacterStateForJoiner(newState, userId);
-  return joinMultiplayerSession(db, code, userId, character);
+  return joinMultiplayerSession(db, normalizedCode, userId, character);
 }
 
 export async function loadCurrentMultiplayerSession(code: string): Promise<MultiplayerSessionSnapshot | null> {
   if (typeof code !== 'string' || !code.trim()) return null;
+  const normalizedCode = normalizeSessionCodeInput(code);
+  if (!isValidSessionCode(normalizedCode)) return null;
   const userId = await getUserId();
-  return loadMultiplayerSession(db, code, userId);
+  return loadMultiplayerSession(db, normalizedCode, userId);
 }
 
 export async function processMultiplayerTurn(
@@ -122,7 +129,11 @@ export async function processMultiplayerTurn(
   if (typeof code !== 'string' || !code.trim()) {
     throw new Error('Invalid session code.');
   }
+  const normalizedCode = normalizeSessionCodeInput(code);
+  if (!isValidSessionCode(normalizedCode)) {
+    throw new Error('Invalid session code.');
+  }
   const userId = await getUserId();
   const sanitized = userAction.trim().slice(0, 500);
-  return processMultiplayerSessionTurn(db, code, userId, sanitized);
+  return processMultiplayerSessionTurn(db, normalizedCode, userId, sanitized);
 }

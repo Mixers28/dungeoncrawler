@@ -12,6 +12,7 @@ import {
 import { parseIntent } from './intent';
 import { runGameTurn } from './engine';
 import { rollD20, rollDice } from './dice';
+import { SESSION_CODE_ALPHABET, SESSION_CODE_LENGTH } from './session-code';
 import { composeGameStateForSolo, splitGameStateForSolo, splitGameStateForSoloTrusted } from './state-split';
 
 type DbClient = typeof appDb;
@@ -43,8 +44,6 @@ export type SessionTurnResult = {
   logEntries: LogEntry[];
 };
 
-const SESSION_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const SESSION_CODE_LENGTH = 6;
 const MAX_BALANCED_PARTY_SIZE = 4;
 
 function cloneSessionState(state: SessionState): SessionState {

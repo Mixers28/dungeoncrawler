@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Skull, ArrowRight, BookOpen, X, Eye, EyeOff, Users } from 'lucide-react';
+import { Skull, ArrowRight, BookOpen, X, Eye, EyeOff, Users, Copy, Check } from 'lucide-react';
 import type { GameState, LogEntry, NarrationMode, RollEvent } from '../lib/game-schema';
 import type { MultiplayerSessionSnapshot } from '../lib/game/session-service';
+import { isValidSessionCode, normalizeSessionCodeInput } from '../lib/game/session-code';
 import { composeGameStateForSolo } from '../lib/game/state-split';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { RightSidebar } from '../components/RightSidebar';
@@ -68,6 +69,7 @@ function HomeContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [joinCode, setJoinCode] = useState('');
+  const [copiedPartyCode, setCopiedPartyCode] = useState(false);
   const [isDying, setIsDying] = useState(false);
   const [deathCountdown, setDeathCountdown] = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<ArchetypeKey | null>('fighter');
@@ -109,6 +111,8 @@ function HomeContent() {
       ? 'You are down.'
       : `Waiting for ${multiplayerSession.session.currentTurnPlayerId || 'the party'}.`
     : null;
+  const normalizedJoinCode = normalizeSessionCodeInput(joinCode);
+  const canJoinParty = isValidSessionCode(normalizedJoinCode);
 
   const messagesFromLog = useCallback((log: LogEntry[]): Message[] =>
     (log || []).map((entry) => ({
@@ -418,19 +422,36 @@ function HomeContent() {
   }
 
   async function handleJoinSession() {
-    if (!joinCode.trim() || isLoading) return;
+    if (isLoading) return;
+    if (!canJoinParty) {
+      setError('Party codes are 6 characters. Copy the full code from the host browser.');
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
-      const snapshot = await joinMultiplayerByCode(joinCode, selectedClass || 'fighter');
+      const snapshot = await joinMultiplayerByCode(normalizedJoinCode, selectedClass || 'fighter');
       applyMultiplayerSnapshot(snapshot);
+      setJoinCode('');
       setShowIntro(false);
       setViewMode('visual');
     } catch (err) {
-      console.error('Join multiplayer session failed', err);
-      setError('Failed to join session. Check the code and try again.');
+      const message = err instanceof Error ? err.message : '';
+      setError(message || 'Failed to join session. Check the code and try again.');
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleCopyPartyCode() {
+    if (!multiplayerSession?.code) return;
+    try {
+      await navigator.clipboard.writeText(multiplayerSession.code);
+      setCopiedPartyCode(true);
+      window.setTimeout(() => setCopiedPartyCode(false), 1500);
+    } catch (err) {
+      console.error('Copy party code failed', err);
+      setError('Could not copy the party code. Select the code and copy it manually.');
     }
   }
 
@@ -472,15 +493,19 @@ function HomeContent() {
                 <div className="flex gap-2">
                   <input
                     value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 8))}
+                    onChange={(e) => {
+                      setJoinCode(normalizeSessionCodeInput(e.target.value));
+                      setError(null);
+                    }}
                     placeholder="CODE"
+                    maxLength={6}
                     className="w-32 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm uppercase tracking-widest focus:outline-none focus:border-amber-500"
                     disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={handleJoinSession}
-                    disabled={isLoading || !joinCode.trim()}
+                    disabled={isLoading || !canJoinParty}
                     className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Join
@@ -627,6 +652,15 @@ function HomeContent() {
             {multiplayerSession ? (
               <>
                 <span className="font-semibold text-amber-400">Party {multiplayerSession.code}</span>
+                <button
+                  type="button"
+                  onClick={handleCopyPartyCode}
+                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-700 text-slate-300 hover:border-amber-500 hover:text-amber-300"
+                  aria-label="Copy party code"
+                  title="Copy party code"
+                >
+                  {copiedPartyCode ? <Check size={13} /> : <Copy size={13} />}
+                </button>
                 <span className="text-slate-500 truncate">
                   {multiplayerSession.players.length} player{multiplayerSession.players.length === 1 ? '' : 's'}
                   {actionDisabledReason ? ` · ${actionDisabledReason}` : ' · You can act'}
@@ -649,21 +683,26 @@ function HomeContent() {
             )}
             <input
               value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 8))}
+              onChange={(e) => {
+                setJoinCode(normalizeSessionCodeInput(e.target.value));
+                setError(null);
+              }}
               placeholder="CODE"
+              maxLength={6}
               disabled={isLoading}
               className="w-24 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 uppercase tracking-widest focus:outline-none focus:border-amber-500"
             />
             <button
               type="button"
               onClick={handleJoinSession}
-              disabled={isLoading || !joinCode.trim()}
+              disabled={isLoading || !canJoinParty}
               className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Join
             </button>
           </div>
         </div>
+        {error && <p className="mb-2 text-sm text-red-400">{error}</p>}
 
         <div className={`flex-1 overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-slate-700 ${
           viewMode === 'visual' ? 'p-0 pb-4' : 'p-4 pb-32'
