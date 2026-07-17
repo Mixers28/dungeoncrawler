@@ -10,9 +10,11 @@ Define how a human and a local code agent coordinate using this repo’s memory 
 - Long-term memory (LTM): `docs/PROJECT_CONTEXT.md`
 - Working memory (WM): `docs/NOW.md`
 - Session memory (SM): `docs/SESSION_NOTES.md`
-- Design notes: `docs/MCP_LOCAL_DESIGN.md`
 - Cross-agent ownership: `docs/agent-crossover-contract.md`
 - Cross-agent handoffs: `docs/agent-handoff.md`
+- Docs index: `docs/README.md`
+
+Older local-memory design notes are archived under `docs/archive/process/`.
 
 ## Start Session (Context Hydration)
 Preferred: VS Code task `Start Session (Agent - Coder)` (or pick another role; see `.vscode/tasks.json`).

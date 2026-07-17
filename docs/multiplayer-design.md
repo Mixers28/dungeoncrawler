@@ -5,8 +5,9 @@ description: Design for co-op multiplayer sessions — state split, session mode
 
 # Multiplayer Design (Co-op Sessions)
 
-> Status: design only, not scheduled. Written 2026-07-02 against the state of `main`
-> at that date (post story-Phase-1 wiring, data-driven abilities, classes.json).
+> Status: active architecture reference. M1/M2 baseline implementation is in
+> place; use `docs/NOW.md` and `docs/phased-plan.md` for current remaining M3
+> work.
 
 ## Goal and non-goals
 

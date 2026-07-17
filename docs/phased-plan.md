@@ -7,7 +7,8 @@ description: Roadmap for Dungeon Portal mechanics, story progression, UI, and va
 
 This is the canonical roadmap. Architecture and setup details live in `docs/PROJECT_CONTEXT.md`; current build order lives in `docs/NOW.md`.
 
-Other planning docs are supplemental only unless linked here.
+Archived planning docs are retained under `docs/archive/planning/` for historical
+context only.
 
 Linked planning docs:
 - Visual multiplayer UI and asset plan: `docs/visual-multiplayer-phase0.md`
@@ -98,7 +99,7 @@ Linked planning docs:
 [ ] Enforce or explicitly ignore armor proficiency in combat calculations.
 [ ] Add rest/slot recovery and class-based level-up benefits.
 
-## Story progression roadmap (supplemental details in `docs/story-progression-roadmap.md`)
+## Story progression roadmap
 - Phase 1 (authored branches): add mid-branch scenes with gated exits, key/map/sigil loop, and deterministic variants.
 - Phase 2 (procedural routes): introduce route modules, seeded junctions, and deterministic segment generation.
 
@@ -133,7 +134,7 @@ Action items (Phase 2):
 - Phase M3 (party UI): actor-named logs, party controls, turn affordances, and balance knobs.
 
 Status:
-- Visual Phase 0 is functionally closed: full-time visual mode (exploration + combat, not combat-only), movement/action/inventory/spellbook all button-driven against `buildVisualGameViewModel`, Act 1 manifest coverage with deterministic placeholders, e2e smoke coverage, and the multiplayer-readiness review are complete. See `docs/visual-multiplayer-phase0.md` and `docs/multiplayer-readiness-review.md`.
+- Visual Phase 0 is functionally closed: full-time visual mode (exploration + combat, not combat-only), movement/action/inventory/spellbook all button-driven against `buildVisualGameViewModel`, Act 1 manifest coverage with deterministic placeholders, e2e smoke coverage, and the multiplayer-readiness review are complete. See `docs/visual-multiplayer-phase0.md`; the readiness review is archived at `docs/archive/planning/multiplayer-readiness-review.md`.
 - Generated final art remains polish; the functional requirement is local assets plus graceful fallbacks.
 - Phase M1 is functionally complete with schemas, a party-of-one compatibility shim, sliced `TurnContext` access for combat, casting, story/search, loot/economy, and sheet state, plus trusted in-turn context sync. `SessionState`, `CharacterState`, `splitGameStateForSolo`, `splitGameStateForSoloTrusted`, `composeGameStateForSolo`, and context helpers have regression coverage.
 - Phase M2 is functionally complete for the local baseline with durable `game_sessions`/`session_players` tables, join-code allocation, server-side create/join/load/session-turn helpers, session-aware visual view-model/UI/polling, monster round-batch resolution, and two-browser join/action e2e coverage.
@@ -173,7 +174,7 @@ Action items (Phase M3):
 [ ] Tighten party UI affordances for active turn, downed players, and party roll display.
 [ ] Playtest a 2-player Act 1 hub-to-boss route and tune the first balance constants.
 
-## Stunt system status (supplemental details in `docs/stunt-system-sprint.md`)
+## Stunt system status
 - Implemented in `lib/stunts.ts` and integrated after explicit command parsing in `lib/game/engine/index.ts`.
 - Follow-ups: add deterministic tests for `resolveStunt` and decide where temporary effects should live on `GameState`.
 

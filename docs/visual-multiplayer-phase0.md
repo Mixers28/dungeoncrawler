@@ -5,7 +5,10 @@ description: Phase 0 plan for an Eye-of-the-Beholder-inspired visual multiplayer
 
 # Visual Multiplayer Phase 0
 
-> Status: planned. This is the required UI and asset planning pass before multiplayer implementation. It complements `docs/multiplayer-design.md`, which covers the session/state architecture.
+> Status: functionally complete baseline. This remains the reference for the
+> visual shell, screen model, asset manifest conventions, and visual-first
+> multiplayer UI direction. It complements `docs/multiplayer-design.md`, which
+> covers the session/state architecture.
 
 ## Goal
 

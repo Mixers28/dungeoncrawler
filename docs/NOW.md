@@ -9,8 +9,9 @@
 - Story Phase 1 is closed: authored hub/branch/boss progression now has unit regression coverage for gates, discoveries, branch completion, boss unlocks, and seeded variants.
 - Visual Multiplayer Phase 0 is functionally closed: `VisualDungeonShell` runs full-time (exploration + combat) against Codex's `buildVisualGameViewModel`, with button-driven movement/combat/inventory/spellbook drawers, Act 1 manifest coverage/placeholders, and a multiplayer-readiness review.
 - Visual Multiplayer Phase M1 and M2 are functionally complete for the local baseline; Phase M3 has started with session-only monster HP scaling for 2-4 player parties.
-- Validation baseline is green: `npm run db:migrate`, `npm run test:unit`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm run test:e2e` (including new `e2e/visual-mode.spec.ts`) pass locally.
-- Next verification gap: walk the deploy checklist against the production environment.
+- Visual interaction/spellbook/corpse-loot stabilization is implemented: Interact resolves obvious scene exits, the wizard visual spellbook matches known/prepared/cantrip spell state, dead monsters remain as visual lootable corpse standees, targeted corpse looting works, and larger monster standees/dead-state monster assets are wired through the manifest.
+- Current validation baseline is green for the latest pass: `npm run db:migrate`, `npm run test:unit`, `npx tsc --noEmit`, `npm run lint`, and `npx playwright test e2e/visual-mode.spec.ts` pass locally.
+- Next verification gap: review the current visual asset/UI batch in a normal browser, then add fuller M3 e2e coverage for multiplayer combat -> corpse loot -> scene transition.
 <!-- SUMMARY_END -->
 
 ## Active Branch
@@ -19,11 +20,16 @@
 
 ## Current Build Order
 
-1. **Finish docs unification**
-   - Update canonical docs and stale setup references.
-   - Keep `README.md`, `docs/PROJECT_CONTEXT.md`, `docs/NOW.md`, `docs/phased-plan.md`, `SMOKE.md`, and `docs/deploy-checklist.md` aligned.
+1. **Review current visual asset/UI batch**
+   - Check larger live monsters, dead monster derivatives, corpse loot controls, and spellbook states in a normal browser.
+   - Confirm current generated assets are ready to keep before committing or asking another agent for visual polish.
 
-2. **Run full local validation**
+2. **Add fuller M3 visual e2e coverage**
+   - Cover multiplayer combat leading to a dead monster.
+   - Verify visual corpse loot after combat.
+   - Verify the subsequent scene transition still works.
+
+3. **Run full local validation before handoff/commit**
    - `docker compose up -d`
    - `npm run db:migrate`
    - `npm run test:unit`
@@ -32,13 +38,12 @@
    - `npm run build`
    - `npm run test:e2e`
 
-3. **Walk the deploy checklist**
+4. **Walk the deploy checklist**
    - Use `docs/deploy-checklist.md`.
    - Confirm Railway env vars, production migrations, login, persistence, combat, story navigation, and logs.
 
-4. **Start Visual Multiplayer Phase M1**
+5. **Continue Visual Multiplayer Phase M3**
    - Use `docs/visual-multiplayer-phase0.md`.
-   - Use `docs/multiplayer-readiness-review.md`.
    - Use `docs/multiplayer-design.md`.
    - [x] Add asset manifest types and loader helpers.
    - [x] Build a single-player visual shell on current `GameState`.
@@ -80,7 +85,7 @@
 - Per-threat attack targeting closed the loop: Codex added `VisualThreatView.attackAction`, Claude Code updated `DungeonViewport` to consume it instead of sanitizing monster names client-side.
 - `e2e/visual-mode.spec.ts` added: shell landmarks, movement dispatch, inventory drawer quick-use, spellbook drawer cast — all button-driven, zero free-text.
 - Act 1 visual manifest coverage expanded across the Phase 1 story graph; monster and item placeholders added under `public/visual/**`.
-- Multiplayer readiness review added in `docs/multiplayer-readiness-review.md`; next backend work is Phase M1 state split.
+- Multiplayer readiness review added and later archived at `docs/archive/planning/multiplayer-readiness-review.md`; Phase M1/M2 are now complete for the local baseline.
 - M1 state split starter slice added: `sessionStateSchema`, `characterStateSchema`, and `splitGameStateForSolo`/`composeGameStateForSolo` with round-trip tests.
 - First M1 combat-access slice added: `TurnContext` helpers now own active monster targeting and monster HP/status damage application.
 - Solo monster retaliation now reads active monsters and applies actor HP damage through `TurnContext`; session round batching remains a Phase M2 change.
@@ -98,18 +103,19 @@
 - Phase M3 balance knobs started: newly spawned live monsters in multiplayer sessions scale HP by party size (1.25x for 2 players, 1.5x for 3, 1.75x for 4+) while solo remains unchanged.
 - Antigravity (AGY) has been assigned visual asset generation/rework. Codex reviews manifest/schema/path compatibility; Claude Code reviews viewport/UI fit and style consistency. Asset generation is not complete yet; untracked scene PNGs exist under `public/visual/scenes/` but are not wired through the manifest.
 - Codex added the controlled OpenAI candidate-generation pipeline: `npm run assets:generate` writes dry-run/API candidates under ignored `public/visual/_candidates/` and never updates the manifest automatically.
+- Visual interaction/spellbook/corpse-loot stabilization completed: obvious scene exits now work from visual Interact, the wizard spellbook lists known/prepared/cantrip spell states, dead monsters render as lootable corpse standees, named corpse looting works, larger live monster standees are in place, and generated dead-state monster derivatives are wired through the visual manifest.
 
 ## E2E Notes
 
 - `npm run test:e2e` auto-starts `next dev` through Playwright config.
 - It requires local Postgres and `.env.local` with `DATABASE_URL` and `AUTH_SECRET`.
 - The smoke spec signs up a fresh throwaway user (`smoke-<ts>@e2e.test`) each run.
-- Last successful run: 2026-07-07.
+- Last successful focused visual run: 2026-07-09, `npx playwright test e2e/visual-mode.spec.ts` passed 4/4.
 
 ## Scratchpad
 
-- `docs/multiplayer-design.md` remains the architecture reference for Phase M1+.
-- `docs/visual-multiplayer-phase0.md` is the current UI/asset plan that bridges the existing solo game to the multiplayer design.
+- `docs/multiplayer-design.md` remains the architecture reference for session/co-op state.
+- `docs/visual-multiplayer-phase0.md` remains the current UI/asset plan that bridges the solo game to multiplayer visual play.
 - `docs/agent-crossover-contract.md` defines Codex backend ownership, Claude frontend ownership, Antigravity asset-generation ownership, and reciprocal audits.
 - `docs/agent-handoff.md` is the active communication ledger between agents.
 - `lib/build-info.ts` is generated by `npm run build`; avoid committing timestamp-only churn unless intentionally updating build metadata.

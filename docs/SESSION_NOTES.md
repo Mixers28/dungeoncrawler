@@ -22,7 +22,7 @@
 - docs/NOW.md
 - docs/SESSION_NOTES.md
 - docs/AGENT_SESSION_PROTOCOL.md
-- docs/MCP_LOCAL_DESIGN.md
+- docs/archive/process/MCP_LOCAL_DESIGN.md
 - scripts/session-helper.ps1
 - scripts/commit-session.ps1
 - .vscode/tasks.json
@@ -36,6 +36,66 @@
 
 ## Session Template (Copy/Paste for each new session)
 ## Recent Sessions (last 3-5)
+
+### 2026-07-09
+
+**Participants:** User, Codex Agent  
+**Branch:** main  
+
+### Summary of work
+- Cleaned and refactored `docs/` by separating active documentation from stale, superseded, historical, and template/process material.
+- Added `docs/README.md` as the active documentation index.
+- Archived old implementation notes, completed sprint/story plans, deprecated docs, and template workflow files under `docs/archive/`.
+- Updated active roadmap/context/protocol links so future agents load current docs first.
+
+### Files touched
+- docs/README.md
+- docs/AGENT_SESSION_PROTOCOL.md
+- docs/NOW.md
+- docs/PROJECT_CONTEXT.md
+- docs/SESSION_NOTES.md
+- docs/agent-handoff.md
+- docs/multiplayer-design.md
+- docs/phased-plan.md
+- docs/visual-multiplayer-phase0.md
+- docs/archive/**
+
+### Outcomes / Decisions
+- Active top-level docs are now limited to current memory, roadmap, deployment, rules, multiplayer/visual references, asset-generation workflow, and agent handoff/ownership docs.
+- Archived docs are retained for context only and should not be treated as source of truth.
+
+### 2026-07-09
+
+**Participants:** User, Codex Agent  
+**Branch:** main  
+
+### Summary of work
+- Stabilized visual interaction so the Interact button resolves obvious scene exits such as gates/doors instead of dispatching a generic no-op action.
+- Brought the wizard visual spellbook into parity with the non-visual spell list by showing known spells with `Cantrip`, `Prepared`, and `Known` states.
+- Added visual corpse-loot support: dead monsters remain visible as corpse standees, show `Loot`/`Looted` controls, and dispatch targeted loot commands.
+- Increased monster standee readability and wired generated dead-state monster derivatives through the visual manifest.
+- Saved the resume state in `docs/agent-handoff.md` and refreshed working memory docs.
+
+### Files touched
+- components/visual/DungeonViewport.tsx
+- components/visual/SpellbookDrawerContent.tsx
+- data/visual/asset-manifest.json
+- docs/agent-handoff.md
+- docs/NOW.md
+- docs/SESSION_NOTES.md
+- docs/PROJECT_CONTEXT.md
+- e2e/visual-mode.spec.ts
+- lib/game/engine/index.ts
+- lib/visual/assets.ts
+- lib/visual/view-model.ts
+- public/visual/monsters/*_dead.png
+- public/visual/spells/fallback_spell.svg
+- tests/game-engine-regression.ts
+
+### Outcomes / Decisions
+- Current validation passed: `npm run db:migrate`, `npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, and `npx playwright test e2e/visual-mode.spec.ts`.
+- Manual visual shell and spellbook screenshots were saved under `test-results/manual-visual-qa/`.
+- Next recommended step is normal-browser review of the visual asset/UI batch, then fuller M3 e2e coverage for multiplayer combat -> corpse loot -> scene transition.
 
 ### 2025-12-20
 
@@ -81,11 +141,11 @@
 - docs/DM-rules.md
 - docs/phased-plan.md
 - docs/to-dos.md
-- docs/dcv01-notes.md
-- docs/stunt-system-sprint.md
+- docs/archive/historical/dcv01-notes.md
+- docs/archive/planning/stunt-system-sprint.md
 - docs/future-story-progression-sprint.md
-- docs/Possible_story_build.md
-- docs/story-progression-roadmap.md
+- docs/archive/historical/Possible_story_build.md
+- docs/archive/planning/story-progression-roadmap.md
 - story/future_*.json
 - docs/PROJECT_CONTEXT.md
 - docs/NOW.md
@@ -136,9 +196,9 @@
 - package.json
 - package-lock.json
 - README.md
-- docs/PRODUCT_BRIEF_ONE_PAGER.md
-- docs/dcv01-notes.md
-- docs/dcv01-notes.md
+- docs/archive/historical/PRODUCT_BRIEF_ONE_PAGER.md
+- docs/archive/historical/dcv01-notes.md
+- docs/archive/historical/dcv01-notes.md
 - PROJECT_STATUS.md
 - docs/PROJECT_CONTEXT.md
 - docs/NOW.md

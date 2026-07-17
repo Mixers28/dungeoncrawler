@@ -8,11 +8,14 @@
 - Auth uses Auth.js credentials backed by the local `public.users` table.
 - Saves are persisted in Postgres through Drizzle (`saved_games.game_state` JSONB), then hydrated through Zod before use.
 - Story content lives in `story/*.json`; rules/reference content lives in `data/5e/*.json`.
+- Visual mode is a button-driven first-person React shell backed by a deterministic view model and a manifest-driven asset system.
+- Multiplayer sessions use Postgres-backed session/player tables with shared session state, per-character actor state, and server-resolved turns.
 - Deployment target is Railway with Postgres, `DATABASE_URL`, `AUTH_SECRET`, and Drizzle migrations.
 <!-- SUMMARY_END -->
 
 ## Documentation Map
 
+- Documentation index: `docs/README.md`
 - Entry point and setup: `README.md`
 - Project overview: `Project_README.md`
 - Canonical architecture/context: `docs/PROJECT_CONTEXT.md`
@@ -20,7 +23,7 @@
 - Roadmap: `docs/phased-plan.md`
 - Release validation: `docs/deploy-checklist.md`
 - Manual/automated smoke checks: `SMOKE.md`
-- Historical or supplemental docs: files that explicitly say deprecated, superseded, or supplemental.
+- Historical, completed, superseded, or template docs: `docs/archive/`.
 
 ## Project Overview
 
@@ -45,6 +48,9 @@
 - `lib/db/schema.ts` defines `users` and `saved_games`; committed migrations live in `drizzle/`.
 - `lib/game/state.ts` builds and hydrates `GameState`, including legacy backfills and derived scene/room registries.
 - `lib/game/engine/index.ts` resolves turns: movement, combat, spells, inventory, stunts, loot, XP, quests, and scene completion.
+- `lib/visual/view-model.ts` projects authoritative game/session state into visual UI controls for movement, interaction, combat, inventory, spellbook, party state, and corpse looting.
+- `lib/visual/assets.ts` validates the visual asset manifest; generated scene, monster, item, portrait, spell, and UI assets are referenced through `data/visual/asset-manifest.json`.
+- Session play is backed by `game_sessions` and `session_players`; session service helpers compose shared `SessionState` with per-player `CharacterState` before resolving turns.
 - `lib/5e/reference.ts`, `lib/5e/classes.ts`, and `lib/5e/intents.ts` expose typed 5e data and intent parsing.
 - `lib/leaderboard.ts` is currently localStorage-only. The old Supabase global leaderboard SQL is archived in `supabase/migrations/`.
 
@@ -91,3 +97,5 @@ npm run test:e2e
 - 2026-07-02 - Standardized runtime persistence on Auth.js credentials plus Drizzle/Postgres. Supabase SQL retained only as legacy reference.
 - 2026-07-02 - Added first-class inventory equip/drop handling and owned-weapon validation in the game engine.
 - 2026-07-02 - Removed `next/font/google` to keep production builds independent of Google Fonts network fetches.
+- 2026-07-09 - Visual mode keeps interaction, spells, combat targeting, inventory, and corpse looting button-driven through the view model rather than client-side command parsing.
+- 2026-07-09 - Visual assets are manifest-driven and include generated dead-state monster variants so dead enemies can remain visible as lootable corpse standees.
