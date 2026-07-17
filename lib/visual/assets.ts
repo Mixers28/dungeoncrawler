@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import rawManifest from '../../data/visual/asset-manifest.json';
 
-export const visualAssetKindSchema = z.enum(['scene', 'monster', 'item', 'portrait', 'ui']);
+export const visualAssetKindSchema = z.enum(['scene', 'monster', 'item', 'portrait', 'spell', 'ui']);
 export const visualAssetSourceSchema = z.enum(['generated', 'existing', 'fallback', 'cached']);
 
 export const visualAssetSchema = z.object({

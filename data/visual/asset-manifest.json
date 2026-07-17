@@ -1,392 +1,742 @@
 {
   "version": 1,
-  "styleVersion": "visual-phase0-v1",
+  "styleVersion": "eob3-retro-v1",
   "assets": [
     {
       "id": "fallback_scene",
       "kind": "scene",
-      "path": "/prologue/gate.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "width": 1024,
-      "height": 1024,
-      "tags": ["fallback", "scene"]
+      "path": "/visual/scenes/fallback_scene.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 1376,
+      "height": 768,
+      "prompt": "A mysterious closed wooden dungeon door with heavy black iron bands, stone brick frame, lit by a single wall-mounted torch. VGA pixel art RPG style, Eye of the Beholder 3 theme, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "fallback",
+        "scene"
+      ]
     },
     {
       "id": "iron_gate_v1",
       "kind": "scene",
-      "path": "/scene-cache/the_iron_gate_v1.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "gate"]
+      "path": "/visual/scenes/iron_gate_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG dungeon corridor looking at a closed heavy iron gate, torchlit damp stone walls, detailed dithering, Eye of the Beholder 3 style, dark and atmospheric fantasy, 256-color palette.",
+      "tags": [
+        "act1",
+        "gate"
+      ]
     },
     {
       "id": "iron_gate_v2",
       "kind": "scene",
-      "path": "/scene-cache/the_iron_gate_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "gate"]
+      "path": "/visual/scenes/iron_gate_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG dungeon corridor looking at a closed heavy iron gate, overgrown with moss and ivy, lit by a glowing magic brazier, detailed dithering, Eye of the Beholder 3 style, dark and atmospheric fantasy, 256-color palette.",
+      "tags": [
+        "act1",
+        "gate"
+      ]
     },
     {
       "id": "future_courtyard_hub_v1",
       "kind": "scene",
-      "path": "/scene-cache/courtyard_v1.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "hub"]
+      "path": "/visual/scenes/future_courtyard_hub_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG dungeon courtyard open to a dark stormy night sky, ruined stone arches, crumbling columns, lit by flickering torches on damp stone walls. Eye of the Beholder 3 style, 256-color palette, detailed dithering.",
+      "tags": [
+        "act1",
+        "hub"
+      ]
     },
     {
       "id": "future_courtyard_hub_v2",
       "kind": "scene",
-      "path": "/scene-cache/courtyard_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "hub"]
+      "path": "/visual/scenes/future_courtyard_hub_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG dungeon courtyard, overgrown with wild weeds and climbing vines under a blood red moon sky, ruins of an ancient temple, ancient stone paving blocks. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "hub"
+      ]
     },
     {
       "id": "future_hallway_branch_v1",
       "kind": "scene",
-      "path": "/scene-cache/hallway_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "branch"]
+      "path": "/visual/scenes/future_hallway_branch_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG dungeon corridor, long straight hallway made of dark damp stone blocks, wall torches casting flickering orange light, path splitting into a T-junction ahead. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "branch"
+      ]
     },
     {
       "id": "future_hallway_branch_v2",
       "kind": "scene",
-      "path": "/scene-cache/hallway_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "branch"]
+      "path": "/visual/scenes/future_hallway_branch_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG dungeon corridor, crumbling stone passage, rubble on the stone paving floor, wall torches, dark passageway leading straight forward. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "branch"
+      ]
     },
     {
       "id": "future_shrine_branch_v1",
       "kind": "scene",
-      "path": "/prologue/ruins.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "branch", "shrine"]
+      "path": "/visual/scenes/future_shrine_branch_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG ruined temple shrine room, stone altar in the center with a faint glowing symbol, cracked marble columns. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "branch",
+        "shrine"
+      ]
     },
     {
       "id": "future_shrine_branch_v2",
       "kind": "scene",
-      "path": "/prologue/ruins.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "branch", "shrine"]
+      "path": "/visual/scenes/future_shrine_branch_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG dilapidated cathedral shrine, broken stained glass window behind a stone dais, roots growing through cracked stone walls. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "branch",
+        "shrine"
+      ]
     },
     {
       "id": "future_cellar_branch_v1",
       "kind": "scene",
-      "path": "/scene-cache/hallway_zombie_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "branch", "cellar"]
+      "path": "/visual/scenes/future_cellar_branch_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG dark cellar room, wooden barrels, cobwebs in the corners, brick walls, damp and moldy atmosphere. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "branch",
+        "cellar"
+      ]
     },
     {
       "id": "future_cellar_branch_v2",
       "kind": "scene",
-      "path": "/scene-cache/ante_chamber_armoured_zombie_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "branch", "cellar"]
+      "path": "/visual/scenes/future_cellar_branch_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG underground wine cellar or crypt, alcoves in the stone walls containing old urns and skulls, flooded floor reflecting torchlight. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "branch",
+        "cellar"
+      ]
     },
     {
       "id": "future_armory_side_v1",
       "kind": "scene",
-      "path": "/scene-cache/ante_chamber_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "side", "armory"]
+      "path": "/visual/scenes/future_armory_side_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG dungeon armory room, empty weapon racks, rusted iron shields and suits of plate armor on stands, stone brick walls, wall torch lit. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "side",
+        "armory"
+      ]
     },
     {
       "id": "future_armory_side_v2",
       "kind": "scene",
-      "path": "/scene-cache/ante_chamber_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "side", "armory"]
+      "path": "/visual/scenes/future_armory_side_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG ancient armory, stone pedestals with cracked stone swords, shields hanging from stone pillars, torch lit. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "side",
+        "armory"
+      ]
     },
     {
       "id": "future_cache_side_v1",
       "kind": "scene",
-      "path": "/prologue/ruins.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "side", "cache"]
+      "path": "/visual/scenes/future_cache_side_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG hidden store room or cache, wooden chests, sacks of grain, stone walls, low timber ceiling, lantern light. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "side",
+        "cache"
+      ]
     },
     {
       "id": "future_cache_side_v2",
       "kind": "scene",
-      "path": "/prologue/ruins.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "side", "cache"]
+      "path": "/visual/scenes/future_cache_side_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG secret treasure cache room, stone sarcophagus, wooden crates, cobwebs, atmospheric light from a wall sconce. Eye of the Beholder 3 style, 256-color palette, detailed dithering. No text.",
+      "tags": [
+        "act1",
+        "side",
+        "cache"
+      ]
     },
     {
       "id": "future_sanctum_side_v1",
       "kind": "scene",
-      "path": "/prologue/ruins.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "side", "sanctum"]
+      "path": "/visual/scenes/future_shrine_branch_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG wizard's sanctum (Mapped to Shrine v1 to maintain style integrity).",
+      "tags": [
+        "act1",
+        "side",
+        "sanctum"
+      ]
     },
     {
       "id": "future_sanctum_side_v2",
       "kind": "scene",
-      "path": "/prologue/ruins.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "side", "sanctum"]
+      "path": "/visual/scenes/future_shrine_branch_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG wizard's sanctum (Mapped to Shrine v2 to maintain style integrity).",
+      "tags": [
+        "act1",
+        "side",
+        "sanctum"
+      ]
     },
     {
       "id": "future_bossroom_v1",
       "kind": "scene",
-      "path": "/scene-cache/sunken_throne_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "boss"]
+      "path": "/visual/scenes/future_armory_side_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG boss chamber (Mapped to Armory v2 to maintain style integrity).",
+      "tags": [
+        "act1",
+        "boss"
+      ]
     },
     {
       "id": "future_bossroom_v2",
       "kind": "scene",
-      "path": "/scene-cache/sunken_throne_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "boss"]
+      "path": "/visual/scenes/future_armory_side_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG boss chamber (Mapped to Armory v2 to maintain style integrity).",
+      "tags": [
+        "act1",
+        "boss"
+      ]
     },
     {
       "id": "future_treasury_v1",
       "kind": "scene",
-      "path": "/scene-cache/treasury_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "treasury"]
+      "path": "/visual/scenes/future_cache_side_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG treasury (Mapped to Cache v1 to maintain style integrity).",
+      "tags": [
+        "act1",
+        "treasury"
+      ]
     },
     {
       "id": "future_treasury_v2",
       "kind": "scene",
-      "path": "/scene-cache/treasury_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "treasury"]
+      "path": "/visual/scenes/future_cache_side_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "prompt": "A retro 90s VGA pixel art style RPG treasury (Mapped to Cache v2 to maintain style integrity).",
+      "tags": [
+        "act1",
+        "treasury"
+      ]
     },
     {
       "id": "courtyard_v1",
       "kind": "scene",
-      "path": "/scene-cache/courtyard_v1.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "legacy", "hub"]
+      "path": "/visual/scenes/future_courtyard_hub_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "tags": [
+        "act1",
+        "legacy",
+        "hub"
+      ]
     },
     {
       "id": "courtyard_v2",
       "kind": "scene",
-      "path": "/scene-cache/courtyard_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "legacy", "hub"]
+      "path": "/visual/scenes/future_courtyard_hub_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "tags": [
+        "act1",
+        "legacy",
+        "hub"
+      ]
     },
     {
       "id": "hallway_v1",
       "kind": "scene",
-      "path": "/scene-cache/hallway_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "legacy", "branch"]
+      "path": "/visual/scenes/future_hallway_branch_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "tags": [
+        "act1",
+        "legacy",
+        "branch"
+      ]
     },
     {
       "id": "hallway_v2",
       "kind": "scene",
-      "path": "/scene-cache/hallway_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "legacy", "branch"]
+      "path": "/visual/scenes/future_hallway_branch_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "tags": [
+        "act1",
+        "legacy",
+        "branch"
+      ]
     },
     {
       "id": "antechamber_v1",
       "kind": "scene",
-      "path": "/scene-cache/ante_chamber_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "legacy", "antechamber"]
+      "path": "/visual/scenes/future_armory_side_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "tags": [
+        "act1",
+        "legacy",
+        "antechamber"
+      ]
     },
     {
       "id": "antechamber_v2",
       "kind": "scene",
-      "path": "/scene-cache/ante_chamber_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "legacy", "antechamber"]
+      "path": "/visual/scenes/future_armory_side_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "tags": [
+        "act1",
+        "legacy",
+        "antechamber"
+      ]
     },
     {
       "id": "bossroom_v1",
       "kind": "scene",
-      "path": "/scene-cache/sunken_throne_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "legacy", "boss"]
+      "path": "/visual/scenes/future_armory_side_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "tags": [
+        "act1",
+        "legacy",
+        "boss"
+      ]
     },
     {
       "id": "bossroom_v2",
       "kind": "scene",
-      "path": "/scene-cache/sunken_throne_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "legacy", "boss"]
+      "path": "/visual/scenes/future_armory_side_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "tags": [
+        "act1",
+        "legacy",
+        "boss"
+      ]
     },
     {
       "id": "treasury_v1",
       "kind": "scene",
-      "path": "/scene-cache/treasury_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "legacy", "treasury"]
+      "path": "/visual/scenes/future_cache_side_v1.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "tags": [
+        "act1",
+        "legacy",
+        "treasury"
+      ]
     },
     {
       "id": "treasury_v2",
       "kind": "scene",
-      "path": "/scene-cache/treasury_v2.jpg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["act1", "legacy", "treasury"]
+      "path": "/visual/scenes/future_cache_side_v2.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "tags": [
+        "act1",
+        "legacy",
+        "treasury"
+      ]
     },
     {
       "id": "fallback_monster",
       "kind": "monster",
-      "path": "/visual/monsters/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["fallback", "monster"]
+      "path": "/visual/monsters/fallback_monster.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "Beast face silhouette with horns and glowing red eyes, 64x64 scaled up 4x.",
+      "tags": [
+        "fallback",
+        "monster"
+      ]
     },
     {
       "id": "skeleton",
       "kind": "monster",
-      "path": "/visual/monsters/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["undead"]
+      "path": "/visual/monsters/skeleton.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "White skeleton skull and ribcage, 64x64 scaled up 4x.",
+      "tags": [
+        "undead"
+      ]
+    },
+    {
+      "id": "skeleton_dead",
+      "kind": "monster",
+      "path": "/visual/monsters/skeleton_dead.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "OpenAI image-edit of skeleton.png reference: same character identity/colors/armor/weapon, edited into a visibly wounded, damaged, collapsed dead state (batch eob3-retro-v1).",
+      "tags": [
+        "undead",
+        "dead",
+        "corpse"
+      ]
     },
     {
       "id": "skeleton_archer",
       "kind": "monster",
-      "path": "/visual/monsters/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["undead", "ranged"]
+      "path": "/visual/monsters/skeleton_archer.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "White skeleton holding a bow, 64x64 scaled up 4x.",
+      "tags": [
+        "undead",
+        "ranged"
+      ]
+    },
+    {
+      "id": "skeleton_archer_dead",
+      "kind": "monster",
+      "path": "/visual/monsters/skeleton_archer_dead.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "OpenAI image-edit of skeleton_archer.png reference: same character identity/colors/armor/weapon, edited into a visibly wounded, damaged, collapsed dead state (batch eob3-retro-v1).",
+      "tags": [
+        "undead",
+        "ranged",
+        "dead",
+        "corpse"
+      ]
     },
     {
       "id": "skeleton_spearman",
       "kind": "monster",
-      "path": "/visual/monsters/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["undead", "melee"]
+      "path": "/visual/monsters/skeleton_spearman.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "White skeleton holding a spear, 64x64 scaled up 4x.",
+      "tags": [
+        "undead",
+        "melee"
+      ]
+    },
+    {
+      "id": "skeleton_spearman_dead",
+      "kind": "monster",
+      "path": "/visual/monsters/skeleton_spearman_dead.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "OpenAI image-edit of skeleton_spearman.png reference: same character identity/colors/armor/weapon, edited into a visibly wounded, damaged, collapsed dead state (batch eob3-retro-v1).",
+      "tags": [
+        "undead",
+        "melee",
+        "dead",
+        "corpse"
+      ]
     },
     {
       "id": "zombie",
       "kind": "monster",
-      "path": "/visual/monsters/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["undead"]
+      "path": "/visual/monsters/zombie.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "Rotting green zombie with yellow eyes and tattered clothing, 64x64 scaled up 4x.",
+      "tags": [
+        "undead"
+      ]
+    },
+    {
+      "id": "zombie_dead",
+      "kind": "monster",
+      "path": "/visual/monsters/zombie_dead.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "OpenAI image-edit of zombie.png reference: same character identity/colors/armor/weapon, edited into a visibly wounded, damaged, collapsed dead state (batch eob3-retro-v1).",
+      "tags": [
+        "undead",
+        "dead",
+        "corpse"
+      ]
     },
     {
       "id": "armoured_zombie",
       "kind": "monster",
-      "path": "/visual/monsters/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["undead", "armored"]
+      "path": "/visual/monsters/armoured_zombie.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "Rotting green zombie with iron helmet and shoulder plates, 64x64 scaled up 4x.",
+      "tags": [
+        "undead",
+        "armored"
+      ]
+    },
+    {
+      "id": "armoured_zombie_dead",
+      "kind": "monster",
+      "path": "/visual/monsters/armoured_zombie_dead.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "OpenAI image-edit of armoured_zombie.png reference: same character identity/colors/armor/weapon, edited into a visibly wounded, damaged, collapsed dead state (batch eob3-retro-v1).",
+      "tags": [
+        "undead",
+        "armored",
+        "dead",
+        "corpse"
+      ]
     },
     {
       "id": "fallen_knight",
       "kind": "monster",
-      "path": "/visual/monsters/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["undead", "boss"]
+      "path": "/visual/monsters/fallen_knight.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "Black armored knight boss with glowing red visor slit and red cape, 64x64 scaled up 4x.",
+      "tags": [
+        "undead",
+        "boss"
+      ]
+    },
+    {
+      "id": "fallen_knight_dead",
+      "kind": "monster",
+      "path": "/visual/monsters/fallen_knight_dead.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "OpenAI image-edit of fallen_knight.png reference: same character identity/colors/armor/weapon, edited into a fully collapsed, wounded, dead-on-the-ground state with weapon dropped (batch eob3-retro-v1).",
+      "tags": [
+        "undead",
+        "boss",
+        "dead",
+        "corpse"
+      ]
     },
     {
       "id": "cultist_acolyte",
       "kind": "monster",
-      "path": "/visual/monsters/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["cultist"]
+      "path": "/visual/monsters/cultist_acolyte.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "Cultist acolyte in dark purple robes, shadowed face, and yellow eyes, 64x64 scaled up 4x.",
+      "tags": [
+        "cultist"
+      ]
+    },
+    {
+      "id": "cultist_acolyte_dead",
+      "kind": "monster",
+      "path": "/visual/monsters/cultist_acolyte_dead.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 256,
+      "height": 256,
+      "prompt": "OpenAI image-edit of cultist_acolyte.png reference: same character identity/colors/armor/weapon, edited into a fully collapsed, wounded, dead-on-the-ground state with weapon dropped (batch eob3-retro-v1).",
+      "tags": [
+        "cultist",
+        "dead",
+        "corpse"
+      ]
     },
     {
       "id": "fighter",
       "kind": "portrait",
-      "path": "/prologue/wanderer.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["class"]
+      "path": "/visual/portraits/fighter.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 128,
+      "height": 128,
+      "prompt": "Adventurer fighter class portrait in steel helm and mail, blue background, 64x64 scaled up 2x.",
+      "tags": [
+        "class"
+      ]
     },
     {
       "id": "wizard",
       "kind": "portrait",
-      "path": "/prologue/wanderer.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["class"]
+      "path": "/visual/portraits/wizard.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 128,
+      "height": 128,
+      "prompt": "Adventurer wizard class portrait in blue robe and pointy hat with beard, purple background, 64x64 scaled up 2x.",
+      "tags": [
+        "class"
+      ]
     },
     {
       "id": "cleric",
       "kind": "portrait",
-      "path": "/prologue/wanderer.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["class"]
+      "path": "/visual/portraits/cleric.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 128,
+      "height": 128,
+      "prompt": "Adventurer cleric class portrait with golden holy symbol on armor, red background, 64x64 scaled up 2x.",
+      "tags": [
+        "class"
+      ]
     },
     {
       "id": "rogue",
       "kind": "portrait",
-      "path": "/prologue/wanderer.png",
-      "styleVersion": "visual-phase0-v1",
-      "source": "existing",
-      "tags": ["class"]
+      "path": "/visual/portraits/rogue.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 128,
+      "height": 128,
+      "prompt": "Adventurer rogue class portrait in green cowl hood with glowing yellow eyes, green background, 64x64 scaled up 2x.",
+      "tags": [
+        "class"
+      ]
     },
     {
       "id": "fallback_item",
       "kind": "item",
-      "path": "/visual/items/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
+      "path": "/visual/items/fallback_item.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 128,
+      "height": 128,
+      "prompt": "Classic brown sack tied with gold cord, 32x32 scaled up 4x.",
+      "tags": [
+        "fallback",
+        "item"
+      ]
+    },
+    {
+      "id": "fallback_spell",
+      "kind": "spell",
+      "path": "/visual/spells/fallback_spell.svg",
+      "styleVersion": "eob3-retro-v1",
       "source": "fallback",
-      "tags": ["fallback", "item"]
+      "width": 128,
+      "height": 128,
+      "tags": [
+        "fallback",
+        "spell"
+      ]
     },
     {
       "id": "healing_potion",
       "kind": "item",
-      "path": "/visual/items/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["consumable", "potion"]
+      "path": "/visual/items/healing_potion.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 128,
+      "height": 128,
+      "prompt": "Glass flask filled with red liquid, 32x32 scaled up 4x.",
+      "tags": [
+        "consumable",
+        "potion"
+      ]
     },
     {
       "id": "minor_healing_potion",
       "kind": "item",
-      "path": "/visual/items/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["consumable", "potion"]
+      "path": "/visual/items/minor_healing_potion.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 128,
+      "height": 128,
+      "prompt": "Small glass vial filled with red liquid, 32x32 scaled up 4x.",
+      "tags": [
+        "consumable",
+        "potion"
+      ]
     },
     {
       "id": "floor1complete",
       "kind": "item",
-      "path": "/visual/items/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["key", "progression"]
+      "path": "/visual/items/floor1complete.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 128,
+      "height": 128,
+      "prompt": "Magical blue glowing runestone, 32x32 scaled up 4x.",
+      "tags": [
+        "key",
+        "progression"
+      ]
     },
     {
       "id": "rusted_key",
       "kind": "item",
-      "path": "/visual/items/fallback.svg",
-      "styleVersion": "visual-phase0-v1",
-      "source": "fallback",
-      "tags": ["key"]
+      "path": "/visual/items/rusted_key.png",
+      "styleVersion": "eob3-retro-v1",
+      "source": "generated",
+      "width": 128,
+      "height": 128,
+      "prompt": "Heavy gold/iron key with rust spots, 32x32 scaled up 4x.",
+      "tags": [
+        "key"
+      ]
     }
   ]
 }

@@ -30,6 +30,7 @@ type CliOptions = {
   maxCostUsd: number;
   generate: boolean;
   limit?: number;
+  promptSuffix?: string;
 };
 
 type GenerationJob = {
@@ -41,6 +42,7 @@ type GenerationJob = {
   size: string;
   estimatedCostUsd: number;
   outputPath: string;
+  referenceImagePath?: string;
 };
 
 const ASSET_KINDS = new Set<AssetKind>(['scene', 'monster', 'item', 'portrait', 'ui']);
@@ -167,6 +169,9 @@ function parseArgs(argv: string[]): CliOptions {
       case '--limit':
         options.limit = positiveInteger(value, 'limit');
         break;
+      case '--prompt-suffix':
+        options.promptSuffix = value;
+        break;
       default:
         throw new Error(`Unknown option: ${key}`);
     }
@@ -202,6 +207,12 @@ function humanizeId(id: string): string {
     .replace(/\b\w/g, letter => letter.toUpperCase());
 }
 
+function findLivingCounterpart(asset: ManifestAsset): ManifestAsset | undefined {
+  if (asset.kind !== 'monster' || !asset.id.endsWith('_dead')) return undefined;
+  const livingId = asset.id.slice(0, -'_dead'.length);
+  return (manifest.assets as ManifestAsset[]).find(candidate => candidate.id === livingId && candidate.kind === 'monster');
+}
+
 function promptFor(asset: ManifestAsset, styleVersion: string): string {
   const name = humanizeId(asset.id);
   const baseStyle = [
@@ -211,6 +222,18 @@ function promptFor(asset: ManifestAsset, styleVersion: string): string {
     'no text, no watermark, no UI frame, no caption',
     `batch style tag: ${styleVersion}`,
   ].join(', ');
+
+  const livingCounterpart = findLivingCounterpart(asset);
+  if (livingCounterpart) {
+    return [
+      `Edit this exact creature into its dead state: ${humanizeId(livingCounterpart.id)}.`,
+      'Keep the same character identity, proportions, colors, armor, and weapon design from the reference image.',
+      'Show it visibly wounded, damaged, and dead: gashes, gouges, cracked/broken bone or armor, blood, torn flesh or fabric, dulled eyes.',
+      'Slumped, fallen, or crumpled posture consistent with a corpse, not standing at attention, but keep the full body readable as the same creature, not flattened into an unreadable heap.',
+      'Neutral dark matte background, strong edge contrast, no floor shadow that would hide the silhouette.',
+      baseStyle,
+    ].join(' ');
+  }
 
   if (asset.kind === 'scene') {
     return [
@@ -271,20 +294,67 @@ function buildJobs(assets: ManifestAsset[], options: CliOptions, batchId: string
   const jobs: GenerationJob[] = [];
   for (const asset of assets) {
     const size = options.size || defaultSizeFor(asset.kind);
+    const livingCounterpart = findLivingCounterpart(asset);
     for (let i = 1; i <= options.candidates; i += 1) {
+      const prompt = options.promptSuffix
+        ? `${promptFor(asset, options.styleVersion)} ${options.promptSuffix}`
+        : promptFor(asset, options.styleVersion);
       jobs.push({
         asset,
         candidateIndex: i,
-        prompt: promptFor(asset, options.styleVersion),
+        prompt,
         model: options.model,
         quality: options.quality,
         size,
         estimatedCostUsd: estimateCost(options.model, size, options.quality),
         outputPath: path.join(options.outputRoot, batchId, asset.kind, `${asset.id}__c${i}.png`),
+        referenceImagePath: livingCounterpart ? path.join('public', livingCounterpart.path) : undefined,
       });
     }
   }
   return jobs;
+}
+
+async function generateImageEdit(job: GenerationJob): Promise<{ revisedPrompt?: string; requestId?: string }> {
+  if (!job.referenceImagePath) throw new Error('generateImageEdit requires referenceImagePath');
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('OPENAI_API_KEY is required when using --generate.');
+
+  const referenceBytes = await fs.readFile(job.referenceImagePath);
+  const form = new FormData();
+  form.set('model', job.model);
+  form.set('prompt', job.prompt);
+  form.set('size', job.size);
+  form.set('quality', job.quality);
+  form.set('n', '1');
+  form.set('image', new Blob([new Uint8Array(referenceBytes)], { type: 'image/png' }), path.basename(job.referenceImagePath));
+
+  const response = await fetch('https://api.openai.com/v1/images/edits', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+  });
+
+  const requestId = response.headers.get('x-request-id') || undefined;
+  const body = await response.json() as {
+    data?: Array<{ b64_json?: string; revised_prompt?: string }>;
+    error?: { message?: string; code?: string; type?: string };
+  };
+
+  if (!response.ok) {
+    const message = body.error?.message || `OpenAI image edit failed with HTTP ${response.status}`;
+    throw new Error(`${message}${requestId ? ` (request_id: ${requestId})` : ''}`);
+  }
+
+  const imageBase64 = body.data?.[0]?.b64_json;
+  if (!imageBase64) throw new Error(`OpenAI response did not include image data${requestId ? ` (request_id: ${requestId})` : ''}`);
+
+  await fs.mkdir(path.dirname(job.outputPath), { recursive: true });
+  await fs.writeFile(job.outputPath, Buffer.from(imageBase64, 'base64'));
+  return {
+    revisedPrompt: body.data?.[0]?.revised_prompt,
+    requestId,
+  };
 }
 
 async function generateImage(job: GenerationJob): Promise<{ revisedPrompt?: string; requestId?: string }> {
@@ -399,9 +469,10 @@ async function main() {
   }
 
   for (const job of jobs) {
-    console.log(`Generating ${job.asset.kind}:${job.asset.id} candidate ${job.candidateIndex} -> ${job.outputPath}`);
+    const via = job.referenceImagePath ? `edit from ${job.referenceImagePath}` : 'text-to-image';
+    console.log(`Generating ${job.asset.kind}:${job.asset.id} candidate ${job.candidateIndex} (${via}) -> ${job.outputPath}`);
     try {
-      const result = await generateImage(job);
+      const result = job.referenceImagePath ? await generateImageEdit(job) : await generateImage(job);
       results.push({ job, ...result });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
