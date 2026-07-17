@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { parseActionIntentWithKnown } from '../lib/5e/intents';
 import { parseIntent } from '../lib/game/intent';
+import { rollCriticalDamage } from '../lib/game/dice';
 import { runGameTurn } from '../lib/game/engine';
 import { isValidSessionCode, normalizeSessionCodeInput } from '../lib/game/session-code';
 import { buildNewGameState } from '../lib/game/state';
@@ -197,10 +198,58 @@ async function testSoloMonsterRetaliationStillOccurs() {
     isCombatActive: true,
   };
   const originalRandom = Math.random;
-  Math.random = () => 0;
+  Math.random = () => 0.5;
   try {
     const { newState } = await turn(combatState, 'defend');
     assert.equal(newState.hp, 9);
+  } finally {
+    Math.random = originalRandom;
+  }
+}
+
+async function testNaturalOneAlwaysMisses() {
+  const state = await makeState();
+  const combatState: GameState = {
+    ...state,
+    character: { ...state.character, attackBonus: 100 },
+    nearbyEntities: [{ ...makeMonster('Skeleton', 20), ac: 1 }],
+    isCombatActive: true,
+  };
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  try {
+    const { newState, logEntry } = await turn(combatState, 'attack');
+    assert.equal(newState.nearbyEntities[0].hp, 20);
+    assert.equal(logEntry.rolls?.[0]?.outcome, 'miss');
+  } finally {
+    Math.random = originalRandom;
+  }
+}
+
+async function testNaturalTwentyHitsAndRollsDoubleDamageDice() {
+  const state = await makeState();
+  const combatState: GameState = {
+    ...state,
+    nearbyEntities: [{ ...makeMonster('Skeleton', 30), ac: 99 }],
+    isCombatActive: true,
+  };
+  const originalRandom = Math.random;
+  Math.random = () => 0.999999;
+  try {
+    const { newState, logEntry } = await turn(combatState, 'attack with handaxe');
+    assert.equal(newState.nearbyEntities[0].hp, 18);
+    assert.equal(logEntry.rolls?.[0]?.outcome, 'crit');
+    assert.equal(logEntry.rolls?.[0]?.damage, 12);
+  } finally {
+    Math.random = originalRandom;
+  }
+}
+
+function testCriticalDamageKeepsFlatModifiersSingle() {
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  try {
+    assert.equal(rollCriticalDamage('1d8 + 3'), 5);
   } finally {
     Math.random = originalRandom;
   }
@@ -243,6 +292,16 @@ async function testPhase1HubBranchAndBossGates() {
   assert.equal(unlockedBoss.newState.location, 'Sunken Throne');
 }
 
+async function testContextualInteractOpensSingleSceneExit() {
+  const state = await makeState();
+  const gateState = withStory(state, 'iron_gate_v1', []);
+
+  const result = await turn(gateState, 'interact');
+
+  assert.match(result.newState.storySceneId, /^future_courtyard_hub_v[12]$/);
+  assert.match(result.logEntry.summary, /gate yields/i);
+}
+
 async function testPhase1ConsumeItemGate() {
   const state = await makeState();
   const hallwayState = withStory(state, 'future_hallway_branch_v1', ['gate_opened', 'courtyard_cleared']);
@@ -266,6 +325,47 @@ async function testPhase1ConsumeItemGate() {
     false
   );
   assert.ok(enteredArmory.newState.inventoryChangeLog.includes('Used Armory Key'));
+}
+
+async function testLootCommandTargetsNamedCorpse() {
+  const state = await makeState();
+  const lootState: GameState = {
+    ...state,
+    nearbyEntities: [
+      { ...makeMonster('Zombie', 0), hp: 0, status: 'dead' },
+      { ...makeMonster('Skeleton', 0), hp: 0, status: 'dead' },
+    ],
+    isCombatActive: false,
+  };
+
+  const result = await turn(lootState, 'loot skeleton');
+
+  assert.equal(result.newState.nearbyEntities[0].name, 'Zombie');
+  assert.equal(result.newState.nearbyEntities[1].name, 'Skeleton (looted)');
+  assert.match(result.logEntry.summary, /loot the Skeleton/i);
+}
+
+async function testLootCommandPrefersExactCorpseName() {
+  const state = await makeState();
+  const lootState: GameState = {
+    ...state,
+    nearbyEntities: [
+      { ...makeMonster('Skeleton', 0), hp: 0, status: 'dead' },
+      { ...makeMonster('Skeleton Archer', 0), hp: 0, status: 'dead' },
+    ],
+    isCombatActive: false,
+  };
+
+  // "loot skeleton archer" must hit the Archer, not the plain Skeleton via
+  // substring overlap — the old fuzzy match made the Archer lootable twice.
+  const result = await turn(lootState, 'loot skeleton archer');
+
+  assert.equal(result.newState.nearbyEntities[0].name, 'Skeleton');
+  assert.equal(result.newState.nearbyEntities[1].name, 'Skeleton Archer (looted)');
+
+  const lootEvents = (result.logEntry.events || []).filter(event => event.type === 'loot');
+  assert.equal(lootEvents.length, 1);
+  assert.equal(lootEvents[0].targetName, 'Skeleton Archer');
 }
 
 async function testPhase1DiscoveryAndBranchCompletion() {
@@ -648,6 +748,21 @@ async function testMultiplayerSessionRejectsJoinDuringCombat() {
   assert.equal(normalized.currentTurnPlayerId, 'owner-user');
 }
 
+async function testMultiplayerSessionRejectsFifthPlayer() {
+  const state = await makeState();
+  const { session } = createSessionStateForOwner(state, 'owner-user');
+  const fourPlayerSession = addPlayerToSession(
+    addPlayerToSession(addPlayerToSession(session, 'joiner-one'), 'joiner-two'),
+    'joiner-three'
+  );
+
+  assert.equal(fourPlayerSession.turnOrder.length, 4);
+  assert.throws(
+    () => addPlayerToSession(fourPlayerSession, 'joiner-four'),
+    /limited to 4 players/i
+  );
+}
+
 async function testMultiplayerSessionTurnGateRejectsWrongActor() {
   const state = await makeState();
   const { session, owner } = createSessionStateForOwner({
@@ -704,7 +819,7 @@ async function testMultiplayerMonsterBatchRunsAfterLastPlayer() {
     turnCounter: 0,
   };
   const originalRandom = Math.random;
-  Math.random = () => 0;
+  Math.random = () => 0.5;
   try {
     const first = await runSessionTurn(combatSession, { ...owner, hp: 10, maxHp: 10 }, 'defend', [
       { ...owner, hp: 10, maxHp: 10 },
@@ -722,8 +837,8 @@ async function testMultiplayerMonsterBatchRunsAfterLastPlayer() {
     assert.equal(second.accepted, true);
     assert.equal(second.session.turnCounter, 1);
     assert.equal(second.session.currentTurnPlayerId, 'owner-user');
-    assert.equal(second.players.find(player => player.playerId === 'owner-user')?.hp, 9);
-    assert.equal(second.players.find(player => player.playerId === 'joiner-user')?.hp, 10);
+    assert.equal(second.players.find(player => player.playerId === 'owner-user')?.hp, 10);
+    assert.equal(second.players.find(player => player.playerId === 'joiner-user')?.hp, 9);
     assert.equal(second.logEntries.some(entry => entry.actorName === 'Zombie' && /hits/i.test(entry.summary)), true);
   } finally {
     Math.random = originalRandom;
@@ -748,7 +863,7 @@ async function testMultiplayerMonsterBatchSkipsDownedTargets() {
     maxHp: 10,
   };
   const originalRandom = Math.random;
-  Math.random = () => 0;
+  Math.random = () => 0.5;
   try {
     const result = resolveMonsterRound({
       ...session,
@@ -862,11 +977,13 @@ async function testMultiplayerVisualViewModelUsesPartyAndTurnState() {
 }
 
 async function testVisualAssetManifestLoads() {
-  assert.equal(visualAssetManifest.styleVersion, 'visual-phase0-v1');
+  assert.equal(visualAssetManifest.styleVersion, 'eob3-retro-v1');
   assert.ok(visualAssetManifest.assets.length > 0);
-  assert.equal(getVisualAsset('scene', 'iron_gate_v1')?.path, '/scene-cache/the_iron_gate_v1.jpg');
-  assert.equal(getVisualAsset('monster', 'Fallen Knight')?.path, '/visual/monsters/fallback.svg');
-  assert.equal(getVisualAsset('item', 'Healing Potion')?.path, '/visual/items/fallback.svg');
+  assert.equal(getVisualAsset('scene', 'iron_gate_v1')?.path, '/visual/scenes/iron_gate_v1.png');
+  assert.equal(getVisualAsset('monster', 'Fallen Knight')?.path, '/visual/monsters/fallen_knight.png');
+  assert.equal(getVisualAsset('monster', 'Fallen Knight Dead')?.path, '/visual/monsters/fallen_knight_dead.png');
+  assert.equal(getVisualAsset('item', 'Healing Potion')?.path, '/visual/items/healing_potion.png');
+  assert.equal(getVisualAsset('spell', 'fallback_spell')?.path, '/visual/spells/fallback_spell.svg');
   assert.equal(getVisualAsset('item', 'missing-item'), null);
 }
 
@@ -914,6 +1031,43 @@ async function testVisualViewModelSoloContract() {
   assert.equal(view.turnState.canAct, true);
   assert.ok(view.scene.imagePath.startsWith('/'));
   assert.ok(view.movementActions.some(action => action.command === 'open' && action.enabled));
+}
+
+async function testVisualViewModelContextualInteractionAction() {
+  const state = await makeState();
+  const gateState = withStory(state, 'iron_gate_v1', []);
+  const view = buildVisualGameViewModel(gateState);
+  const interact = view.explorationActions.find(action => action.id === 'interact');
+
+  assert.ok(interact);
+  assert.equal(interact.command, 'open');
+  assert.match(interact.label, /open gate/i);
+  assert.equal(interact.enabled, true);
+}
+
+async function testVisualViewModelSpellFallbackAssets() {
+  const wizard = await buildNewGameState('wizard');
+  const view = buildVisualGameViewModel({
+    ...wizard,
+    nearbyEntities: [],
+    isCombatActive: false,
+  });
+  const spell = view.spellActions.find(action => /mage armor/i.test(action.label));
+  const cantrip = view.spellActions.find(action => /fire bolt/i.test(action.label));
+  const unprepared = view.spellActions.find(action => /detect magic/i.test(action.label));
+
+  assert.deepEqual(view.spellActions.map(action => action.label), wizard.knownSpells);
+  assert.ok(spell);
+  assert.equal(spell.imagePath, '/visual/spells/fallback_spell.svg');
+  assert.equal(spell.imageAssetId, 'fallback_spell');
+  assert.equal(spell.statusLabel, 'Prepared');
+  assert.equal(spell.enabled, true);
+  assert.ok(cantrip);
+  assert.equal(cantrip.statusLabel, 'Cantrip');
+  assert.equal(cantrip.enabled, true);
+  assert.ok(unprepared);
+  assert.equal(unprepared.statusLabel, 'Known');
+  assert.equal(unprepared.enabled, false);
 }
 
 async function testVisualViewModelGatesBossMovement() {
@@ -979,8 +1133,54 @@ async function testVisualViewModelThreatAttackActions() {
   assert.equal(view.threats[0].attackAction?.enabled, true);
   assert.equal(view.threats[1].attackAction?.command, 'attack skeleton spearman');
   assert.equal(view.threats[1].attackAction?.targetId, view.threats[1].id);
-  assert.equal(view.threats[1].imagePath, '/visual/monsters/fallback.svg');
+  assert.equal(view.threats[1].imagePath, '/visual/monsters/skeleton_spearman.png');
   assert.equal(view.threats[1].imageAssetId, 'skeleton_spearman');
+}
+
+async function testVisualViewModelCorpseLootActions() {
+  const state = await makeState();
+  const corpseState: GameState = {
+    ...state,
+    nearbyEntities: [
+      { ...makeMonster('Zombie', 0), hp: 0, status: 'dead' },
+      { ...makeMonster('Skeleton', 10), status: 'alive' },
+      { ...makeMonster('Fallen Knight (looted)', 0), hp: 0, status: 'dead' },
+    ],
+    isCombatActive: true,
+  };
+
+  const blockedView = buildVisualGameViewModel(corpseState);
+  const blockedZombie = blockedView.threats[0].lootAction;
+  const lootedKnight = blockedView.threats[2].lootAction;
+
+  assert.ok(blockedZombie);
+  assert.equal(blockedZombie.command, 'loot zombie');
+  assert.equal(blockedZombie.enabled, false);
+  assert.match(blockedZombie.reason || '', /clear threats/i);
+  assert.equal(blockedView.threats[0].imagePath, '/visual/monsters/zombie_dead.png');
+  assert.equal(blockedView.threats[0].imageAssetId, 'zombie_dead');
+  assert.ok(lootedKnight);
+  assert.equal(lootedKnight.enabled, false);
+  assert.match(lootedKnight.reason || '', /clear threats|already looted/i);
+  assert.equal(blockedView.threats[2].imagePath, '/visual/monsters/fallen_knight_dead.png');
+
+  const clearView = buildVisualGameViewModel({
+    ...corpseState,
+    nearbyEntities: [
+      { ...makeMonster('Zombie', 0), hp: 0, status: 'dead' },
+      { ...makeMonster('Fallen Knight (looted)', 0), hp: 0, status: 'dead' },
+    ],
+    isCombatActive: false,
+  });
+  const lootableZombie = clearView.threats[0].lootAction;
+  const alreadyLootedKnight = clearView.threats[1].lootAction;
+
+  assert.ok(lootableZombie);
+  assert.equal(lootableZombie.enabled, true);
+  assert.equal(lootableZombie.label, 'Loot Zombie');
+  assert.ok(alreadyLootedKnight);
+  assert.equal(alreadyLootedKnight.enabled, false);
+  assert.match(alreadyLootedKnight.reason || '', /already looted/i);
 }
 
 async function testVisualViewModelInventoryActionAssets() {
@@ -989,7 +1189,7 @@ async function testVisualViewModelInventoryActionAssets() {
   const potion = view.inventoryActions.find(action => /healing potion/i.test(action.label));
 
   assert.ok(potion);
-  assert.equal(potion.imagePath, '/visual/items/fallback.svg');
+  assert.equal(potion.imagePath, '/visual/items/healing_potion.png');
   assert.equal(potion.imageAssetId, 'healing_potion');
 }
 
@@ -1019,8 +1219,13 @@ async function main() {
   await testRequestedOwnedWeaponUsesMatchingDice();
   await testAttackHonorsTarget();
   await testSoloMonsterRetaliationStillOccurs();
+  await testNaturalOneAlwaysMisses();
+  await testNaturalTwentyHitsAndRollsDoubleDamageDice();
+  testCriticalDamageKeepsFlatModifiersSingle();
   await testPhase1HubBranchAndBossGates();
+  await testContextualInteractOpensSingleSceneExit();
   await testPhase1ConsumeItemGate();
+  await testLootCommandTargetsNamedCorpse();
   await testPhase1DiscoveryAndBranchCompletion();
   await testPhase1SeededVariants();
   await testSoloStateSplitRoundTrip();
@@ -1040,6 +1245,7 @@ async function main() {
   await testCheckSheetUsesReferenceFacts();
   await testMultiplayerSessionOwnerAndJoinerState();
   await testMultiplayerSessionRejectsJoinDuringCombat();
+  await testMultiplayerSessionRejectsFifthPlayer();
   await testMultiplayerSessionTurnGateRejectsWrongActor();
   await testMultiplayerSessionTurnAcceptsExplorationAction();
   await testMultiplayerMonsterBatchRunsAfterLastPlayer();
@@ -1052,11 +1258,15 @@ async function main() {
   await testVisualAssetManifestLoads();
   await testVisualAct1SceneManifestCoverage();
   await testVisualViewModelSoloContract();
+  await testVisualViewModelContextualInteractionAction();
+  await testVisualViewModelSpellFallbackAssets();
   await testVisualViewModelGatesBossMovement();
   await testVisualViewModelConsumeItemGate();
   await testVisualViewModelThreatAttackActions();
+  await testVisualViewModelCorpseLootActions();
   await testVisualViewModelInventoryActionAssets();
   await testVisualViewModelActorNamedLogs();
+  await testLootCommandPrefersExactCorpseName();
 
   console.log('game-engine regression tests passed');
 }

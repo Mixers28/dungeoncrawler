@@ -74,8 +74,11 @@ test('multiplayer: create party, join by code, poll shared movement', async ({ b
 
     await owner.getByTestId('movement-action').first().click();
 
-    await expect(owner.getByTestId('log-strip').getByText(/Iron Gate|Gatehouse|Courtyard|move|open/i)).toBeVisible();
-    await expect(joiner.getByTestId('log-strip').getByText(/Iron Gate|Gatehouse|Courtyard|move|open/i)).toBeVisible({ timeout: 8_000 });
+    // The narration log lives in the Adventure Log drawer in visual mode.
+    await owner.getByTestId('open-log-drawer').click();
+    await expect(owner.getByTestId('log-strip').getByText(/Iron Gate|Gatehouse|Courtyard|move|open/i).first()).toBeVisible();
+    await joiner.getByTestId('open-log-drawer').click();
+    await expect(joiner.getByTestId('log-strip').getByText(/Iron Gate|Gatehouse|Courtyard|move|open/i).first()).toBeVisible({ timeout: 8_000 });
     await expect(joiner.getByText('2 players')).toBeVisible();
   } finally {
     await ownerContext.close();

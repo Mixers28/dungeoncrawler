@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { GameState } from '../../lib/game-schema';
-import type { VisualGameViewModel } from '../../lib/visual/view-model';
+import type { VisualGameViewModel, VisualTurnEventItem } from '../../lib/visual/view-model';
 import { NarrationLog } from '../NarrationLog';
 import { PartyRail } from './PartyRail';
 import { DungeonViewport } from './DungeonViewport';
@@ -11,6 +11,7 @@ import { ActionTray } from './ActionTray';
 import { VisualDrawer } from './VisualDrawer';
 import { InventoryDrawerContent } from './InventoryDrawerContent';
 import { SpellbookDrawerContent } from './SpellbookDrawerContent';
+import { LootRevealOverlay, type LootReveal } from './LootRevealOverlay';
 
 interface VisualDungeonShellProps {
   gameState: GameState;
@@ -24,6 +25,17 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isInventoryDrawerOpen, setIsInventoryDrawerOpen] = useState(false);
   const [isSpellbookDrawerOpen, setIsSpellbookDrawerOpen] = useState(false);
+  const [isLogDrawerOpen, setIsLogDrawerOpen] = useState(false);
+  const [lastActionKind, setLastActionKind] = useState<'melee' | 'spell'>('melee');
+  const [seenLootLogId, setSeenLootLogId] = useState<string | null>(null);
+  const [activeLoot, setActiveLoot] = useState<LootReveal | null>(null);
+
+  // Track what kind of action produced the next damage tick so the viewport
+  // can pick the matching hit effect (weapon slash vs spell burst).
+  const dispatchCommand = (command: string) => {
+    setLastActionKind(command.trim().toLowerCase().startsWith('cast ') ? 'spell' : 'melee');
+    onCommand(command);
+  };
 
   if (!viewModel) {
     return (
@@ -37,10 +49,54 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
   const canAct = viewModel.turnState.canAct && !isLoading;
   const actionButtons = viewModel.turnState.mode === 'combat' ? viewModel.combatActions : viewModel.explorationActions;
 
+  // Adjust state during render (React-sanctioned pattern): baseline the newest
+  // log id on first render so a restored save doesn't pop a stale loot reveal,
+  // then open the overlay whenever fresh entries carry loot/coins events.
+  const logEntries = viewModel.logEntries;
+  const latestLogId = logEntries.length > 0 ? logEntries[logEntries.length - 1].id : 'empty';
+  if (seenLootLogId === null) {
+    setSeenLootLogId(latestLogId);
+  } else if (seenLootLogId !== latestLogId) {
+    const seenIdx = logEntries.findIndex(entry => entry.id === seenLootLogId);
+    const freshEntries = logEntries.slice(seenIdx + 1);
+    const items: VisualTurnEventItem[] = [];
+    let coins = 0;
+    let sourceName: string | undefined;
+    for (const entry of freshEntries) {
+      for (const event of entry.events || []) {
+        if (event.type === 'loot') {
+          items.push(...(event.items || []));
+          sourceName = sourceName || event.targetName;
+        } else if (event.type === 'coins') {
+          coins += event.amount || 0;
+          sourceName = sourceName || event.targetName;
+        }
+      }
+    }
+    if (items.length > 0 || coins > 0) {
+      setActiveLoot({ id: latestLogId, sourceName, coins, items });
+    }
+    setSeenLootLogId(latestLogId);
+  }
+
   const dispatchFromDrawer = (command: string, closeDrawer: () => void) => {
-    onCommand(command);
+    dispatchCommand(command);
     closeDrawer();
   };
+
+  // Visual mode shows loot in the reveal overlay and damage as standee FX, so
+  // keep the message strip to story/flavor text instead of mechanical lines.
+  const visibleLogEntries = logEntries
+    .filter(entry => {
+      const hasLootEvents = entry.events?.some(event => event.type === 'loot' || event.type === 'coins');
+      return !(entry.mode === 'LOOT_GAIN' && hasLootEvents);
+    })
+    .map(entry => {
+      if ((entry.mode === 'COMBAT_HIT' || entry.mode === 'COMBAT_KILL') && entry.flavor) {
+        return { ...entry, summary: entry.flavor, flavor: undefined };
+      }
+      return entry;
+    });
 
   return (
     <div className="flex flex-col h-full gap-2 md:gap-3">
@@ -51,13 +107,18 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
         </div>
 
         {/* Dungeon viewport dominates the screen */}
-        <div className="order-1 md:order-2 flex-1 flex flex-col min-h-0">
+        <div className="order-1 md:order-2 flex-1 flex flex-col min-h-0 relative">
           <DungeonViewport
             scene={viewModel.scene}
             threats={viewModel.threats}
             isCombatActive={viewModel.turnState.mode === 'combat'}
-            onCommand={onCommand}
+            lastActionKind={lastActionKind}
+            isBusy={isLoading}
+            onCommand={dispatchCommand}
           />
+          {activeLoot && (
+            <LootRevealOverlay loot={activeLoot} onDismiss={() => setActiveLoot(null)} />
+          )}
         </div>
 
         {/* Context drawer: optional details, desktop only for Phase 0 */}
@@ -87,19 +148,18 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
         <div className="text-xs text-center text-amber-500">{viewModel.turnState.reason}</div>
       )}
 
-      {/* Movement cluster, action tray, and compact log strip */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
-        <MovementCluster actions={viewModel.movementActions} onCommand={onCommand} />
+      {/* Movement cluster and action tray; the narration log lives in a drawer
+          because FX, damage numbers, and loot reveals already show the outcome. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+        <MovementCluster actions={viewModel.movementActions} onCommand={dispatchCommand} />
         <ActionTray
           actions={actionButtons}
-          onCommand={onCommand}
+          onCommand={dispatchCommand}
           onInventoryOpen={() => setIsInventoryDrawerOpen(true)}
           onSpellbookOpen={() => setIsSpellbookDrawerOpen(true)}
+          onLogOpen={() => setIsLogDrawerOpen(true)}
           disabled={!canAct}
         />
-        <div className="max-h-32 md:max-h-none overflow-y-auto" data-testid="log-strip">
-          <NarrationLog entries={viewModel.logEntries} maxEntries={5} compact />
-        </div>
       </div>
 
       <VisualDrawer title="Inventory" isOpen={isInventoryDrawerOpen} onClose={() => setIsInventoryDrawerOpen(false)}>
@@ -118,6 +178,12 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
           actions={viewModel.spellActions}
           onCommand={(command) => dispatchFromDrawer(command, () => setIsSpellbookDrawerOpen(false))}
         />
+      </VisualDrawer>
+
+      <VisualDrawer title="Adventure Log" isOpen={isLogDrawerOpen} onClose={() => setIsLogDrawerOpen(false)}>
+        <div data-testid="log-strip">
+          <NarrationLog entries={visibleLogEntries} maxEntries={12} />
+        </div>
       </VisualDrawer>
     </div>
   );

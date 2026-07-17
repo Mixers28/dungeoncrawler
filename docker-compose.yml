@@ -1,15 +1,61 @@
+# Full dev stack, following the wargame project's compose conventions.
+#   docker compose up -d          # app (hot reload) + postgres
+#   docker compose up -d postgres # database only (then `npm run dev` on the host)
+# The app service and a host `npm run dev` both want port 3000 — run one or the other.
+name: dungeoncrawler
+
 services:
+  app:
+    build:
+      context: .
+      target: development
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      # Overrides the localhost:5433 URL in .env.local; inside the compose
+      # network postgres is reached by service name on its native port.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-dungeoncrawler}
+    env_file:
+      - path: .env.local
+        required: false
+    ports:
+      # Bound on all interfaces (unlike wargame's 127.0.0.1) so LAN devices
+      # can reach the game; set APP_PORT to move it off 3000.
+      - '${APP_PORT:-3000}:3000'
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+      - /workspace/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+
   postgres:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_DB: dungeoncrawler
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-dungeoncrawler}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   postgres_data:

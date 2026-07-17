@@ -52,3 +52,193 @@ body {
 .animate-pulse-glow {
   animation: pulse-glow 2s infinite;
 }
+
+/* Combat feedback: hit flash, heal flash, floating damage/heal numbers */
+@keyframes hitFlash {
+  0% {
+    filter: brightness(1) drop-shadow(0 0 0 rgba(248, 113, 113, 0));
+  }
+  25% {
+    filter: brightness(2.2) drop-shadow(0 0 14px rgba(248, 113, 113, 0.9));
+  }
+  100% {
+    filter: brightness(1) drop-shadow(0 0 0 rgba(248, 113, 113, 0));
+  }
+}
+
+@keyframes healFlash {
+  0% {
+    filter: brightness(1) drop-shadow(0 0 0 rgba(74, 222, 128, 0));
+  }
+  25% {
+    filter: brightness(1.8) drop-shadow(0 0 14px rgba(74, 222, 128, 0.9));
+  }
+  100% {
+    filter: brightness(1) drop-shadow(0 0 0 rgba(74, 222, 128, 0));
+  }
+}
+
+@keyframes floatNumber {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -6px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -34px) scale(1);
+  }
+}
+
+@keyframes shakeFrame {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+.animate-hit-flash {
+  animation: hitFlash 0.5s ease-out;
+}
+
+.animate-heal-flash {
+  animation: healFlash 0.5s ease-out;
+}
+
+.animate-shake-frame {
+  animation: shakeFrame 0.4s ease-in-out;
+}
+
+.floating-combat-number {
+  animation: floatNumber 0.9s ease-out forwards;
+}
+
+/* Attack FX: weapon slash sweep and spell burst, overlaid on the target standee */
+@keyframes slashSweep {
+  0% {
+    transform: translate(-70%, -70%) rotate(-45deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(70%, 70%) rotate(-45deg);
+    opacity: 0;
+  }
+}
+
+.fx-slash {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fx-slash::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 160%;
+  height: 4px;
+  margin-left: -80%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.95) 35%,
+    rgba(226, 232, 240, 1) 50%,
+    rgba(255, 255, 255, 0.95) 65%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.9), 0 0 22px rgba(148, 163, 184, 0.7);
+  animation: slashSweep 0.35s ease-in forwards;
+}
+
+@keyframes lootCollect {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(-2px) scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-22px) scale(0.7);
+    opacity: 0;
+  }
+}
+
+.animate-loot-collect {
+  animation: lootCollect 0.45s ease-in forwards;
+}
+
+@keyframes spellBurstRing {
+  0% {
+    transform: translate(-50%, -50%) scale(0.15);
+    opacity: 0.95;
+  }
+  60% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes spellBurstGlow {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.fx-spell-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fx-spell-burst::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  border: 3px solid rgba(167, 139, 250, 0.95);
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.9), inset 0 0 14px rgba(139, 92, 246, 0.7);
+  animation: spellBurstRing 0.55s ease-out forwards;
+}
+
+.fx-spell-burst::after {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(196, 181, 253, 0.85) 0%, rgba(139, 92, 246, 0.35) 45%, rgba(139, 92, 246, 0) 70%);
+  animation: spellBurstGlow 0.55s ease-out forwards;
+}

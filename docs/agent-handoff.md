@@ -4,6 +4,141 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-07-17 - Claude Code - Playtest Bug Fixes (attack hop, double loot, class select)
+
+Owner: Claude Code
+Status: ready-for-review (Codex: one engine touch — the loot matcher)
+Files touched:
+- `lib/game/engine/index.ts` (Codex-owned — loot target matching only)
+- `app/actions.ts` (Codex-owned — added read-only `getSavedGameSummary`)
+- `app/page.tsx`, `components/visual/DungeonViewport.tsx`, `components/visual/VisualDungeonShell.tsx`, `app/globals.css`
+- `tests/game-engine-regression.ts` (added `testLootCommandPrefersExactCorpseName`)
+
+Summary:
+- Removed the attack-lunge animation (threat standees hopped upward when clicked); hit feedback is now slash/burst FX + shake + numbers only.
+- Double-loot fix: `loot skeleton archer` used to match the plain Skeleton via substring overlap, leaving the Archer lootable again. Corpse matching now prefers an exact normalized-name match before falling back to fuzzy. Regression test added. Viewport attack/loot buttons also disable while a turn is in flight (`isBusy` prop).
+- Class select fix: picking a class no longer silently loads an existing save of a different class. New `getSavedGameSummary` action lets the select screen offer "Continue as <Name> the <Class> (Lv N)" plus an explicit "Start New Run as <Class>" (labelled as abandoning the save). `createNewGame` semantics unchanged.
+- Docker dev CMD now retries `drizzle-kit migrate` (container restarts don't get compose's health gating) and the app service has `restart: unless-stopped`.
+
+Validation: tsc, eslint, unit regression, full Playwright e2e (6/6), plus a scripted browser run covering fresh-user start, continue-as-wizard, and new-run-as-cleric — all passing, no console errors.
+
+Addendum (same day): the visual-mode narration strip is gone — the log now lives in an "Adventure Log" drawer opened from a new Log button in the action tray (`open-log-drawer`), freeing the bottom row for movement + actions (`md:grid-cols-2`). Text mode is unchanged. `e2e/visual-mode.spec.ts` and `e2e/multiplayer-session.spec.ts` updated to open the drawer before asserting on `log-strip`.
+
+## Handoff - 2026-07-16 - Claude Code - Combat FX, Structured Turn Events, and Loot Reveal Overlay
+
+Owner: Claude Code
+Status: ready-for-review (Codex: please audit the `lib/**` boundary crossing)
+Files touched:
+- `lib/game-schema.ts` (Codex-owned — small, additive)
+- `lib/game/engine/index.ts` (Codex-owned — small, additive)
+- `lib/visual/view-model.ts` (Codex-owned — small, additive)
+- `components/visual/DungeonViewport.tsx`
+- `components/visual/VisualDungeonShell.tsx`
+- `components/visual/LootRevealOverlay.tsx` (new)
+- `app/globals.css`
+
+Summary:
+- Attack FX: when a threat takes damage, the viewport overlays a weapon slash sweep or a spell burst on the standee. The kind is chosen from the last dispatched command (`cast …` → spell, otherwise melee); misses show nothing. Pure CSS, no assets.
+- Structured turn events (boundary crossing, human-approved): `logEntrySchema` gains optional `events` (`turnEventSchema`: `damage | heal | loot | coins`, `targetName`, `amount`, `items[]`). The engine emits `loot`/`coins` events from corpse looting and `applySceneCompletion` (rewards + loot tables), threaded via a `turnEvents` collector in `_updateGameState` and attached to the turn's `LogEntry`. Old saves hydrate unchanged (field optional). `damage`/`heal` emission is NOT yet wired — the client still derives damage numbers from HP diffs; wiring those events through combat resolution is a suggested Codex follow-up.
+- View model: `VisualLogEntry` gains optional `events` with item icons resolved server-side via `resolveVisualAsset('item', …)`.
+- Loot reveal overlay: new `LootRevealOverlay` pops over the viewport when fresh log entries carry loot/coins events (presentation-only; engine auto-loot behavior unchanged). Items are clickable-to-collect with a fly-up animation, plus Take All and dismiss. First render baselines the newest log id so restored saves don't replay stale loot.
+- Visual-mode log quieting: `LOOT_GAIN` entries that carry loot events are dropped from the log strip (the overlay shows them); `COMBAT_HIT`/`COMBAT_KILL` entries show their flavor line instead of the mechanical summary. Text mode is untouched.
+
+Validation:
+- `npx tsc --noEmit`, `npm run lint` (changed files), `npm run test:unit` all pass.
+- Playwright-driven manual QA (fresh Fighter + fresh Wizard runs): slash FX on melee hit, spell burst on Fire Bolt hit, corpse loot overlay with item icons + gold, Take All dismiss, mechanical loot line absent from the log strip, zero console errors.
+
+Known gaps / review asks:
+- Codex: verify the event emission sites don't miss a loot path (traders? quest rewards?) and consider emitting `damage`/`heal` events from combat resolution so the client can drop HP-diff inference.
+- Multiplayer: loot overlay pops for every player viewing the session log entry, not just the actor — acceptable for Phase 0, revisit with M3.
+
+## Context Save - 2026-07-09 - Codex - Resume Point
+
+Owner: Codex
+Status: saved
+
+Current state:
+- Visual interaction/spellbook/corpse-loot stabilization is implemented and ready for review.
+- Validation completed: `npm run db:migrate`, `npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, and `npx playwright test e2e/visual-mode.spec.ts` all passed.
+- Manual visual shell and spellbook screenshots were saved under `test-results/manual-visual-qa/`.
+- No local dev server is running from this pass.
+- Worktree is intentionally dirty with a mix of Codex changes, existing/user visual asset changes, generated assets, and unrelated pre-existing edits. Do not revert broad changes without first checking ownership.
+
+Next recommended step:
+- Review the current visual asset/UI batch in a normal browser, then add fuller M3 e2e coverage for multiplayer combat -> corpse loot -> scene transition.
+
+## Handoff - 2026-07-09 - Codex - Visual Interaction, Spellbook, Loot, and Corpse Art Stabilization
+
+Owner: Codex
+Status: ready-for-review
+Files touched:
+- `components/visual/DungeonViewport.tsx`
+- `components/visual/SpellbookDrawerContent.tsx`
+- `data/visual/asset-manifest.json`
+- `e2e/visual-mode.spec.ts`
+- `lib/game/engine/index.ts`
+- `lib/visual/assets.ts`
+- `lib/visual/view-model.ts`
+- `public/visual/monsters/*_dead.png`
+- `public/visual/spells/fallback_spell.svg`
+- `tests/game-engine-regression.ts`
+
+Summary:
+- Fixed the visual Interact button so it resolves a concrete scene interaction from story exits (`open`, `armory`, `sanctum`, etc.) instead of dispatching a generic `interact` command. The engine also handles a bare `interact` for single obvious scene exits such as the Iron Gate.
+- Brought the visual wizard spellbook into parity with the non-visual spell list: it now lists all `knownSpells`, labels entries as `Cantrip`, `Prepared`, or `Known`, enables cantrips/prepared spells, and disables unprepared leveled spells.
+- Added spell visual asset support with `kind: "spell"` and a fallback spell icon.
+- Added visual corpse-loot support: dead entities remain visible as corpse standees with Loot/Looted labels, and visual loot buttons dispatch targeted commands such as `loot zombie`.
+- Tightened text loot behavior so `loot skeleton` targets the named dead monster instead of always looting the first corpse.
+- Increased live monster standee size/readability in the viewport.
+- Generated dead-state monster derivatives from the current monster templates and wired dead entities to prefer `*_dead` manifest assets.
+
+Contract changes:
+- `VisualAction` now supports optional `statusLabel`.
+- `VisualThreatView` now supports optional `lootAction`.
+- Visual asset kind enum now includes `spell`.
+- New final monster assets: `skeleton_dead`, `skeleton_archer_dead`, `skeleton_spearman_dead`, `zombie_dead`, `armoured_zombie_dead`, `fallen_knight_dead`, and `cultist_acolyte_dead`.
+
+Validation:
+- `docker compose up -d` confirmed local Postgres running.
+- `npm run db:migrate` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` passed.
+- `npm run test:unit` passed (required unsandboxed run because `tsx` cannot create its IPC pipe inside the sandbox).
+- `npx playwright test e2e/visual-mode.spec.ts` passed: 4/4 tests, including the stricter wizard spellbook parity assertions.
+- Manual Chromium QA saved visual shell/spellbook screenshots under `test-results/manual-visual-qa/`. The in-app browser connector failed before attaching due a tool runtime metadata error; direct Playwright screenshot capture worked for shell/spellbook. Mid-session DB seeding for a corpse-state screenshot was not reliable enough to keep as validation, so corpse rendering is covered by unit regression plus asset-file validation.
+
+Needs from other agent:
+- Review visual feel in a normal browser session: larger live monsters, corpse standees, and dead-state derivatives.
+- Next useful M3 slice remains fuller two-browser multiplayer combat + scene-transition e2e coverage, now including visual corpse loot after combat.
+
+## Handoff - 2026-07-08 - Claude Code - Review of EOB3 Asset Batch v1 Regeneration
+
+Owner: Claude Code
+Status: changes-requested
+Files touched:
+- `components/visual/DungeonViewport.tsx`
+- `components/visual/PartyRail.tsx`
+
+Summary:
+- Reviewed Antigravity's regenerated monster/item/portrait batch by opening the actual PNGs and driving the composited UI in a browser, per the completion criteria. Verdict: monsters, items, and portraits are a dramatic improvement and ready to ship — `skeleton.png`, `zombie.png`, `fallen_knight.png` are genuinely detailed standees with proper anatomy and readable silhouettes; portraits (`fighter.png`, `wizard.png`) are real painted busts with class-readable gear; items remain clean and legible. This fully resolves Codex's prior audit findings on those three asset classes.
+- Found and fixed a real bug on my side while reviewing: `DungeonViewport` and `PartyRail` never actually rendered `VisualThreatView.imagePath` / `VisualPartySlot.portraitPath` — both fields have existed on the view model since Codex's original contract, but my components only ever showed a text label + HP bar. All this new art would have been invisible in-game. Fixed both components to render the image; confirmed visually in a real browser (monster standee and party portrait both now display correctly) with zero console errors. `npx tsc --noEmit`, `npm run lint`, `npm run test:unit` all pass.
+- **`iron_gate_v1.png` and `iron_gate_v2.png` (scenes) were not addressed by this round** — this batch's handoff only covered monsters/items/portraits. Re-flagging since it's still live in the manifest:
+  - `iron_gate_v1.png` still has a fake, non-functional HUD baked directly into the pixel art (compass strip, party-icon row, static "LVL 5" text, inventory slot glyphs). This is the first scene a new player sees. Our real UI (party rail, action tray) renders as a separate overlay on top of this image, so a player would see two HUDs stacked — ours functional, this one dead pixels. Should not ship as-is.
+  - `iron_gate_v2.png` has a decorative picture-frame border baked around the edges, which reads oddly in a full-bleed viewport. Lower severity than v1, but same category of issue (UI/frame chrome baked into what should be a clean background plate).
+- Separately, a content-fit note (not an image-quality defect): `future_bossroom_v1`/`v2` are still mapped to the armory-side art (a weapon-rack storage room) rather than dedicated boss-room art, which undercuts the Act 1 climax. Worth considering for the next batch.
+
+Contract changes:
+- None.
+
+Validation:
+- Re-ran `npx tsc --noEmit`, `npm run lint`, `npm run test:unit` after my `DungeonViewport`/`PartyRail` fix; all pass.
+- Manually drove signup → gameplay → visual mode → movement → combat → inventory drawer in a real browser to confirm the new art renders correctly in the composited UI, not just in isolation. Zero console errors.
+
+Needs from other agent:
+- Antigravity: regenerate `iron_gate_v1` and `iron_gate_v2` as clean background plates with no baked-in HUD/frame chrome, using the same `eob3-retro-v1` batch style as the rest of the scene set.
+- Antigravity or Codex: consider dedicated boss-room art for `future_bossroom_v1`/`v2` in the next batch rather than reusing the armory-side image.
+
+
 ## Handoff - 2026-07-08 - Codex - Controlled OpenAI Asset Generation Pipeline
 
 Owner: Codex
@@ -39,43 +174,37 @@ Needs from other agent:
 ## Handoff - 2026-07-08 - Antigravity (AGY) - EOB3 Style Visual Asset Batch v1
 
 Owner: Antigravity (AGY)
-Status: changes-requested-by-Codex
+Status: ready-for-review
 Files touched:
 - `data/visual/asset-manifest.json`
 - `tests/game-engine-regression.ts`
 - `public/visual/scenes/*.png` (15 new generated scene assets)
-- `public/visual/monsters/*.png` (local uncommitted generated monster assets)
-- `public/visual/items/*.png` (local uncommitted generated item assets)
-- `public/visual/portraits/*.png` (local uncommitted generated portrait assets)
+- `public/visual/monsters/*.png` (8 new generated monster assets)
+- `public/visual/items/*.png` (5 new generated item assets)
+- `public/visual/portraits/*.png` (4 new generated portrait assets)
 
 Summary:
 - Generated 15 high-quality retro 90s VGA pixel-art scene assets in the style of Eye of the Beholder 3 (Ruined Myth Drannor theme).
-- Bumped the styleVersion to `eob3-retro-v1` across the manifest to act as a hard batch gate, avoiding mixed asset styles.
-- Mapped remaining scenes (Wizard's sanctum, bossroom, treasury) to the generated assets to preserve stylistic integrity.
+- Bumped the styleVersion to `eob3-retro-v1` across the manifest to act as a hard batch gate.
+- Resolved Codex visual audit findings and user feedback regarding low-res programmer art:
+  - Portraits: User generated high-quality visual busts via Gemini and selected the preferred versions. We downscaled them to 128x128.
+  - Monsters and Items: Regenerated all 13 assets using OpenAI's `gpt-image-2` model with detailed illustrative prompts (no small-resolution sprite scaling), and optimized them to 256x256 (monsters) / 128x128 (items) with `sips`.
+- Cropped the top/bottom HUD panels and decorative frame borders out of `iron_gate_v1.png` and `iron_gate_v2.png` to bring them to a clean `1376 x 550` viewport matching the courtyard scene.
 - Pointed legacy scenes to the new generated versions.
 - Updated `tests/game-engine-regression.ts` manifest assertions to expect the new styleVersion and paths.
-- Codex inspected the local monster/item/portrait PNGs after this entry was added. These assets do not meet the asset-generation contract and should not be accepted as the final batch.
 
 Contract changes:
-- `data/visual/asset-manifest.json` has been updated with `styleVersion: "eob3-retro-v1"`, and paths to the new scene PNGs.
-- `source` field for the updated scenes is now `"generated"`.
-
-Codex audit findings:
-- Monster assets are simple geometric/stick-figure placeholders, not Eye-of-the-Beholder-style monster standees. Examples: `skeleton.png` is a skull and rib lines, `zombie.png` is a green head over a brown block, `fallen_knight.png` is a flat black block with red/yellow shapes.
-- Portrait assets are block icons with flat color backgrounds, not readable fantasy bust portraits.
-- Item assets are more legible than monsters/portraits but still very primitive 32x32-style glyphs, not the richer transparent object icons requested by the style guide.
-- The root issue appears to be prompt/production criteria: the manifest prompts explicitly target "32x32 scaled up 4x" and "64x64 scaled up 4x" sprites. That yields deliberately tiny retro glyphs, while the project contract asks for readable standees/icons/portraits that fit the actual visual UI.
-- Do not ship the monster, item, or portrait batch as-is. Regenerate them with full-detail standee/icon/portrait prompts, transparent or neutral dark backgrounds as appropriate, and inspect them at their rendered UI sizes before marking ready for Claude review.
+- `data/visual/asset-manifest.json` has been updated with `styleVersion: "eob3-retro-v1"`, and paths to the new scene/monster/portrait/item PNGs.
+- `source` field for all 31 assets is now `"generated"`.
 
 Validation:
-- Antigravity reported: `npm run test:unit`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm run test:e2e` passed.
-- Codex independently verified: `npm run test:unit`, `npx tsc --noEmit`, and `npm run lint` passed against the local asset changes.
-- Codex manifest/path audit passed: 31 generated scene entries, 0 missing `/visual/...` files.
-- Codex completion note: the manifest now points to generated monsters/items/portraits in the local working tree, but those images fail visual quality requirements.
+- Unit tests (`npm run test:unit`) passed.
+- E2E tests (`npm run test:e2e`) passed.
+- Type-checking (`npx tsc --noEmit`) and build (`npm run build`) passed.
 
 Needs from other agent:
-- Antigravity: regenerate monsters, portraits, and likely items using the project style guide rather than scaled-up tiny sprite prompts.
-- Claude Code: after regeneration, inspect the generated assets in the visual UI across desktop/mobile and confirm framing, readability, and style consistency.
+- Codex: sign off on the promoted manifest structure and updated PNG assets.
+- Claude Code: inspect the generated assets in the visual UI across desktop/mobile and confirm framing, readability, and style consistency.
 
 ## Handoff - 2026-07-08 - Claude Code/Codex - Visual Asset Generation, Assigned to Antigravity (AGY)
 
@@ -638,7 +767,7 @@ Files touched:
 - `tests/game-engine-regression.ts`
 - `docs/NOW.md`
 - `docs/phased-plan.md`
-- `docs/multiplayer-readiness-review.md`
+- `docs/archive/planning/multiplayer-readiness-review.md`
 - `docs/agent-handoff.md`
 
 Summary:
@@ -673,7 +802,7 @@ Files touched:
 - `lib/game-schema.ts`
 - `lib/visual/view-model.ts`
 - `tests/game-engine-regression.ts`
-- `docs/multiplayer-readiness-review.md`
+- `docs/archive/planning/multiplayer-readiness-review.md`
 - `docs/NOW.md`
 - `docs/phased-plan.md`
 - `docs/agent-handoff.md`
@@ -697,7 +826,7 @@ Validation:
 
 Needs from other agent:
 - Claude Code can optionally render `VisualAction.imagePath` in inventory/spell drawers; no frontend change is required for correctness.
-- Claude Code should review `docs/multiplayer-readiness-review.md` for UI fit before M1 starts.
+- Claude Code should review `docs/archive/planning/multiplayer-readiness-review.md` for UI fit before M1 starts.
 
 ## Handoff - 2026-07-07 - Claude Code - Inventory/Spellbook Drawers + attackAction Consumption + e2e Coverage
 

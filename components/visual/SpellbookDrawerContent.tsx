@@ -29,7 +29,12 @@ export function SpellbookDrawerContent({ actions, onCommand }: SpellbookDrawerCo
               className="w-6 h-6 rounded bg-slate-900 border border-slate-700 object-contain flex-shrink-0"
             />
           )}
-          <span className="truncate">{action.label}</span>
+          <span className="truncate flex-1">{action.label}</span>
+          {action.statusLabel && (
+            <span className="text-[10px] px-2 py-0.5 rounded border border-slate-600 bg-slate-900 text-slate-300 flex-shrink-0">
+              {action.statusLabel}
+            </span>
+          )}
         </button>
       ))}
     </div>

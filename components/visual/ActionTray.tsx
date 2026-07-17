@@ -7,10 +7,11 @@ interface ActionTrayProps {
   onCommand: (command: string) => void;
   onInventoryOpen: () => void;
   onSpellbookOpen: () => void;
+  onLogOpen: () => void;
   disabled: boolean;
 }
 
-export function ActionTray({ actions, onCommand, onInventoryOpen, onSpellbookOpen, disabled }: ActionTrayProps) {
+export function ActionTray({ actions, onCommand, onInventoryOpen, onSpellbookOpen, onLogOpen, disabled }: ActionTrayProps) {
   return (
     <div className="flex flex-wrap gap-1.5 content-start" data-testid="action-tray">
       {actions.map(action => (
@@ -40,6 +41,13 @@ export function ActionTray({ actions, onCommand, onInventoryOpen, onSpellbookOpe
         className="text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         Spells
+      </button>
+      <button
+        onClick={onLogOpen}
+        data-testid="open-log-drawer"
+        className="text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-2 rounded transition-colors"
+      >
+        Log
       </button>
     </div>
   );

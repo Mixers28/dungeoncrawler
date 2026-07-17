@@ -16,11 +16,13 @@ import { getMultiplayerVisualViewModel, getVisualViewModel } from './visual-acti
 import {
   createMultiplayerFromCurrentGame,
   createNewGame,
+  getSavedGameSummary,
   joinMultiplayerByCode,
   loadCurrentMultiplayerSession,
   processMultiplayerTurn,
   processTurn,
   resetGame,
+  type SavedGameSummary,
 } from './actions';
 import { ARCHETYPES, ArchetypeKey } from './characters';
 import { saveScore } from '../lib/leaderboard';
@@ -74,6 +76,8 @@ function HomeContent() {
   const [deathCountdown, setDeathCountdown] = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<ArchetypeKey | null>('fighter');
   const [error, setError] = useState<string | null>(null);
+  // undefined = still checking; null = no save; object = resumable run.
+  const [saveSummary, setSaveSummary] = useState<SavedGameSummary | null | undefined>(undefined);
 
   // UI states
   const [showIntro, setShowIntro] = useState(false);
@@ -334,17 +338,32 @@ function HomeContent() {
     if (!isLoading) focusInput();
   }, [isLoading, messages.length, focusInput]);
 
-  async function handleStart() {
+  // Check for a resumable save so the select screen can offer Continue vs New Run.
+  useEffect(() => {
+    if (gameState || isNewRun) return;
+    let cancelled = false;
+    getSavedGameSummary()
+      .then(summary => { if (!cancelled) setSaveSummary(summary); })
+      .catch(() => { if (!cancelled) setSaveSummary(null); });
+    return () => {
+      cancelled = true;
+    };
+  }, [gameState, isNewRun]);
+
+  async function handleStart(mode: 'continue' | 'new') {
     setIsLoading(true);
     try {
-      if (!selectedClass) {
+      if (mode === 'new' && !selectedClass) {
         setError("Select a class to begin.");
         setIsLoading(false);
         return;
       }
 
-      // createNewGame loads existing save from DB, or starts fresh if ?newRun=1
-      const initialState = await createNewGame({ archetypeKey: selectedClass, forceNew: isNewRun });
+      // 'continue' resumes the saved run as-is; 'new' honours the picked class
+      // and overwrites any existing save (the user chose this explicitly).
+      const initialState = mode === 'continue'
+        ? await createNewGame({})
+        : await createNewGame({ archetypeKey: selectedClass!, forceNew: true });
       setMultiplayerSession(null);
       setGameState(initialState);
 
@@ -512,13 +531,36 @@ function HomeContent() {
                   </button>
                 </div>
               </div>
-              <button
-                onClick={handleStart}
-                disabled={isLoading}
-                className="bg-amber-600 hover:bg-amber-700 text-slate-900 text-lg font-bold py-3 px-6 rounded transition-all disabled:opacity-50 shadow-lg shadow-amber-900/20 flex items-center gap-3"
-              >
-                {isLoading ? "Loading..." : "Enter the Realm"}
-              </button>
+              <div className="flex flex-col items-stretch md:items-end gap-2">
+                {saveSummary && (
+                  <button
+                    onClick={() => handleStart('continue')}
+                    disabled={isLoading}
+                    data-testid="continue-run"
+                    className="bg-amber-600 hover:bg-amber-700 text-slate-900 text-lg font-bold py-3 px-6 rounded transition-all disabled:opacity-50 shadow-lg shadow-amber-900/20"
+                  >
+                    {isLoading ? "Loading..." : `Continue as ${saveSummary.name} the ${saveSummary.className} (Lv ${saveSummary.level})`}
+                  </button>
+                )}
+                <button
+                  onClick={() => handleStart('new')}
+                  disabled={isLoading || (saveSummary === undefined && !isNewRun)}
+                  data-testid="start-new-run"
+                  className={`${saveSummary
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm font-bold py-2 px-6'
+                    : 'bg-amber-600 hover:bg-amber-700 text-slate-900 text-lg font-bold py-3 px-6 shadow-lg shadow-amber-900/20'
+                  } rounded transition-all disabled:opacity-50`}
+                >
+                  {isLoading
+                    ? "Loading..."
+                    : saveSummary
+                      ? `Start New Run as ${selectedClass ? ARCHETYPES[selectedClass].label : '…'}`
+                      : "Enter the Realm"}
+                </button>
+                {saveSummary && (
+                  <p className="text-xs text-slate-500">Starting a new run abandons your current save.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

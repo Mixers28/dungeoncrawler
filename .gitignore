@@ -47,3 +47,7 @@ next-env.d.ts
 
 # generated visual asset review batches
 /public/visual/_candidates/
+
+# throwaway agent verification scripts
+*.tmp.js
+*.tmp.ts

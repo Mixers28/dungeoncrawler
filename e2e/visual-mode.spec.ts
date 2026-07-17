@@ -53,8 +53,13 @@ test('visual mode: shell landmarks render with no console errors', async ({ page
   await expect(page.getByTestId('party-rail')).toBeVisible();
   await expect(page.getByTestId('dungeon-viewport')).toBeVisible();
   await expect(page.getByTestId('action-tray')).toBeVisible();
-  await expect(page.getByTestId('log-strip')).toBeVisible();
   await expect(page.getByText('YOU', { exact: true })).toBeVisible();
+
+  // The narration log lives in a drawer in visual mode.
+  await page.getByTestId('open-log-drawer').click();
+  await expect(page.getByTestId('log-strip')).toBeVisible();
+  await page.getByLabel('Close Adventure Log').click();
+  await expect(page.getByTestId('log-strip')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Create Party' }).click();
   await expect(page.getByText(/Party [A-Z2-9]{6}/)).toBeVisible();
@@ -66,13 +71,16 @@ test('visual mode: shell landmarks render with no console errors', async ({ page
 test('visual mode: movement action dispatches a command and updates the log', async ({ page }) => {
   await reachVisualGameplay(page);
 
-  const logStrip = page.getByTestId('log-strip');
   const moveButtons = page.getByTestId('movement-action');
 
   // The gate scene always has at least one mapped exit in Act 1.
   await expect(moveButtons.first()).toBeVisible();
   await moveButtons.first().click();
 
+  // Log entries are shown inside the Adventure Log drawer in visual mode.
+  await page.getByTestId('open-log-drawer').click();
+  const logStrip = page.getByTestId('log-strip');
+  await expect(logStrip).toBeVisible();
   await expect(logStrip.getByText('No messages yet')).toHaveCount(0);
   await expect(page.getByText('Failed to process turn')).toHaveCount(0);
 });
@@ -106,7 +114,10 @@ test('visual mode: spellbook drawer opens, casts a spell, and auto-closes', asyn
 
   const spellButtons = page.getByTestId('spell-actions').getByRole('button');
   const spellCount = await spellButtons.count();
-  expect(spellCount).toBeGreaterThan(0); // Wizard always has prepared spells at level 1.
+  expect(spellCount).toBe(10); // Wizard shows all assigned known spells: 4 cantrips + 6 spellbook entries.
+  await expect(page.getByRole('button', { name: /Fire Bolt Cantrip/i })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Mage Armor Prepared/i })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Detect Magic Known/i })).toBeDisabled();
 
   await spellButtons.first().click();
   await expect(page.getByRole('heading', { name: 'Spellbook' })).toHaveCount(0);

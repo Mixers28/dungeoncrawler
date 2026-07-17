@@ -2,16 +2,17 @@ import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../../rules';
 import { getClassReference } from '../../5e/classes';
 import { armorByName, weaponsByName, skillsByName, wizardSpellsByName, clericSpellsByName } from '../../5e/reference';
 import { rollLoot } from '../../loot';
-import { getSceneById, pickSceneVariant, type StoryScene } from '../../story';
+import { getSceneById, pickSceneVariant, type StoryExit, type StoryScene } from '../../story';
 import { generateCannedFlavor, type NarrationContext } from '../../narrationEngine';
 import { DIFFICULTY_TO_DC, type ClassifiedStunt, type StuntTemplate } from '../../stunts';
 import { getNextLevelDef } from '../../progression';
 import { armorById, armorByName as equipmentArmorByName, normalizeWeaponName, resolveArmorId, resolveWeaponId, weaponsById, weaponsByName as equipmentWeaponsByName } from '../../items';
 import { getTraderAtLocation } from '../../traders';
 import { getConsumableEffect, isConsumableItem, isUndeadOrFiend } from '../../consumables';
-import { rollDice, rollD20 } from '../dice';
+import { d20AttackHits, rollCriticalDamage, rollDice, rollD20 } from '../dice';
 import { type CoreActionIntent, type GameIntent, type TradeIntent } from '../intent';
 import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, computeArmorClassFromInventory, resolveRoomDescription, resolveSceneImage } from '../state';
+import { type TurnEvent } from '../../game-schema';
 import {
   addActorEffect,
   addActorInventoryItem,
@@ -177,7 +178,7 @@ function reconcileFlagQuests(state: GameState, logs: string[]) {
 // Applies a scene's onComplete flags/rewards exactly once (guarded by flagsSet).
 // Called both at end-of-turn for the current scene and when exiting a cleared
 // scene, so leaving immediately after a fight still counts as completing it.
-function applySceneCompletion(state: GameState, scene: StoryScene, summaryParts: string[]) {
+function applySceneCompletion(state: GameState, scene: StoryScene, summaryParts: string[], turnEvents?: TurnEvent[]) {
   if (!scene.onComplete?.flagsSet) return;
   const newFlags = scene.onComplete.flagsSet.filter(f => !(state.storyFlags || []).includes(f));
   if (newFlags.length === 0) return;
@@ -208,6 +209,11 @@ function applySceneCompletion(state: GameState, scene: StoryScene, summaryParts:
     ];
     state.inventoryChangeLog = [...state.inventoryChangeLog, `Scene reward: ${grantedItems.join(', ')}`].slice(-10);
     summaryParts.push(`You claim ${grantedItems.join(' and ')}.`);
+    turnEvents?.push({
+      type: 'loot',
+      targetName: scene.title || scene.location,
+      items: grantedItems.map(name => ({ name, quantity: 1 })),
+    });
   }
   const lootTable = scene.onComplete.reward?.lootTable;
   if (lootTable) {
@@ -218,7 +224,10 @@ function applySceneCompletion(state: GameState, scene: StoryScene, summaryParts:
         const gold = loot.coins.gp || 0;
         const silver = loot.coins.sp || 0;
         const copper = loot.coins.cp || 0;
-        if (gold > 0) awardGold(state, gold);
+        if (gold > 0) {
+          awardGold(state, gold);
+          turnEvents?.push({ type: 'coins', targetName: scene.title || scene.location, amount: gold });
+        }
         const coinParts = [
           gold > 0 ? `${gold} gp` : null,
           silver > 0 ? `${silver} sp` : null,
@@ -237,6 +246,11 @@ function applySceneCompletion(state: GameState, scene: StoryScene, summaryParts:
         state.inventory = [...state.inventory, ...newItems];
         state.inventoryChangeLog = [...state.inventoryChangeLog, `Scene loot: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}`].slice(-10);
         summaryParts.push(`Loot found: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}.`);
+        turnEvents?.push({
+          type: 'loot',
+          targetName: scene.title || scene.location,
+          items: newItems.map(i => ({ name: i.name, quantity: i.quantity })),
+        });
       }
     }
   }
@@ -753,6 +767,28 @@ function isWeaponAllowedForClass(weaponName: string | undefined, classKey: strin
   return ref.allowedWeapons.map(w => w.toLowerCase()).includes(weaponName.toLowerCase());
 }
 
+function findSceneExitForAction(currentScene: StoryScene | null, userAction: string): StoryExit | undefined {
+  const exits = currentScene?.exits || [];
+  const lowerAction = userAction.toLowerCase();
+  const explicitExit = exits.find(ex => ex.verb.some(v => lowerAction.includes(v.toLowerCase())));
+  if (explicitExit) return explicitExit;
+
+  if (!/\binteract\b/i.test(userAction)) return undefined;
+
+  const interactionExits = exits.filter(exit => {
+    const verbs = exit.verb.map(verb => verb.toLowerCase());
+    const isBacktrack = verbs.some(verb => ['back', 'return', 'leave', 'exit'].includes(verb));
+    const isInteraction = !!exit.consumeItem || verbs.some(verb =>
+      ['open', 'push', 'pull', 'use', 'activate', 'unlock', 'turn', 'door', 'gate', 'lever', 'altar', 'cache', 'armory', 'sanctum'].includes(verb)
+    );
+    return isInteraction && !isBacktrack;
+  });
+
+  if (interactionExits.length === 1) return interactionExits[0];
+  if (exits.length === 1) return exits[0];
+  return undefined;
+}
+
 // --- MAIN LOGIC ENGINE ---
 // DM principles: describe what the player perceives, let the player act, resolve fairly.
 async function _updateGameState(
@@ -766,6 +802,7 @@ async function _updateGameState(
   eventSummary: string;
   narrationMode: NarrationMode;
   rollLog: RollEvent[];
+  turnEvents?: TurnEvent[];
 }> {
   const userAction = intent.userAction;
   // 1. DETERMINE PLAYER WEAPON & DAMAGE
@@ -816,6 +853,7 @@ async function _updateGameState(
     : (currentState.turnCounter || 0);
   expireEffects(newState);
   const turnContext = createTurnContextFromGameState(newState);
+  const turnEvents: TurnEvent[] = [];
 
   let currentScene = getSceneById(currentState.storySceneId);
   if (!currentScene && newState.location.toLowerCase().includes('gate')) {
@@ -823,7 +861,7 @@ async function _updateGameState(
   }
 
   // 2a. Scene exit transitions before other actions
-  const sceneExit = currentScene?.exits?.find(ex => ex.verb.some(v => userAction.toLowerCase().includes(v)));
+  const sceneExit = findSceneExitForAction(currentScene, userAction);
   if (sceneExit) {
     const aliveThreat = newState.nearbyEntities.some(e => e.status === 'alive');
     if (aliveThreat) {
@@ -834,13 +872,13 @@ async function _updateGameState(
     // flags/rewards now so exits gated on those flags open immediately.
     const exitSummaries: string[] = [];
     if (currentScene) {
-      applySceneCompletion(newState, currentScene, exitSummaries);
+      applySceneCompletion(newState, currentScene, exitSummaries, turnEvents);
     }
     if (sceneExit.consumeItem) {
       const hasItem = newState.inventory.some(i => i.name.toLowerCase() === sceneExit.consumeItem!.toLowerCase());
       if (!hasItem) {
         newState.lastActionSummary = `You need ${sceneExit.consumeItem} to proceed.`;
-        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: [newState.lastActionSummary], eventSummary: newState.lastActionSummary, narrationMode: "GENERAL", rollLog: [] };
+        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: [newState.lastActionSummary], eventSummary: newState.lastActionSummary, narrationMode: "GENERAL", rollLog: [], turnEvents };
       }
       // Consumed below, only once the transition actually happens — the target's
       // entryConditions.requiresItem check must still see the item in inventory.
@@ -872,7 +910,7 @@ async function _updateGameState(
       if (lockedReason) {
         const lockedFacts = [...exitSummaries, lockedReason];
         newState.lastActionSummary = lockedFacts.join(' ');
-        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: lockedFacts, eventSummary: newState.lastActionSummary, narrationMode: "GENERAL", rollLog: [] };
+        return { newState, roomDesc: newState.roomRegistry[newState.location] || "", accountantFacts: lockedFacts, eventSummary: newState.lastActionSummary, narrationMode: "GENERAL", rollLog: [], turnEvents };
       }
     }
     if (target) {
@@ -890,7 +928,7 @@ async function _updateGameState(
       syncTurnContextFromGameState(turnContext, transitioned);
       const transitionedState = composeGameStateFromTurnContext(turnContext);
       transitionedState.lastActionSummary = summaryParts.join(' ').trim() || `You move to ${target.location}.`;
-      return { newState: transitionedState, roomDesc, accountantFacts: summaryParts, eventSummary: transitionedState.lastActionSummary, narrationMode: "ROOM_INTRO", rollLog: [] };
+      return { newState: transitionedState, roomDesc, accountantFacts: summaryParts, eventSummary: transitionedState.lastActionSummary, narrationMode: "ROOM_INTRO", rollLog: [], turnEvents };
     }
   }
 
@@ -1127,8 +1165,8 @@ async function _updateGameState(
                 playerAttackRoll = spellAttack;
                 playerAttackIsSave = false;
                 playerAttackDc = null;
-                if (spellAttack >= activeMonster.ac) {
-                  const dmg = rollDice(damageDice);
+                if (d20AttackHits(rawSpellD20, spellAttack, activeMonster.ac)) {
+                  const dmg = rawSpellD20 === 20 ? rollCriticalDamage(damageDice) : rollDice(damageDice);
                   playerDamageRoll = dmg;
                   applyDamageToActiveMonster(dmg);
                   rollLog.push({ label: spell.name, d20: rawSpellD20, modifier: spellBonus, total: spellAttack, against: activeMonster.ac, outcome: rawSpellD20 === 20 ? 'crit' : 'hit', damage: dmg, damageDice, damageType });
@@ -1234,8 +1272,8 @@ async function _updateGameState(
     const rawD20 = rollD20();
     const attackBonus = (currentState.character?.attackBonus ?? 0) + getPlayerAttackBonus(newState);
     playerAttackRoll = rawD20 + attackBonus;
-    if (playerAttackRoll >= activeMonster.ac) {
-      playerDamageRoll = rollDice(playerDmgDice);
+    if (d20AttackHits(rawD20, playerAttackRoll, activeMonster.ac)) {
+      playerDamageRoll = rawD20 === 20 ? rollCriticalDamage(playerDmgDice) : rollDice(playerDmgDice);
       applyDamageToActiveMonster(playerDamageRoll);
       rollLog.push({ label: 'Your Attack', d20: rawD20, modifier: attackBonus, total: playerAttackRoll, against: activeMonster.ac, outcome: rawD20 === 20 ? 'crit' : 'hit', damage: playerDamageRoll, damageDice: playerDmgDice });
       summaryParts.push(`You hit ${activeMonster.name} with ${weaponName} for ${playerDamageRoll} damage.`);
@@ -1333,8 +1371,10 @@ async function _updateGameState(
       monsterDamageNotation = currentActiveMonster.damageDice;
       const playerAc = getPlayerAc(newState, getBaseAcFromEquipped(newState));
       const baneNote = hasBane ? ` (Bane -${banePenalty})` : '';
-      if (monsterAttackRoll >= playerAc) {
-        monsterDamageRoll = rollDice(monsterDamageNotation);
+      if (d20AttackHits(rawMonsterD20, monsterAttackRoll, playerAc)) {
+        monsterDamageRoll = rawMonsterD20 === 20
+          ? rollCriticalDamage(monsterDamageNotation)
+          : rollDice(monsterDamageNotation);
         newState.hp = applyDamageToActor(turnContext, monsterDamageRoll);
         rollLog.push({ label: `${currentActiveMonster.name}${baneNote}`, d20: rawMonsterD20, modifier: monsterBonus, total: monsterAttackRoll, against: playerAc, outcome: rawMonsterD20 === 20 ? 'crit' : 'hit', damage: monsterDamageRoll, damageDice: monsterDamageNotation });
         summaryParts.push(`${currentActiveMonster.name} hits you for ${monsterDamageRoll} damage.`);
@@ -1445,7 +1485,7 @@ async function _updateGameState(
   const sceneForReward = getSceneById(newState.storySceneId);
   const sceneCleared = !newState.nearbyEntities.some(e => e.status === 'alive');
   if (sceneForReward && sceneCleared) {
-    applySceneCompletion(newState, sceneForReward, summaryParts);
+    applySceneCompletion(newState, sceneForReward, summaryParts, turnEvents);
   }
 
   // Reconcile flag-gated quest objectives now that all story flags for this turn are set.
@@ -1455,7 +1495,26 @@ async function _updateGameState(
   // 8b. LOOT CORPSES (simple generic loot)
   const wantsLoot = /(loot|rummage|pick over|salvage)/i.test(userAction);
   attemptedLoot = wantsLoot;
-  const deadCorpseIndex = newState.nearbyEntities.findIndex(e => e.status === 'dead' && !e.name.toLowerCase().includes('looted'));
+  const lootTarget = normalizeName(
+    userAction
+      .replace(/\b(loot|rummage|pick over|salvage)\b/gi, '')
+      .replace(/\b(the|a|an|corpse|body|monster|remains)\b/gi, '')
+      .trim()
+  );
+  const corpseMatches = (e: (typeof newState.nearbyEntities)[number], exact: boolean): boolean => {
+    if (e.status !== 'dead' || e.name.toLowerCase().includes('looted')) return false;
+    if (!lootTarget) return true;
+    const corpseName = normalizeName(e.name.replace(/\s*\(looted\)\s*$/i, ''));
+    // Exact match first: "loot skeleton archer" must not grab the plain
+    // Skeleton via substring overlap and leave the Archer lootable again.
+    return exact
+      ? corpseName === lootTarget
+      : corpseName.includes(lootTarget) || lootTarget.includes(corpseName);
+  };
+  let deadCorpseIndex = newState.nearbyEntities.findIndex(e => corpseMatches(e, true));
+  if (lootTarget && deadCorpseIndex < 0) {
+    deadCorpseIndex = newState.nearbyEntities.findIndex(e => corpseMatches(e, false));
+  }
   const deadCorpse = deadCorpseIndex >= 0 ? newState.nearbyEntities[deadCorpseIndex] : null;
   if (wantsLoot && deadCorpse) {
     syncTurnContextFromGameState(turnContext, newState);
@@ -1505,6 +1564,17 @@ async function _updateGameState(
       newState.inventory = addActorInventoryItem(turnContext, item);
     }
     foundLootItems = goldFind > 0 || newItems.length > 0;
+    const corpseDisplayName = deadCorpse.name.replace(/\s*\(looted\)\s*$/i, '');
+    if (newItems.length > 0) {
+      turnEvents.push({
+        type: 'loot',
+        targetName: corpseDisplayName,
+        items: newItems.map(i => ({ name: i.name, quantity: i.quantity })),
+      });
+    }
+    if (goldFind > 0) {
+      turnEvents.push({ type: 'coins', targetName: corpseDisplayName, amount: goldFind });
+    }
     newState.nearbyEntities = markSessionEntityLooted(turnContext, deadCorpseIndex);
     newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Looted ${deadCorpse.name}: +${goldFind} gold${newItems.length ? ', +' + newItems.map(i => `${i.quantity}x ${i.name}`).join(', ') : ''}`].slice(-10);
     const parts = [];
@@ -1548,7 +1618,7 @@ async function _updateGameState(
   else if (lookedAround || isNewLocation) narrationMode = "ROOM_INTRO";
   else if (attemptedLoot || attemptedSearch) narrationMode = "SEARCH_EMPTY";
 
-  return { newState, roomDesc: finalDesc, accountantFacts: [...summaryParts], eventSummary: newState.lastActionSummary, narrationMode, rollLog };
+  return { newState, roomDesc: finalDesc, accountantFacts: [...summaryParts], eventSummary: newState.lastActionSummary, narrationMode, rollLog, turnEvents };
 }
 
 export async function runGameTurn(
@@ -1556,7 +1626,7 @@ export async function runGameTurn(
   intent: GameIntent,
   options: RunGameTurnOptions = {}
 ): Promise<{ newState: GameState; logEntry: LogEntry }> {
-  const { newState, roomDesc, accountantFacts: engineFacts, eventSummary, narrationMode, rollLog } = await _updateGameState(currentState, intent, options);
+  const { newState, roomDesc, accountantFacts: engineFacts, eventSummary, narrationMode, rollLog, turnEvents } = await _updateGameState(currentState, intent, options);
 
   const locationDescription = newState.roomRegistry[newState.location] || roomDesc || "An undefined space.";
   const { facts, eventSummary: accountantSummary } = buildAccountantFacts({
@@ -1590,6 +1660,7 @@ export async function runGameTurn(
     createdAt: new Date().toISOString(),
     id: `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     rolls: rollLog.length > 0 ? rollLog : undefined,
+    events: turnEvents && turnEvents.length > 0 ? turnEvents : undefined,
   };
 
   newState.log = [...(newState.log || []), logEntry].slice(-50);

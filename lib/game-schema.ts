@@ -71,6 +71,19 @@ export const rollEventSchema = z.object({
 });
 export type RollEvent = z.infer<typeof rollEventSchema>;
 
+// Structured per-turn events so the visual client can render outcomes
+// (loot reveals, hit effects) without parsing narration text.
+export const turnEventSchema = z.object({
+  type: z.enum(['damage', 'heal', 'loot', 'coins']),
+  targetName: z.string().optional(),
+  amount: z.coerce.number().int().optional(),
+  items: z.array(z.object({
+    name: z.string(),
+    quantity: z.coerce.number().int().positive().default(1),
+  })).optional(),
+});
+export type TurnEvent = z.infer<typeof turnEventSchema>;
+
 export const logEntrySchema = z.object({
   id: z.string().default(() => `log-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`),
   mode: narrationModeEnum,
@@ -79,6 +92,7 @@ export const logEntrySchema = z.object({
   actorName: z.string().optional(),
   createdAt: z.string().default(() => new Date().toISOString()),
   rolls: z.array(rollEventSchema).optional(),
+  events: z.array(turnEventSchema).optional(),
 });
 
 // 4. MASTER STATE (saved/loaded between turns)

@@ -1,4 +1,5 @@
 import type { CharacterState, GameState, LogEntry, SessionState } from '../game-schema';
+import { clericSpellsByName, wizardSpellsByName } from '../5e/reference';
 import { isConsumableItem } from '../consumables';
 import { composeGameStateForSolo } from '../game/state-split';
 import { getSceneById, pickSceneVariant, type StoryExit, type StoryScene } from '../story';
@@ -18,6 +19,7 @@ export type VisualAction = {
   command: string;
   enabled: boolean;
   reason?: string;
+  statusLabel?: string;
   direction?: VisualDirection;
   targetId?: string;
   imagePath?: string;
@@ -65,6 +67,21 @@ export type VisualThreatView = {
   imagePath: string;
   imageAssetId?: string;
   attackAction?: VisualAction;
+  lootAction?: VisualAction;
+};
+
+export type VisualTurnEventItem = {
+  name: string;
+  quantity: number;
+  imagePath?: string;
+  imageAssetId?: string;
+};
+
+export type VisualTurnEvent = {
+  type: 'damage' | 'heal' | 'loot' | 'coins';
+  targetName?: string;
+  amount?: number;
+  items?: VisualTurnEventItem[];
 };
 
 export type VisualLogEntry = {
@@ -74,6 +91,7 @@ export type VisualLogEntry = {
   mode: LogEntry['mode'];
   createdAt: string;
   actorName?: string;
+  events?: VisualTurnEvent[];
 };
 
 export type VisualGameViewModel = {
@@ -190,6 +208,56 @@ function labelForExit(exit: StoryExit, target: StoryScene | null): string {
   return titleCase(exit.verb[0] || 'Move');
 }
 
+function primaryInteractionExit(state: GameState, currentScene: StoryScene | null, aliveThreat: boolean): {
+  exit: StoryExit;
+  target: StoryScene | null;
+  reason?: string;
+} | null {
+  const exits = currentScene?.exits || [];
+  if (exits.length === 0) return null;
+
+  const candidates = exits
+    .map(exit => {
+      const target = resolveExitTarget(exit, state.worldSeed || 0);
+      return {
+        exit,
+        target,
+        reason: movementLockedReason(state, currentScene, exit, target, aliveThreat),
+      };
+    })
+    .filter(({ exit }) => {
+      const verbs = exit.verb.map(verb => verb.toLowerCase());
+      const isBacktrack = verbs.some(verb => ['back', 'return', 'leave', 'exit'].includes(verb));
+      const isInteraction = !!exit.consumeItem || verbs.some(verb =>
+        ['open', 'push', 'pull', 'use', 'activate', 'unlock', 'turn', 'door', 'gate', 'lever', 'altar', 'cache', 'armory', 'sanctum'].includes(verb)
+      );
+      return isInteraction && !isBacktrack;
+    });
+
+  if (candidates.length === 1) return candidates[0];
+
+  if (exits.length === 1) {
+    const exit = exits[0];
+    const target = resolveExitTarget(exit, state.worldSeed || 0);
+    return {
+      exit,
+      target,
+      reason: movementLockedReason(state, currentScene, exit, target, aliveThreat),
+    };
+  }
+
+  return null;
+}
+
+function interactionLabel(exit: StoryExit, currentScene: StoryScene | null, target: StoryScene | null): string {
+  const verb = titleCase(exit.verb[0] || 'Interact');
+  const sceneNoun = currentScene?.title || currentScene?.location || '';
+  const nounMatch = sceneNoun.match(/\b(gate|door|lever|altar|cache|armory|sanctum|stairs|tunnel)\b/i);
+  if (nounMatch) return `${verb} ${titleCase(nounMatch[1])}`;
+  if (target?.title || target?.location) return `${verb} ${labelForExit(exit, target)}`;
+  return verb;
+}
+
 function buildMovementActions(state: GameState, currentScene: StoryScene | null, aliveThreat: boolean): VisualAction[] {
   return (currentScene?.exits || []).map((exit, idx) => {
     const target = resolveExitTarget(exit, state.worldSeed || 0);
@@ -208,8 +276,13 @@ function buildMovementActions(state: GameState, currentScene: StoryScene | null,
   });
 }
 
-function buildExplorationActions(canAct: boolean, aliveThreat: boolean): VisualAction[] {
+function buildExplorationActions(state: GameState, currentScene: StoryScene | null, canAct: boolean, aliveThreat: boolean): VisualAction[] {
   const blockedReason = canAct ? undefined : 'You cannot act right now.';
+  const interaction = primaryInteractionExit(state, currentScene, aliveThreat);
+  const interactionCommand = interaction?.exit.verb[0] || 'interact';
+  const interactionReason = aliveThreat
+    ? 'Clear threats before interacting.'
+    : interaction?.reason || (interaction ? blockedReason : 'Nothing obvious to interact with.');
   return [
     {
       id: 'look',
@@ -230,10 +303,10 @@ function buildExplorationActions(canAct: boolean, aliveThreat: boolean): VisualA
     {
       id: 'interact',
       kind: 'exploration',
-      label: 'Interact',
-      command: 'interact',
-      enabled: canAct && !aliveThreat,
-      reason: aliveThreat ? 'Clear threats before interacting.' : blockedReason,
+      label: interaction ? interactionLabel(interaction.exit, currentScene, interaction.target) : 'Interact',
+      command: interactionCommand,
+      enabled: canAct && !aliveThreat && !!interaction && !interaction.reason,
+      reason: interactionReason,
     },
   ];
 }
@@ -289,15 +362,27 @@ function buildInventoryActions(state: GameState, canAct: boolean): VisualAction[
 
 function buildSpellActions(state: GameState, canAct: boolean): VisualAction[] {
   const prepared = new Set((state.preparedSpells || []).map(spell => spell.toLowerCase()));
-  const spells = state.preparedSpells?.length ? state.preparedSpells : state.knownSpells || [];
-  return spells.map(spell => ({
-    id: `spell-${normalizeVisualAssetId(spell)}`,
-    kind: 'spell' as const,
-    label: spell,
-    command: `cast ${spell.toLowerCase()}`,
-    enabled: canAct && (prepared.size === 0 || prepared.has(spell.toLowerCase())),
-    reason: canAct ? undefined : 'You cannot act right now.',
-  }));
+  const spells = state.knownSpells?.length ? state.knownSpells : state.preparedSpells || [];
+  const classKey = (state.character?.class || 'wizard').toLowerCase();
+  const spellCatalog = classKey === 'cleric' ? clericSpellsByName : wizardSpellsByName;
+  return spells.map(spell => {
+    const asset = resolveVisualAsset('spell', [spell], 'fallback_spell');
+    const spellDef = spellCatalog[spell.toLowerCase()];
+    const isCantrip = spellDef?.level.toLowerCase() === 'cantrip';
+    const isPrepared = prepared.has(spell.toLowerCase());
+    const isCastable = isCantrip || isPrepared;
+    return {
+      id: `spell-${normalizeVisualAssetId(spell)}`,
+      kind: 'spell' as const,
+      label: spell,
+      command: `cast ${spell.toLowerCase()}`,
+      enabled: canAct && isCastable,
+      reason: canAct ? (isCastable ? undefined : 'Known, but not prepared.') : 'You cannot act right now.',
+      statusLabel: isCantrip ? 'Cantrip' : isPrepared ? 'Prepared' : 'Known',
+      imagePath: asset?.path,
+      imageAssetId: asset?.id,
+    };
+  });
 }
 
 function resolveSceneImage(state: GameState, scene: StoryScene | null): { path: string; asset?: VisualAsset } {
@@ -314,8 +399,17 @@ function resolvePortrait(state: GameState): { path?: string; asset?: VisualAsset
   return { path: asset?.path, asset: asset || undefined };
 }
 
-function resolveThreatImage(name: string, fallbackImageUrl?: string): { path: string; asset?: VisualAsset } {
-  const asset = resolveVisualAsset('monster', [name], 'fallback_monster');
+function cleanThreatName(name: string): string {
+  return name.replace(/\s*\(looted\)\s*$/i, '').trim();
+}
+
+function resolveThreatImage(name: string, fallbackImageUrl?: string, isDead = false): { path: string; asset?: VisualAsset } {
+  const cleanName = cleanThreatName(name);
+  const asset = resolveVisualAsset(
+    'monster',
+    isDead ? [`${cleanName}_dead`, `${normalizeVisualAssetId(cleanName)}_dead`, cleanName, name] : [cleanName, name],
+    'fallback_monster'
+  );
   if (asset) return { path: asset.path, asset };
   return { path: fallbackImageUrl || FALLBACK_ASSET_PATH };
 }
@@ -383,11 +477,34 @@ function buildThreatAttackAction(entityName: string, idx: number, canAct: boolea
   };
 }
 
-function buildThreatViews(state: GameState, canAct: boolean): VisualThreatView[] {
+function buildThreatLootAction(entityName: string, idx: number, canAct: boolean, aliveThreat: boolean, isLootable: boolean): VisualAction {
+  const cleanName = cleanThreatName(entityName);
+  const targetName = commandTargetName(cleanName);
+  const enabled = canAct && isLootable && !aliveThreat;
+  return {
+    id: `loot-threat-${idx}-${normalizeVisualAssetId(entityName)}`,
+    kind: 'inventory',
+    label: `Loot ${cleanName}`,
+    command: targetName ? `loot ${targetName}` : 'loot',
+    enabled,
+    reason: enabled
+      ? undefined
+      : !canAct
+        ? 'You cannot act right now.'
+        : aliveThreat
+          ? 'Clear threats before looting.'
+          : 'Already looted.',
+    targetId: `threat-${idx}-${normalizeVisualAssetId(entityName)}`,
+  };
+}
+
+function buildThreatViews(state: GameState, canAct: boolean, aliveThreat: boolean): VisualThreatView[] {
   return (state.nearbyEntities || []).map((entity, idx) => {
-    const image = resolveThreatImage(entity.name, entity.imageUrl);
     const id = `threat-${idx}-${normalizeVisualAssetId(entity.name)}`;
     const isAlive = entity.status === 'alive' && entity.hp > 0;
+    const isDead = entity.status === 'dead' || entity.hp <= 0;
+    const image = resolveThreatImage(entity.name, entity.imageUrl, isDead);
+    const isLootable = isDead && !entity.name.toLowerCase().includes('looted');
     return {
       id,
       name: entity.name,
@@ -399,8 +516,27 @@ function buildThreatViews(state: GameState, canAct: boolean): VisualThreatView[]
       imagePath: image.path,
       imageAssetId: image.asset?.id,
       attackAction: buildThreatAttackAction(entity.name, idx, canAct, isAlive),
+      lootAction: isDead ? buildThreatLootAction(entity.name, idx, canAct, aliveThreat, isLootable) : undefined,
     };
   });
+}
+
+function buildVisualTurnEvents(entry: LogEntry): VisualTurnEvent[] | undefined {
+  if (!entry.events || entry.events.length === 0) return undefined;
+  return entry.events.map(event => ({
+    type: event.type,
+    targetName: event.targetName,
+    amount: event.amount,
+    items: event.items?.map(item => {
+      const asset = resolveVisualAsset('item', [item.name], 'fallback_item');
+      return {
+        name: item.name,
+        quantity: item.quantity,
+        imagePath: asset?.path,
+        imageAssetId: asset?.id,
+      };
+    }),
+  }));
 }
 
 function buildLogEntries(state: GameState): VisualLogEntry[] {
@@ -412,6 +548,7 @@ function buildLogEntries(state: GameState): VisualLogEntry[] {
       mode: entry.mode,
       createdAt: entry.createdAt,
       actorName: entry.actorName,
+      events: buildVisualTurnEvents(entry),
     };
   });
 }
@@ -427,7 +564,7 @@ export function buildVisualGameViewModel(state: GameState): VisualGameViewModel 
     reason: canAct ? undefined : 'You are down.',
   };
   const sceneImage = resolveSceneImage(state, currentScene);
-  const threats = buildThreatViews(state, canAct);
+  const threats = buildThreatViews(state, canAct, aliveThreat);
 
   return {
     mode: 'solo',
@@ -442,7 +579,7 @@ export function buildVisualGameViewModel(state: GameState): VisualGameViewModel 
     partySlots: [buildPartySlot(state, turnState)],
     turnState,
     movementActions: buildMovementActions(state, currentScene, aliveThreat),
-    explorationActions: buildExplorationActions(canAct, aliveThreat),
+    explorationActions: buildExplorationActions(state, currentScene, canAct, aliveThreat),
     combatActions: buildCombatActions(canAct, aliveThreat),
     inventoryActions: buildInventoryActions(state, canAct),
     spellActions: buildSpellActions(state, canAct),
@@ -495,11 +632,11 @@ export function buildMultiplayerVisualGameViewModel(params: {
       enabled: action.enabled && canAct,
       reason: action.enabled && !canAct ? turnState.reason : action.reason,
     })),
-    explorationActions: buildExplorationActions(canAct, aliveThreat),
+    explorationActions: buildExplorationActions(composed, currentScene, canAct, aliveThreat),
     combatActions: buildCombatActions(canAct, aliveThreat),
     inventoryActions: buildInventoryActions(composed, canAct),
     spellActions: buildSpellActions(composed, canAct),
-    threats: buildThreatViews(composed, canAct),
+    threats: buildThreatViews(composed, canAct, aliveThreat),
     logEntries: buildLogEntries(composed),
     canUseTextFallback: true,
   };

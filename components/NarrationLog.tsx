@@ -104,7 +104,7 @@ export function NarrationLog({
       <div 
         ref={scrollRef}
         className={`space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900 ${
-          compact ? 'max-h-40' : 'max-h-60'
+          compact ? 'max-h-40' : 'max-h-[65vh]'
         }`}
       >
         {recentEntries.map((entry, idx) => {
