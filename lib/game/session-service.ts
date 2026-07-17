@@ -11,7 +11,7 @@ import {
 } from '../game-schema';
 import { parseIntent } from './intent';
 import { runGameTurn } from './engine';
-import { rollD20, rollDice } from './dice';
+import { d20AttackHits, rollCriticalDamage, rollD20, rollDice } from './dice';
 import { SESSION_CODE_ALPHABET, SESSION_CODE_LENGTH } from './session-code';
 import { composeGameStateForSolo, splitGameStateForSolo, splitGameStateForSoloTrusted } from './state-split';
 
@@ -118,6 +118,9 @@ export function addPlayerToSession(session: SessionState, userId: string): Sessi
     throw new Error('Players can only join while the party is out of combat.');
   }
   if (session.turnOrder.includes(userId)) return normalizeSessionTurnState(session);
+  if (session.turnOrder.length >= MAX_BALANCED_PARTY_SIZE) {
+    throw new Error(`Parties are limited to ${MAX_BALANCED_PARTY_SIZE} players.`);
+  }
   return normalizeSessionTurnState({
     ...session,
     turnOrder: [...session.turnOrder, userId],
@@ -237,8 +240,10 @@ export function resolveMonsterRound(
     const targetAc = getEffectiveActorAc(target);
     const baneNote = hasBane ? ` (Bane -${banePenalty})` : '';
 
-    if (attackTotal >= targetAc) {
-      const damage = rollDice(monster.damageDice);
+    if (d20AttackHits(rawMonsterD20, attackTotal, targetAc)) {
+      const damage = rawMonsterD20 === 20
+        ? rollCriticalDamage(monster.damageDice)
+        : rollDice(monster.damageDice);
       const updatedTarget: CharacterState = {
         ...target,
         hp: Math.max(0, target.hp - damage),
@@ -487,7 +492,10 @@ export async function loadMultiplayerSession(
   return {
     code: normalizedCode,
     ownerUserId: sessionRow.ownerUserId,
-    session: sessionStateSchema.parse(sessionRow.sessionState),
+    session: sessionStateSchema.parse({
+      ...(sessionRow.sessionState as Record<string, unknown>),
+      version: sessionRow.version,
+    }),
     you: characterStateSchema.parse(youRow.characterState),
     players,
     version: sessionRow.version,
@@ -508,14 +516,20 @@ export async function joinMultiplayerSession(
     const [sessionRow] = await tx.select().from(gameSessions).where(eq(gameSessions.id, normalizedCode)).limit(1);
     if (!sessionRow) throw new Error('Session not found.');
     if (sessionRow.status !== 'active') throw new Error('Session is not active.');
-    const session = sessionStateSchema.parse(sessionRow.sessionState);
+    const session = sessionStateSchema.parse({
+      ...(sessionRow.sessionState as Record<string, unknown>),
+      version: sessionRow.version,
+    });
     if (session.isCombatActive) throw new Error('Players can only join while the party is out of combat.');
 
     const existing = await tx.select().from(sessionPlayers).where(
       and(eq(sessionPlayers.sessionId, normalizedCode), eq(sessionPlayers.userId, userId))
     ).limit(1);
     if (!existing[0]) {
-      const updatedSession = addPlayerToSession(session, userId);
+      const updatedSession = {
+        ...addPlayerToSession(session, userId),
+        version: sessionRow.version + 1,
+      };
       await tx.insert(sessionPlayers).values({
         sessionId: normalizedCode,
         userId,
@@ -523,13 +537,17 @@ export async function joinMultiplayerSession(
         joinedAt: now,
         lastSeenAt: now,
       });
-      await tx.update(gameSessions)
+      const updated = await tx.update(gameSessions)
         .set({
           sessionState: updatedSession as unknown as Record<string, unknown>,
           version: sessionRow.version + 1,
           updatedAt: now,
         })
-        .where(and(eq(gameSessions.id, normalizedCode), eq(gameSessions.version, sessionRow.version)));
+        .where(and(eq(gameSessions.id, normalizedCode), eq(gameSessions.version, sessionRow.version)))
+        .returning({ id: gameSessions.id });
+      if (updated.length !== 1) {
+        throw new Error('The party changed while you were joining. Please try again.');
+      }
     } else {
       await tx.update(sessionPlayers)
         .set({ lastSeenAt: now })
@@ -558,20 +576,28 @@ export async function processMultiplayerSessionTurn(
     const playerRow = playerRows.find(row => row.userId === userId);
     if (!playerRow) throw new Error('You are not in this session.');
 
-    const session = sessionStateSchema.parse(sessionRow.sessionState);
+    const session = sessionStateSchema.parse({
+      ...(sessionRow.sessionState as Record<string, unknown>),
+      version: sessionRow.version,
+    });
     const actor = characterStateSchema.parse(playerRow.characterState);
     const players = playerRows.map(row => characterStateSchema.parse(row.characterState));
     const result = await runSessionTurn(session, actor, command, players);
 
     if (!result.accepted) return result;
 
-    await tx.update(gameSessions)
+    const persistedSession = { ...result.session, version: sessionRow.version + 1 };
+    const updated = await tx.update(gameSessions)
       .set({
-        sessionState: result.session as unknown as Record<string, unknown>,
+        sessionState: persistedSession as unknown as Record<string, unknown>,
         version: sessionRow.version + 1,
         updatedAt: now,
       })
-      .where(and(eq(gameSessions.id, normalizedCode), eq(gameSessions.version, sessionRow.version)));
+      .where(and(eq(gameSessions.id, normalizedCode), eq(gameSessions.version, sessionRow.version)))
+      .returning({ id: gameSessions.id });
+    if (updated.length !== 1) {
+      throw new Error('The party changed while your turn was resolving. Reload and try again.');
+    }
     for (const player of result.players) {
       await tx.update(sessionPlayers)
         .set(player.playerId === userId
@@ -585,6 +611,6 @@ export async function processMultiplayerSessionTurn(
         .where(and(eq(sessionPlayers.sessionId, normalizedCode), eq(sessionPlayers.userId, player.playerId)));
     }
 
-    return result;
+    return { ...result, session: persistedSession };
   });
 }

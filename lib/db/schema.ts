@@ -10,6 +10,7 @@ export const users = pgTable('users', {
 export const savedGames = pgTable('saved_games', {
   userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   gameState: jsonb('game_state').notNull(),
+  version: integer('version').notNull().default(0),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 

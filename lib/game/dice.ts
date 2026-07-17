@@ -31,3 +31,17 @@ export function rollDice(notation: string): number {
 export function rollD20(): number {
   return rollDice('1d20');
 }
+
+// D&D-style critical hits roll damage dice twice while applying flat modifiers once.
+// For example, `1d8 + 3` becomes `2d8 + 3` rather than doubling the whole result.
+export function rollCriticalDamage(notation: string): number {
+  const criticalNotation = notation.replace(/([+-]?)(\d*)d(\d+)/gi, (_term, sign, count, faces) => {
+    const doubledCount = (count ? Number(count) : 1) * 2;
+    return `${sign}${doubledCount}d${faces}`;
+  });
+  return rollDice(criticalNotation);
+}
+
+export function d20AttackHits(rawD20: number, total: number, targetAc: number): boolean {
+  return rawD20 !== 1 && (rawD20 === 20 || total >= targetAc);
+}

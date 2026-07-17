@@ -3,7 +3,7 @@
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { savedGames } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { buildNewGameState, hydrateState } from '../lib/game/state';
 import { parseIntent } from '../lib/game/intent';
 import { runGameTurn } from '../lib/game/engine';
@@ -29,21 +29,64 @@ async function getUserId(): Promise<string> {
   return userId;
 }
 
-async function loadSave(userId: string): Promise<GameState | null> {
+type SavedGame = {
+  state: GameState;
+  version: number;
+};
+
+async function loadSave(userId: string): Promise<SavedGame | null> {
   const [row] = await db.select().from(savedGames).where(eq(savedGames.userId, userId)).limit(1);
   if (!row) return null;
   // Always validate and migrate the JSONB through Zod before returning
-  return hydrateState(row.gameState);
+  return { state: await hydrateState(row.gameState), version: row.version };
 }
 
-async function persistSave(userId: string, state: GameState): Promise<void> {
-  await db
+async function createSave(userId: string, state: GameState): Promise<boolean> {
+  const inserted = await db
     .insert(savedGames)
-    .values({ userId, gameState: state as unknown as Record<string, unknown>, updatedAt: new Date() })
-    .onConflictDoUpdate({
-      target: savedGames.userId,
-      set: { gameState: state as unknown as Record<string, unknown>, updatedAt: new Date() },
-    });
+    .values({
+      userId,
+      gameState: state as unknown as Record<string, unknown>,
+      version: 0,
+      updatedAt: new Date(),
+    })
+    .onConflictDoNothing()
+    .returning({ userId: savedGames.userId });
+  return inserted.length === 1;
+}
+
+async function persistSave(userId: string, state: GameState, expectedVersion: number): Promise<void> {
+  const updated = await db
+    .update(savedGames)
+    .set({
+      gameState: state as unknown as Record<string, unknown>,
+      version: expectedVersion + 1,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(savedGames.userId, userId), eq(savedGames.version, expectedVersion)))
+    .returning({ userId: savedGames.userId });
+  if (updated.length !== 1) {
+    throw new Error('Your save changed in another tab. Reload and try again.');
+  }
+}
+
+export type SavedGameSummary = {
+  name: string;
+  className: string;
+  level: number;
+};
+
+// Lets the character-select screen distinguish "continue your run" from
+// "start a new run" instead of silently ignoring the picked class.
+export async function getSavedGameSummary(): Promise<SavedGameSummary | null> {
+  const userId = await getUserId();
+  const save = await loadSave(userId);
+  if (!save) return null;
+  return {
+    name: save.state.character?.name || 'Adventurer',
+    className: save.state.character?.class || 'Fighter',
+    level: save.state.level || 1,
+  };
 }
 
 export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
@@ -53,13 +96,17 @@ export async function createNewGame(opts?: CreateOptions): Promise<GameState> {
   if (!forceNew) {
     const existing = await loadSave(userId);
     if (existing) {
-      await persistSave(userId, existing);
-      return existing;
+      return existing.state;
     }
   }
 
   const newState = await buildNewGameState(opts?.archetypeKey);
-  await persistSave(userId, newState);
+  const existing = await loadSave(userId);
+  if (existing) {
+    await persistSave(userId, newState, existing.version);
+  } else if (!(await createSave(userId, newState))) {
+    throw new Error('A save was created in another tab. Reload and try again.');
+  }
   return newState;
 }
 
@@ -74,12 +121,12 @@ export async function processTurn(
   const sanitized = userAction.trim().slice(0, 500);
 
   const userId = await getUserId();
-  const currentState = await loadSave(userId);
-  if (!currentState) throw new Error('No active game found. Start a new game first.');
+  const save = await loadSave(userId);
+  if (!save) throw new Error('No active game found. Start a new game first.');
 
-  const intent = parseIntent(sanitized, currentState);
-  const { newState, logEntry } = await runGameTurn(currentState, intent);
-  await persistSave(userId, newState);
+  const intent = parseIntent(sanitized, save.state);
+  const { newState, logEntry } = await runGameTurn(save.state, intent);
+  await persistSave(userId, newState, save.version);
   return { newState, logEntry };
 }
 
@@ -89,9 +136,9 @@ export async function resetGame(archetypeKey?: ArchetypeKey) {
 
 export async function createMultiplayerFromCurrentGame(): Promise<MultiplayerSessionSnapshot> {
   const userId = await getUserId();
-  const currentState = await loadSave(userId);
-  if (!currentState) throw new Error('No active game found. Start a new game first.');
-  return createMultiplayerSession(db, userId, currentState);
+  const save = await loadSave(userId);
+  if (!save) throw new Error('No active game found. Start a new game first.');
+  return createMultiplayerSession(db, userId, save.state);
 }
 
 export async function joinMultiplayerByCode(
