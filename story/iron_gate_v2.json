@@ -31,5 +31,18 @@
     "reward": {
       "xp": 25
     }
-  }
+  },
+  "discovery": [
+    {
+      "item": "Iron Key",
+      "itemType": "key",
+      "onceFlag": "found_iron_key",
+      "triggerPattern": "(key|glint|shiny|metal|object|take|grab|pick|retrieve)",
+      "completesObjective": "find-iron-key",
+      "pacifies": [
+        "rat"
+      ],
+      "log": "You recover the Iron Key from the debris."
+    }
+  ]
 }

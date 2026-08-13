@@ -1,3 +1,14 @@
+export type RandomSource = () => number;
+
+// All dice flow through this one source so tests (and any future seeded replay)
+// can substitute it instead of reassigning the global Math.random. The default
+// calls Math.random lazily, so existing global stubs keep working.
+let randomSource: RandomSource = () => Math.random();
+
+export function setRandomSource(source: RandomSource | null): void {
+  randomSource = source ?? (() => Math.random());
+}
+
 export function rollDice(notation: string): number {
   const tokens = notation.replace(/\s+/g, '').match(/[+-]?[^+-]+/g) || [];
   if (tokens.length === 0) throw new Error(`Invalid dice expression: "${notation}"`);
@@ -16,7 +27,7 @@ export function rollDice(notation: string): number {
         throw new Error(`Invalid dice term: "${token}"`);
       }
       for (let i = 0; i < count; i++) {
-        total += sign * (Math.floor(Math.random() * faces) + 1);
+        total += sign * (Math.floor(randomSource() * faces) + 1);
       }
     } else {
       const flat = Number(body);

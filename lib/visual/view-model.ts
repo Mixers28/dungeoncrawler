@@ -3,6 +3,7 @@ import { clericSpellsByName, wizardSpellsByName } from '../5e/reference';
 import { isConsumableItem } from '../consumables';
 import { composeGameStateForSolo } from '../game/state-split';
 import { getSceneById, pickSceneVariant, type StoryExit, type StoryScene } from '../story';
+import { resolveTurnHolderName } from './turn-holder';
 import {
   normalizeVisualAssetId,
   resolveVisualAsset,
@@ -365,19 +366,31 @@ function buildSpellActions(state: GameState, canAct: boolean): VisualAction[] {
   const spells = state.knownSpells?.length ? state.knownSpells : state.preparedSpells || [];
   const classKey = (state.character?.class || 'wizard').toLowerCase();
   const spellCatalog = classKey === 'cleric' ? clericSpellsByName : wizardSpellsByName;
+  const slots = state.spellSlots || {};
   return spells.map(spell => {
     const asset = resolveVisualAsset('spell', [spell], 'fallback_spell');
     const spellDef = spellCatalog[spell.toLowerCase()];
     const isCantrip = spellDef?.level.toLowerCase() === 'cantrip';
     const isPrepared = prepared.has(spell.toLowerCase());
     const isCastable = isCantrip || isPrepared;
+    // Mirror the engine's slot rule (runGameTurn casts through
+    // consumeActorSpellSlot): cantrips are free, every other spell spends a
+    // `level_<n>` slot and is refused when that pool is empty or absent.
+    const slotKey = `level_${spellDef?.level.match(/\d+/)?.[0] ?? '1'}`;
+    const slot = slots[slotKey];
+    const hasSlot = isCantrip || (slot ? slot.current > 0 : false);
+    const blockedReason = !isCastable
+      ? 'Known, but not prepared.'
+      : !hasSlot
+        ? `No ${slotKey.replace('_', ' ')} spell slots left.`
+        : undefined;
     return {
       id: `spell-${normalizeVisualAssetId(spell)}`,
       kind: 'spell' as const,
       label: spell,
       command: `cast ${spell.toLowerCase()}`,
-      enabled: canAct && isCastable,
-      reason: canAct ? (isCastable ? undefined : 'Known, but not prepared.') : 'You cannot act right now.',
+      enabled: canAct && isCastable && hasSlot,
+      reason: canAct ? blockedReason : 'You cannot act right now.',
       statusLabel: isCantrip ? 'Cantrip' : isPrepared ? 'Prepared' : 'Known',
       imagePath: asset?.path,
       imageAssetId: asset?.id,
@@ -608,7 +621,7 @@ export function buildMultiplayerVisualGameViewModel(params: {
       ? undefined
       : you.hp <= 0
         ? 'You are down.'
-        : `Waiting for ${session.currentTurnPlayerId || 'the party'}.`,
+        : `Waiting for ${resolveTurnHolderName(players, session.currentTurnPlayerId)}.`,
   };
   const sceneImage = resolveSceneImage(composed, currentScene);
   const knownPlayers = players.length > 0

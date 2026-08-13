@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Skull, ArrowRight, BookOpen, X, Eye, EyeOff, Users, Copy, Check } from 'lucide-react';
 import type { GameState, LogEntry, NarrationMode, RollEvent } from '../lib/game-schema';
 import type { MultiplayerSessionSnapshot } from '../lib/game/session-service';
 import { isValidSessionCode, normalizeSessionCodeInput } from '../lib/game/session-code';
@@ -10,8 +9,17 @@ import { composeGameStateForSolo } from '../lib/game/state-split';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { RightSidebar } from '../components/RightSidebar';
 import { InventoryModal } from '../components/InventoryModal';
+import { CharacterSelectScreen } from '../components/CharacterSelectScreen';
+import { PrologueOverlay } from '../components/PrologueOverlay';
+import { PartyBar } from '../components/PartyBar';
+import { TurnInputArea } from '../components/TurnInputArea';
+import { DesktopTopBar, MobileHeader } from '../components/GameHeader';
+import { MobileSidebarDrawer } from '../components/MobileSidebarDrawer';
 import { VisualDungeonShell } from '../components/visual/VisualDungeonShell';
 import type { VisualGameViewModel } from '../lib/visual/view-model';
+// Leaf import on purpose: importing a value from view-model would pull the
+// story loader's `fs` dependency into this client bundle.
+import { resolveTurnHolderName } from '../lib/visual/turn-holder';
 import { getMultiplayerVisualViewModel, getVisualViewModel } from './visual-actions';
 import {
   createMultiplayerFromCurrentGame,
@@ -24,7 +32,7 @@ import {
   resetGame,
   type SavedGameSummary,
 } from './actions';
-import { ARCHETYPES, ArchetypeKey } from './characters';
+import { type ArchetypeKey } from './characters';
 import { saveScore } from '../lib/leaderboard';
 import { CommandHints } from '../components/CommandHints';
 import { DiceRollRow } from '../components/DiceRollBadge';
@@ -92,6 +100,9 @@ function HomeContent() {
   const inputRef = useRef<HTMLInputElement>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
+  // Synchronous in-flight guard: isLoading state does not update until after
+  // the current tick, so two clicks in one tick would both dispatch a turn.
+  const turnInFlightRef = useRef(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const isNewRun = searchParams.has('newRun');
@@ -113,7 +124,7 @@ function HomeContent() {
   const actionDisabledReason = multiplayerSession && !multiplayerCanAct
     ? multiplayerSession.you.hp <= 0
       ? 'You are down.'
-      : `Waiting for ${multiplayerSession.session.currentTurnPlayerId || 'the party'}.`
+      : `Waiting for ${resolveTurnHolderName(multiplayerSession.players, multiplayerSession.session.currentTurnPlayerId)}.`
     : null;
   const normalizedJoinCode = normalizeSessionCodeInput(joinCode);
   const canJoinParty = isValidSessionCode(normalizedJoinCode);
@@ -203,10 +214,12 @@ function HomeContent() {
   }, [isDying, router]);
 
   const executeTurn = useCallback(async (command: string, currentGameState: GameState) => {
+    if (turnInFlightRef.current) return;
     if (multiplayerSession && !multiplayerCanAct) {
       if (actionDisabledReason) setError(actionDisabledReason);
       return;
     }
+    turnInFlightRef.current = true;
     setInput('');
     focusInput();
     setIsLoading(true);
@@ -264,6 +277,7 @@ function HomeContent() {
       console.error("Turn Error:", err);
       setError("Failed to process turn. Please try again.");
     } finally {
+      turnInFlightRef.current = false;
       setIsLoading(false);
       focusInput();
     }
@@ -477,123 +491,31 @@ function HomeContent() {
   // 1. CHARACTER SELECT SCREEN
   if (!gameState) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-100 p-6">
-        <div className="w-full max-w-4xl space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
-            <h1 className="text-3xl font-black text-amber-500 flex items-center gap-3 mb-4">
-              <BookOpen size={28} />
-              Choose Your Path
-            </h1>
-            <p className="text-slate-400 mb-4">Pick a quick-start archetype to begin.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(ARCHETYPES).map(([key, data]) => (
-                <button
-                  key={key}
-                  onClick={() => { setSelectedClass(key as ArchetypeKey); setError(null); }}
-                  className={`text-left p-4 rounded border transition-all ${selectedClass === key ? 'border-amber-500 bg-amber-900/20' : 'border-slate-800 bg-slate-900 hover:border-amber-700'}`}
-                  disabled={isLoading}
-                >
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-amber-400">{data.label}</h2>
-                    <span className="text-xs text-slate-500">{data.background}</span>
-                  </div>
-                  <p className="text-sm text-slate-300 mt-2">HP +{data.hpBonus}, AC +{data.acBonus}</p>
-                  <p className="text-xs text-slate-400 mt-1">Starts with {data.startingWeapon}{data.startingArmor ? ` and ${data.startingArmor}` : ''}</p>
-                </button>
-              ))}
-            </div>
-            {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
-            <div className="mt-6 border-t border-slate-800 pt-4 flex flex-col md:flex-row gap-3 md:items-end md:justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-300">
-                  <Users size={16} />
-                  Join Party
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    value={joinCode}
-                    onChange={(e) => {
-                      setJoinCode(normalizeSessionCodeInput(e.target.value));
-                      setError(null);
-                    }}
-                    placeholder="CODE"
-                    maxLength={6}
-                    className="w-32 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm uppercase tracking-widest focus:outline-none focus:border-amber-500"
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleJoinSession}
-                    disabled={isLoading || !canJoinParty}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Join
-                  </button>
-                </div>
-              </div>
-              <div className="flex flex-col items-stretch md:items-end gap-2">
-                {saveSummary && (
-                  <button
-                    onClick={() => handleStart('continue')}
-                    disabled={isLoading}
-                    data-testid="continue-run"
-                    className="bg-amber-600 hover:bg-amber-700 text-slate-900 text-lg font-bold py-3 px-6 rounded transition-all disabled:opacity-50 shadow-lg shadow-amber-900/20"
-                  >
-                    {isLoading ? "Loading..." : `Continue as ${saveSummary.name} the ${saveSummary.className} (Lv ${saveSummary.level})`}
-                  </button>
-                )}
-                <button
-                  onClick={() => handleStart('new')}
-                  disabled={isLoading || (saveSummary === undefined && !isNewRun)}
-                  data-testid="start-new-run"
-                  className={`${saveSummary
-                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm font-bold py-2 px-6'
-                    : 'bg-amber-600 hover:bg-amber-700 text-slate-900 text-lg font-bold py-3 px-6 shadow-lg shadow-amber-900/20'
-                  } rounded transition-all disabled:opacity-50`}
-                >
-                  {isLoading
-                    ? "Loading..."
-                    : saveSummary
-                      ? `Start New Run as ${selectedClass ? ARCHETYPES[selectedClass].label : '…'}`
-                      : "Enter the Realm"}
-                </button>
-                {saveSummary && (
-                  <p className="text-xs text-slate-500">Starting a new run abandons your current save.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <CharacterSelectScreen
+        selectedClass={selectedClass}
+        onSelectClass={(key) => { setSelectedClass(key); setError(null); }}
+        isLoading={isLoading}
+        error={error}
+        joinCode={joinCode}
+        onJoinCodeChange={(value) => { setJoinCode(normalizeSessionCodeInput(value)); setError(null); }}
+        onJoin={handleJoinSession}
+        canJoin={canJoinParty}
+        saveSummary={saveSummary}
+        isNewRun={isNewRun}
+        onStart={handleStart}
+      />
     );
   }
 
   // 2. PROLOGUE OVERLAY
   if (showIntro) {
-    const currentSlide = PROLOGUE_STEPS[introStep];
     return (
-      <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6 animate-in fade-in duration-1000">
-        <div className="max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
-          <div className="h-64 md:h-96 w-full relative">
-            <img src={currentSlide.image} alt="Prologue" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent" />
-          </div>
-          <div className="p-8 md:p-12 text-center space-y-8">
-            <h2 className="text-2xl md:text-3xl font-serif text-amber-500 italic">Part {introStep + 1}</h2>
-            <p className="text-lg md:text-xl text-slate-300 leading-relaxed max-w-2xl mx-auto">{currentSlide.text}</p>
-            <button
-              onClick={() => {
-                if (introStep < PROLOGUE_STEPS.length - 1) setIntroStep(prev => prev + 1);
-                else setShowIntro(false);
-              }}
-              className="bg-slate-800 hover:bg-amber-900 border border-slate-700 hover:border-amber-700 text-white px-8 py-3 rounded-full transition-all flex items-center gap-2 mx-auto"
-            >
-              {introStep < PROLOGUE_STEPS.length - 1 ? "Next" : "Begin Adventure"}
-              <ArrowRight size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
+      <PrologueOverlay
+        steps={PROLOGUE_STEPS}
+        step={introStep}
+        onAdvance={() => setIntroStep(prev => prev + 1)}
+        onFinish={() => setShowIntro(false)}
+      />
     );
   }
 
@@ -606,44 +528,15 @@ function HomeContent() {
   return (
     <main className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden relative">
 
-      {/* MOBILE HEADER */}
-      {viewMode === 'text' && (
-        <div className="md:hidden absolute top-0 left-0 right-0 h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 z-10">
-          <span className="font-bold text-amber-500">Dungeon Portal</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleMainMenu}
-              disabled={isLoading}
-              aria-label="Return to main menu"
-              className="text-xs bg-slate-700 text-slate-200 font-bold px-3 py-1 rounded disabled:opacity-50"
-            >
-              Menu
-            </button>
-            <button
-              onClick={handleRestart}
-              disabled={isLoading}
-              aria-label="Start a new run"
-              className="text-xs bg-amber-700 text-slate-900 font-bold px-3 py-1 rounded disabled:opacity-50"
-            >
-              New Run
-            </button>
-            <button
-              onClick={() => { setIsLeftSidebarOpen(true); setIsRightSidebarOpen(false); }}
-              aria-label="Open character stats sidebar"
-              className="text-xs bg-slate-800 text-slate-200 font-semibold px-3 py-1 rounded"
-            >
-              Stats
-            </button>
-            <button
-              onClick={() => { setIsRightSidebarOpen(true); setIsLeftSidebarOpen(false); }}
-              aria-label="Open spells sidebar"
-              className="text-xs bg-slate-800 text-slate-200 font-semibold px-3 py-1 rounded"
-            >
-              Spells
-            </button>
-          </div>
-        </div>
-      )}
+      <MobileHeader
+        viewMode={viewMode}
+        onToggleViewMode={toggleViewMode}
+        onMainMenu={handleMainMenu}
+        onRestart={handleRestart}
+        isLoading={isLoading}
+        onOpenStats={() => { setIsLeftSidebarOpen(true); setIsRightSidebarOpen(false); }}
+        onOpenSpells={() => { setIsRightSidebarOpen(true); setIsLeftSidebarOpen(false); }}
+      />
 
       {/* LEFT: Sidebar (Desktop) */}
       {viewMode === 'text' && (
@@ -656,94 +549,28 @@ function HomeContent() {
       <div className={`flex-1 flex flex-col w-full p-4 pt-16 md:pt-4 relative h-full ${
         viewMode === 'visual' ? 'max-w-full' : 'max-w-4xl mx-auto'
       }`}>
-        {/* Desktop top bar */}
-        <div className="hidden md:flex items-center justify-between mb-2 text-sm text-slate-400">
-          <span className="font-semibold text-amber-500">Dungeon Portal</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleViewMode}
-              data-testid="toggle-view-mode"
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-3 py-2 rounded flex items-center gap-2 transition-colors"
-              title={`Switch to ${viewMode === 'text' ? 'visual' : 'text'} mode`}
-            >
-              {viewMode === 'visual' ? <EyeOff size={16} /> : <Eye size={16} />}
-              <span className="hidden lg:inline">{viewMode === 'text' ? 'Visual' : 'Text'}</span>
-            </button>
-            <button
-              onClick={handleMainMenu}
-              disabled={isLoading}
-              aria-label="Return to main menu"
-              className="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Main Menu
-            </button>
-            <button
-              onClick={handleRestart}
-              disabled={isLoading}
-              aria-label="Start a new run"
-              className="bg-amber-700 hover:bg-amber-600 text-slate-900 font-semibold px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Resetting..." : "New Run"}
-            </button>
-          </div>
-        </div>
+        <DesktopTopBar
+          viewMode={viewMode}
+          onToggleViewMode={toggleViewMode}
+          onMainMenu={handleMainMenu}
+          onRestart={handleRestart}
+          isLoading={isLoading}
+        />
 
-        <div className="mb-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 border border-slate-800 bg-slate-900/70 rounded px-3 py-2 text-xs text-slate-300">
-          <div className="flex items-center gap-2 min-w-0">
-            <Users size={14} className="text-amber-500 flex-shrink-0" />
-            {multiplayerSession ? (
-              <>
-                <span className="font-semibold text-amber-400">Party {multiplayerSession.code}</span>
-                <button
-                  type="button"
-                  onClick={handleCopyPartyCode}
-                  className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-700 text-slate-300 hover:border-amber-500 hover:text-amber-300"
-                  aria-label="Copy party code"
-                  title="Copy party code"
-                >
-                  {copiedPartyCode ? <Check size={13} /> : <Copy size={13} />}
-                </button>
-                <span className="text-slate-500 truncate">
-                  {multiplayerSession.players.length} player{multiplayerSession.players.length === 1 ? '' : 's'}
-                  {actionDisabledReason ? ` · ${actionDisabledReason}` : ' · You can act'}
-                </span>
-              </>
-            ) : (
-              <span className="text-slate-400">Solo run</span>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {!multiplayerSession && (
-              <button
-                type="button"
-                onClick={handleCreateSession}
-                disabled={isLoading}
-                className="bg-amber-700 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Create Party
-              </button>
-            )}
-            <input
-              value={joinCode}
-              onChange={(e) => {
-                setJoinCode(normalizeSessionCodeInput(e.target.value));
-                setError(null);
-              }}
-              placeholder="CODE"
-              maxLength={6}
-              disabled={isLoading}
-              className="w-24 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 uppercase tracking-widest focus:outline-none focus:border-amber-500"
-            />
-            <button
-              type="button"
-              onClick={handleJoinSession}
-              disabled={isLoading || !canJoinParty}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Join
-            </button>
-          </div>
-        </div>
+        <PartyBar
+          session={multiplayerSession
+            ? { code: multiplayerSession.code, playerCount: multiplayerSession.players.length }
+            : null}
+          actionDisabledReason={actionDisabledReason}
+          copiedPartyCode={copiedPartyCode}
+          onCopyPartyCode={handleCopyPartyCode}
+          joinCode={joinCode}
+          onJoinCodeChange={(value) => { setJoinCode(normalizeSessionCodeInput(value)); setError(null); }}
+          onCreate={handleCreateSession}
+          onJoin={handleJoinSession}
+          canJoin={canJoinParty}
+          isLoading={isLoading}
+        />
         {error && <p className="mb-2 text-sm text-red-400">{error}</p>}
 
         <div className={`flex-1 overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-slate-700 ${
@@ -790,79 +617,30 @@ function HomeContent() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* INPUT AREA */}
-        <div className="mt-4">
-          {isDead ? (
-            <div className="bg-red-950/50 border border-red-900 p-6 rounded-lg flex flex-col items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-              <div className="flex items-center gap-3 text-red-500">
-                <Skull size={32} />
-                <h2 className="text-3xl font-black tracking-widest uppercase">You Died</h2>
-                <Skull size={32} />
-              </div>
-              <p className="text-red-300/70 italic">
-                Your journey ends here.{' '}
-                {deathCountdown !== null && deathCountdown > 0 ? `Redirecting in: ${deathCountdown}` : 'Redirecting...'}
-              </p>
-            </div>
-          ) : viewMode === 'visual' ? (
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setIsAdvancedInputOpen(prev => !prev)}
-                className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
-              >
-                {isAdvancedInputOpen ? 'Hide advanced command input' : 'Advanced command input…'}
-              </button>
-              {isAdvancedInputOpen && (
-                <form onSubmit={handleTurn} className="flex gap-2 mt-2">
-                  <input
-                    ref={inputRef}
-                    className="flex-1 bg-slate-900 border border-slate-700 rounded p-3 text-sm focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-600"
-                    placeholder="What do you do?"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    disabled={isLoading || !multiplayerCanAct}
-                  />
-                  <button type="submit" disabled={isLoading || !input.trim() || !multiplayerCanAct} className="bg-amber-600 hover:bg-amber-700 text-slate-900 font-bold px-6 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm">
-                    ACT
-                  </button>
-                </form>
-              )}
-            </div>
-          ) : (
-            <>
-              <CommandHints
-                gameState={gameState}
-                onCommand={(cmd) => executeTurn(cmd, gameState)}
-                isLoading={isLoading || !multiplayerCanAct}
-              />
-              <form onSubmit={handleTurn} className="flex gap-2">
-              <input
-                ref={inputRef}
-                className="flex-1 bg-slate-900 border border-slate-700 rounded p-4 focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-600"
-                placeholder={actionDisabledReason || 'What do you do?'}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                disabled={isLoading || !multiplayerCanAct}
-                autoFocus
-              />
-              {lastSlots && <div className="hidden md:flex items-center text-xs text-slate-400 px-2">{lastSlots}</div>}
-              <button type="submit" disabled={isLoading || !input.trim() || !multiplayerCanAct} className="bg-amber-600 hover:bg-amber-700 text-slate-900 font-bold px-8 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                ACT
-              </button>
-              <button
-                type="button"
-                onClick={() => { setInput(''); focusInput(); }}
-                disabled={isLoading}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Clear input"
-              >
-                ✕
-              </button>
-            </form>
-            </>
-          )}
-        </div>
+        {/* INPUT AREA — see components/TurnInputArea.tsx */}
+        <TurnInputArea
+          isDead={isDead}
+          deathCountdown={deathCountdown}
+          viewMode={viewMode}
+          isAdvancedInputOpen={isAdvancedInputOpen}
+          onToggleAdvanced={() => setIsAdvancedInputOpen(prev => !prev)}
+          input={input}
+          onInputChange={setInput}
+          onSubmit={handleTurn}
+          onClear={() => { setInput(''); focusInput(); }}
+          inputRef={inputRef}
+          isLoading={isLoading}
+          canAct={multiplayerCanAct}
+          actionDisabledReason={actionDisabledReason}
+          slotSummary={lastSlots}
+          hints={
+            <CommandHints
+              gameState={gameState}
+              onCommand={(cmd) => executeTurn(cmd, gameState)}
+              isLoading={isLoading || !multiplayerCanAct}
+            />
+          }
+        />
       </div>
 
       {/* RIGHT: Sidebar (Desktop) */}
@@ -872,38 +650,30 @@ function HomeContent() {
         </div>
       )}
 
-      {/* MOBILE: Left Drawer */}
-      {isLeftSidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex justify-start">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsLeftSidebarOpen(false)} />
-          <div className="relative w-[85%] max-w-[350px] h-full bg-slate-950 border-r border-slate-800 shadow-2xl animate-in slide-in-from-left duration-300">
-            <button onClick={() => setIsLeftSidebarOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-900 p-2 rounded-full text-slate-300 border border-slate-700">
-              <X size={20} />
-            </button>
-            <LeftSidebar state={gameState} onItemUse={handleItemUse} />
-          </div>
-        </div>
-      )}
+      <MobileSidebarDrawer
+        isOpen={isLeftSidebarOpen}
+        side="left"
+        label="Character stats"
+        onClose={() => setIsLeftSidebarOpen(false)}
+      >
+        <LeftSidebar state={gameState} onItemUse={handleItemUse} />
+      </MobileSidebarDrawer>
 
-      {/* MOBILE: Right Drawer */}
-      {isRightSidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex justify-end">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsRightSidebarOpen(false)} />
-          <div className="relative w-[85%] max-w-[350px] h-full bg-slate-950 border-l border-slate-800 shadow-2xl animate-in slide-in-from-right duration-300">
-            <button onClick={() => setIsRightSidebarOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-900 p-2 rounded-full text-slate-300 border border-slate-700">
-              <X size={20} />
-            </button>
-            <RightSidebar
-              state={gameState}
-              onInsertCommand={(cmd) => {
-                setInput(cmd);
-                setIsRightSidebarOpen(false);
-                focusInput();
-              }}
-            />
-          </div>
-        </div>
-      )}
+      <MobileSidebarDrawer
+        isOpen={isRightSidebarOpen}
+        side="right"
+        label="Spells"
+        onClose={() => setIsRightSidebarOpen(false)}
+      >
+        <RightSidebar
+          state={gameState}
+          onInsertCommand={(cmd) => {
+            setInput(cmd);
+            setIsRightSidebarOpen(false);
+            focusInput();
+          }}
+        />
+      </MobileSidebarDrawer>
 
       {/* Inventory Modal */}
       <InventoryModal
@@ -920,7 +690,7 @@ function HomeContent() {
             }
           }, 100);
         }}
-        isProcessing={isLoading}
+        isProcessing={isLoading || !multiplayerCanAct}
       />
     </main>
   );

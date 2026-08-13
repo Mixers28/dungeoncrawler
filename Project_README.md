@@ -16,7 +16,7 @@ docker compose up -d
 ```
 3) Env: copy `.env.local.example` to `.env.local` and fill:
 ```
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/dungeoncrawler
+DATABASE_URL=postgresql://postgres:postgres@localhost:5442/dungeoncrawler
 AUTH_SECRET=<generate with: openssl rand -base64 32>
 ```
 4) Apply database migrations:

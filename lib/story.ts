@@ -26,6 +26,17 @@ export type StoryDiscovery = {
   /** Story flag set when found; prevents re-discovery after the item is consumed. */
   onceFlag: string;
   log?: string;
+  /** Item type recorded in inventory; inferred from the item name when absent. */
+  itemType?: 'key' | 'misc';
+  /**
+   * Extra regex (source form, case-insensitive) that also triggers this
+   * discovery, beyond the default search/investigate verbs.
+   */
+  triggerPattern?: string;
+  /** Quest objective id marked done when this item is found. */
+  completesObjective?: string;
+  /** Lowercase name fragments of living entities that flee once this is found. */
+  pacifies?: string[];
 };
 
 export type StoryScene = {
@@ -116,9 +127,4 @@ export function pickSceneVariant(group: string, seed: number): StoryScene | null
   if (!list || list.length === 0) return null;
   const idx = Math.abs(seed) % list.length;
   return list[idx];
-}
-
-export function listScenes(): StoryScene[] {
-  ensureCache();
-  return Object.values(cachedScenes || {});
 }

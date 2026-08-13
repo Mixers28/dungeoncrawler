@@ -14,7 +14,7 @@ npm run db:migrate
 Required `.env.local` values:
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/dungeoncrawler
+DATABASE_URL=postgresql://postgres:postgres@localhost:5442/dungeoncrawler
 AUTH_SECRET=<generate with: openssl rand -base64 32>
 ```
 

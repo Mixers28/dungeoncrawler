@@ -4,6 +4,96 @@
 
 ## Active Handoffs
 
+## Handoff - 2026-08-13 - Claude Code - Uniformity audit remediation (cycles 1-4)
+
+Owner: Claude Code
+Status: ready-for-review (Codex: backend touches listed below need a contract check)
+
+Backend/Codex-owned files touched:
+- `lib/game/dice.ts` - added `setRandomSource()`; all dice now flow through one
+  injectable source (default still calls `Math.random` lazily, so existing
+  global stubs keep working). No distribution changes.
+- `lib/game/engine/index.ts` - item ids now come from a module-level counter
+  (`nextItemId`) instead of `Date.now()`+`Math.random`, which collided when
+  several items were created in the same millisecond and collapsed entirely
+  under stubbed randomness; the inline monster d20 now calls `rollD20()`; the
+  hardcoded Iron Key heuristic was deleted and folded into the data-driven
+  scene-discovery loop.
+- `lib/story.ts` - **data contract change**: `StoryDiscovery` gained optional
+  `itemType`, `triggerPattern`, `completesObjective`, and `pacifies`.
+- `story/iron_gate_v1.json`, `story/iron_gate_v2.json` - carry the Iron Key as a
+  discovery entry (same trigger verbs, quest objective, and fleeing rats as the
+  old engine heuristic).
+
+Frontend (Claude-owned): mobile header now renders in both view modes with a
+view-mode toggle; turn-resolving controls disable while a turn is in flight
+(synchronous ref guard in `executeTurn`); drawer-open buttons stay enabled for
+waiting players while their contents stay gated and now state why; disabled
+reasons are visible instead of hover-only `title`s; spell actions respect
+remaining slots and the drawer shows slot counts; `VisualDrawer` is a real
+`role="dialog"` with focus trap and Escape; `NarrationLog` shows actor names and
+is titled "Adventure Log"; waiting copy names the character instead of the raw
+player id.
+
+Infrastructure: `.repowise/`/`.codex/` gitignored; `playwright.config.ts` takes
+`E2E_PORT` (port 3000 is often held by other local software).
+
+Engine decomposition (started, ~1678 -> 1381 lines):
+- `engine/turn-draft.ts` - new `TurnDraft` carrier for the state a turn
+  accumulates (`state`/`context`/`events`/`summary`/`rolls`). Every field is an
+  object or array, so a section mutating it through the draft mutates the same
+  value the caller holds; this is what makes the remaining extractions
+  mechanical and behaviour-preserving.
+- `engine/shared.ts` - `nextItemId`, `normalizeName`, `normalizeSpellName`
+  (moved out of index so sections can use them without a cycle).
+- `engine/loot.ts` - section 8b, `resolveCorpseLooting`.
+- `engine/discovery.ts` - section 6a, `resolveSceneDiscoveries`.
+- `engine/progression.ts` - section 7 `resolveProgression`, plus the moved
+  `applyXpAndCheckLevelUp` / `applySceneCompletion` / `reconcileFlagQuests` /
+  `awardGold`.
+
+- `engine/combat.ts` - section 5, `resolveMonsterTurn`.
+- `engine/sheet.ts` - derived AC/attack bonus, equipment resolution, equip/drop.
+- `engine/economy.ts` - `resolveTradeIntent`.
+- `engine/stunts.ts` - `applyStuntEffect` / `resolveStunt`.
+- `engine/movement.ts` - scene exits, location/biome keys.
+
+- `engine/spells.ts` - the `cast <spell>` branch plus its dice-scaling helpers.
+- `engine/consumables.ts` - quick-use consumables and the short rest.
+- `describeCharacterSheet` (in `sheet.ts`) - the `check sheet` formatter.
+
+**`lib/game/engine/index.ts` is now 622 lines, down from 1678, and every engine
+file is under the 700-line guard.** index.ts holds only the turn pipeline; each
+branch of the player turn lives in the module that owns it. Turn-pipeline
+coverage was added before the final split (trade buy/refuse, spell-slot
+spend/refuse, defend).
+
+`app/page.tsx` was split the same way, 952 -> 697 lines, by lifting presentational
+blocks into components (all props-only, no game logic moved):
+- `components/CharacterSelectScreen.tsx` - the class/continue/join screen.
+- `components/PrologueOverlay.tsx` - the three-part intro.
+- `components/PartyBar.tsx` - party code, player count, create/join.
+- `components/TurnInputArea.tsx` - dead / visual / text input states.
+- `components/GameHeader.tsx` - `MobileHeader` + `DesktopTopBar`.
+- `components/MobileSidebarDrawer.tsx` - the two narrow-viewport slide-overs
+  (these gained `role="dialog"`/`aria-modal`, matching `VisualDrawer`).
+
+**Every file in lib/, app/, and components/ is now under the 700-line guard.**
+Largest remaining: `app/page.tsx` 697, `lib/visual/view-model.ts` 656,
+`lib/game/engine/index.ts` 622.
+
+Two pre-existing bugs surfaced while writing that coverage, both fixed here:
+- `buy <consumable>` was swallowed by the use-an-item path, so "buy healing
+  potion" drank the player's own potion instead of purchasing one. Trade
+  commands now bypass consumable matching.
+- Trader stock could only be bought by typing the raw snake_case id;
+  "buy healing potion" did not match `healing_potion`. Buy/sell/price lookups
+  and the shop listing now normalise underscores and spaces.
+
+Validation: `npx tsc --noEmit`, `npm run lint`, `npm run test:unit` (12+
+consecutive clean runs; the suite previously failed ~3 in 25 on unseeded dice),
+and `npm run test:e2e` 6/6 three consecutive times.
+
 ## Handoff - 2026-07-17 - Claude Code - Playtest Bug Fixes (attack hop, double loot, class select)
 
 Owner: Claude Code
