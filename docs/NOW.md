@@ -20,6 +20,19 @@
 
 ## Current Build Order
 
+0. **Codex review of uniformity-audit remediation** (see `docs/agent-handoff.md`, 2026-08-13)
+   - Backend contract check on `lib/game/dice.ts` (injectable RNG), `lib/game/engine/index.ts`
+     (counter-based item ids, data-driven Iron Key), and the `StoryDiscovery` extension in `lib/story.ts`.
+   - Engine decomposition COMPLETE: `lib/game/engine/index.ts` is 622 lines (from 1678) and every
+     engine file is under the 700-line guard. Twelve modules split out: `turn-draft`, `shared`,
+     `loot`, `discovery`, `progression`, `combat`, `sheet`, `economy`, `stunts`, `movement`,
+     `spells`, `consumables`.
+   - `app/page.tsx` split the same way: 952 → 697 lines, via `CharacterSelectScreen`,
+     `PrologueOverlay`, `PartyBar`, `TurnInputArea`, `GameHeader`, `MobileSidebarDrawer`.
+   - **Every file in lib/, app/, and components/ is now under the 700-line guard.**
+   - Also fixed en route: `buy <consumable>` drank the item instead of buying it, and trader
+     stock only matched raw snake_case ids.
+
 1. **Review current visual asset/UI batch**
    - Check larger live monsters, dead monster derivatives, corpse loot controls, and spellbook states in a normal browser.
    - Confirm current generated assets are ready to keep before committing or asking another agent for visual polish.

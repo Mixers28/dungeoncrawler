@@ -51,3 +51,7 @@ next-env.d.ts
 # throwaway agent verification scripts
 *.tmp.js
 *.tmp.ts
+
+# local agent/index caches (mutate constantly, never source)
+.repowise/
+.codex/

@@ -93,7 +93,7 @@ export function NarrationLog({
       {!compact && (
         <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-700/50">
           <ScrollText size={16} className="text-amber-500" />
-          <h3 className="text-sm font-semibold text-amber-100">Combat Log</h3>
+          <h3 className="text-sm font-semibold text-amber-100">Adventure Log</h3>
           <span className="text-xs text-slate-500 ml-auto">
             {recentEntries.length} {recentEntries.length === 1 ? 'entry' : 'entries'}
           </span>
@@ -127,6 +127,11 @@ export function NarrationLog({
               
               <div className="flex-1 min-w-0">
                 <p className={`${getModeColor(entry.mode)} leading-relaxed`}>
+                  {/* Name the actor like text mode does, so multiplayer readers
+                      can tell who acted. */}
+                  {entry.actorName && (
+                    <span className="font-semibold text-slate-300">{entry.actorName}: </span>
+                  )}
                   {entry.summary}
                 </p>
                 {entry.flavor && !compact && (

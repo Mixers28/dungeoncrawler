@@ -47,6 +47,10 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
 
   const activeQuests = gameState.quests.filter(quest => quest.status === 'active');
   const canAct = viewModel.turnState.canAct && !isLoading;
+  // Drawers cover the turn-state strip below, so they carry this reason inside.
+  const drawerDisabledReason = isLoading
+    ? 'Resolving the current turn…'
+    : viewModel.turnState.reason;
   const actionButtons = viewModel.turnState.mode === 'combat' ? viewModel.combatActions : viewModel.explorationActions;
 
   // Adjust state during render (React-sanctioned pattern): baseline the newest
@@ -151,7 +155,7 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
       {/* Movement cluster and action tray; the narration log lives in a drawer
           because FX, damage numbers, and loot reveals already show the outcome. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-        <MovementCluster actions={viewModel.movementActions} onCommand={dispatchCommand} />
+        <MovementCluster actions={viewModel.movementActions} onCommand={dispatchCommand} disabled={!canAct} />
         <ActionTray
           actions={actionButtons}
           onCommand={dispatchCommand}
@@ -170,6 +174,8 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
             setIsInventoryDrawerOpen(false);
             onOpenFullInventory();
           }}
+          disabled={!canAct}
+          disabledReason={drawerDisabledReason}
         />
       </VisualDrawer>
 
@@ -177,6 +183,9 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
         <SpellbookDrawerContent
           actions={viewModel.spellActions}
           onCommand={(command) => dispatchFromDrawer(command, () => setIsSpellbookDrawerOpen(false))}
+          disabled={!canAct}
+          disabledReason={drawerDisabledReason}
+          spellSlots={gameState.spellSlots || {}}
         />
       </VisualDrawer>
 

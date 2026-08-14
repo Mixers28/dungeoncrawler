@@ -84,8 +84,3 @@ export function rollLoot(tableName: string): LootResult | null {
 
   return { coins, items };
 }
-
-export function listLootTables(): string[] {
-  ensureTables();
-  return Object.keys(cachedTables || {});
-}

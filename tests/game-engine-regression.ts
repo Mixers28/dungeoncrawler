@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { parseActionIntentWithKnown } from '../lib/5e/intents';
 import { parseIntent } from '../lib/game/intent';
-import { rollCriticalDamage } from '../lib/game/dice';
+import { rollCriticalDamage, setRandomSource } from '../lib/game/dice';
 import { runGameTurn } from '../lib/game/engine';
 import { isValidSessionCode, normalizeSessionCodeInput } from '../lib/game/session-code';
 import { buildNewGameState } from '../lib/game/state';
@@ -168,11 +168,18 @@ async function testRequestedOwnedWeaponUsesMatchingDice() {
     isCombatActive: true,
   };
 
-  const { logEntry } = await turn(combatState, 'attack with handaxe');
+  // Pin the dice: on a natural 1 the attack misses and rolls no damage, which
+  // made this assertion fail on roughly one run in twenty.
+  setRandomSource(() => 0.5);
+  try {
+    const { logEntry } = await turn(combatState, 'attack with handaxe');
 
-  assert.equal(logEntry.rolls?.[0]?.label, 'Your Attack');
-  assert.equal(logEntry.rolls?.[0]?.damageDice, '1d6');
-  assert.match(logEntry.summary, /with Handaxe/i);
+    assert.equal(logEntry.rolls?.[0]?.label, 'Your Attack');
+    assert.equal(logEntry.rolls?.[0]?.damageDice, '1d6');
+    assert.match(logEntry.summary, /with Handaxe/i);
+  } finally {
+    setRandomSource(null);
+  }
 }
 
 async function testAttackHonorsTarget() {
@@ -183,10 +190,16 @@ async function testAttackHonorsTarget() {
     isCombatActive: true,
   };
 
-  const { newState } = await turn(combatState, 'attack skeleton');
+  // Same natural-1 flake: a miss leaves the target at full HP.
+  setRandomSource(() => 0.5);
+  try {
+    const { newState } = await turn(combatState, 'attack skeleton');
 
-  assert.equal(newState.nearbyEntities[0].hp, 20);
-  assert.ok(newState.nearbyEntities[1].hp < 20);
+    assert.equal(newState.nearbyEntities[0].hp, 20);
+    assert.ok(newState.nearbyEntities[1].hp < 20);
+  } finally {
+    setRandomSource(null);
+  }
 }
 
 async function testSoloMonsterRetaliationStillOccurs() {
@@ -366,6 +379,182 @@ async function testLootCommandPrefersExactCorpseName() {
   const lootEvents = (result.logEntry.events || []).filter(event => event.type === 'loot');
   assert.equal(lootEvents.length, 1);
   assert.equal(lootEvents[0].targetName, 'Skeleton Archer');
+}
+
+// --- Turn-pipeline coverage -------------------------------------------------
+// These exercise player-turn branches end to end through runGameTurn, so the
+// remaining decomposition of _updateGameState has a safety net.
+
+async function testBuyFromTraderSpendsGoldAndGrantsItem() {
+  const state = await makeState();
+  const shopper: GameState = {
+    ...state,
+    location: 'The Iron Gate',
+    gold: 20,
+    nearbyEntities: [],
+    isCombatActive: false,
+  };
+
+  const potionsBefore = shopper.inventory
+    .filter(item => /healing potion/i.test(item.name))
+    .reduce((sum, item) => sum + item.quantity, 0);
+
+  // Regression: "buy <consumable>" used to be swallowed by the use-an-item
+  // path, so the player drank their own potion instead of purchasing one.
+  const result = await turn(shopper, 'buy healing potion');
+
+  assert.equal(result.newState.gold, 15, 'a 5gp potion should cost 5 gold');
+  const potionsAfter = result.newState.inventory
+    .filter(item => /healing potion/i.test(item.name))
+    .reduce((sum, item) => sum + item.quantity, 0);
+  assert.equal(potionsAfter, potionsBefore + 1, 'buying should add a potion, never consume one');
+}
+
+async function testBuyRefusedWithoutEnoughGold() {
+  const state = await makeState();
+  const brokeShopper: GameState = {
+    ...state,
+    location: 'The Iron Gate',
+    gold: 1,
+    nearbyEntities: [],
+    isCombatActive: false,
+  };
+
+  const result = await turn(brokeShopper, 'buy leather');
+
+  assert.equal(result.newState.gold, 1, 'a refused purchase must not spend gold');
+  assert.equal(
+    result.newState.inventory.some(item => /leather/i.test(item.name)),
+    false,
+    'a refused purchase must not grant the item'
+  );
+}
+
+async function testCastConsumesSpellSlotAndIsRefusedWhenEmpty() {
+  const wizard = await buildNewGameState('wizard');
+  const caster: GameState = {
+    ...wizard,
+    hp: wizard.maxHp,
+    nearbyEntities: [makeMonster('Skeleton', 20)],
+    isCombatActive: true,
+    log: [],
+    narrativeHistory: [],
+  };
+  const slotsBefore = caster.spellSlots?.level_1?.current ?? 0;
+  assert.ok(slotsBefore > 0, 'the wizard prefab should start with a level 1 slot');
+
+  setRandomSource(() => 0.5);
+  try {
+    const cast = await turn(caster, 'cast magic missile');
+    assert.equal(
+      cast.newState.spellSlots?.level_1?.current,
+      slotsBefore - 1,
+      'casting a leveled spell spends one slot'
+    );
+
+    // Drained: the engine must refuse, and the refusal is what the visual
+    // spellbook mirrors when it disables the button.
+    const drained: GameState = {
+      ...caster,
+      spellSlots: { ...caster.spellSlots, level_1: { max: slotsBefore, current: 0 } },
+    };
+    const refused = await turn(drained, 'cast magic missile');
+    assert.equal(refused.newState.spellSlots?.level_1?.current, 0);
+    assert.match(refused.logEntry.summary, /no level 1 spell slots left/i);
+  } finally {
+    setRandomSource(null);
+  }
+}
+
+async function testDefendRaisesArmourClassForTheTurn() {
+  const state = await makeState();
+  const defender: GameState = {
+    ...state,
+    nearbyEntities: [makeMonster('Skeleton', 20)],
+    isCombatActive: true,
+  };
+
+  setRandomSource(() => 0.5);
+  try {
+    const result = await turn(defender, 'defend');
+    assert.match(result.logEntry.summary, /brace|defend|guard/i);
+    assert.ok(result.newState.hp > 0, 'bracing should not kill the defender');
+  } finally {
+    setRandomSource(null);
+  }
+}
+
+async function testIronKeyDiscoveryIsDataDriven() {
+  // The Iron Key used to be a hardcoded engine heuristic; it now lives in
+  // story/iron_gate_v*.json. Cover the whole contract: both trigger phrasings,
+  // the quest objective, the fleeing rats, and no double-award.
+  const base = await makeState();
+  const gateState: GameState = {
+    ...base,
+    storySceneId: 'iron_gate_v1',
+    location: 'The Iron Gate',
+    nearbyEntities: [{ ...makeMonster('Giant Rat', 7), status: 'alive' }],
+    isCombatActive: false,
+  };
+
+  for (const phrasing of ['search the debris', 'take the key']) {
+    const result = await turn(gateState, phrasing);
+    const key = result.newState.inventory.find(item => item.name === 'Iron Key');
+    assert.ok(key, `"${phrasing}" should recover the Iron Key`);
+    assert.equal(key.type, 'key');
+    assert.ok(result.newState.storyFlags.includes('found_iron_key'));
+
+    const objective = result.newState.quests
+      .flatMap(quest => quest.objectives || [])
+      .find(obj => obj.id === 'find-iron-key');
+    assert.ok(objective, 'the find-iron-key objective should exist');
+    assert.equal(objective.done, true, `"${phrasing}" should complete the objective`);
+
+    assert.equal(result.newState.nearbyEntities[0].status, 'fleeing', 'rats lose interest once the key is taken');
+    assert.match(result.logEntry.summary, /Iron Key/i);
+  }
+
+  // Already holding the key: searching again must not duplicate it.
+  const holding: GameState = {
+    ...gateState,
+    inventory: [...gateState.inventory, { id: 'held-key', name: 'Iron Key', type: 'key', quantity: 1, equipped: false }],
+  };
+  const repeat = await turn(holding, 'search the debris');
+  assert.equal(repeat.newState.inventory.filter(item => item.name === 'Iron Key').length, 1);
+}
+
+async function testLootItemIdsAreUniqueWithinTheSameMillisecond() {
+  const state = await makeState();
+  const lootState: GameState = {
+    ...state,
+    nearbyEntities: [
+      { ...makeMonster('Skeleton', 0), hp: 0, status: 'dead' },
+      { ...makeMonster('Zombie', 0), hp: 0, status: 'dead' },
+    ],
+    isCombatActive: false,
+  };
+
+  // Freeze the clock AND pin Math.random the way the rest of this suite does:
+  // ids generated from Date.now() alone collided, and a random suffix would
+  // collapse to a constant under stubbed randomness. Only a counter survives.
+  const originalNow = Date.now;
+  const originalRandom = Math.random;
+  Date.now = () => 1_700_000_000_000;
+  Math.random = () => 0;
+  try {
+    const first = await turn(lootState, 'loot skeleton');
+    const second = await turn(first.newState, 'loot zombie');
+
+    const lootIds = second.newState.inventory
+      .filter(item => item.id.startsWith('loot-'))
+      .map(item => item.id);
+
+    assert.ok(lootIds.length >= 2, `expected at least two looted items, got ${lootIds.length}`);
+    assert.equal(new Set(lootIds).size, lootIds.length, `loot item ids collided: ${lootIds.join(', ')}`);
+  } finally {
+    Date.now = originalNow;
+    Math.random = originalRandom;
+  }
 }
 
 async function testPhase1DiscoveryAndBranchCompletion() {
@@ -972,7 +1161,11 @@ async function testMultiplayerVisualViewModelUsesPartyAndTurnState() {
   assert.equal(ownerView.partySlots[0].isActiveTurn, true);
   assert.equal(ownerView.turnState.canAct, true);
   assert.equal(joinerView.turnState.canAct, false);
-  assert.match(joinerView.turnState.reason || '', /owner-user/);
+  // The waiting message names the character; the opaque player id must never
+  // reach player-facing copy. (Capital-A "Adventurer" is the resolved character
+  // name — the unresolved fallback would read "another adventurer".)
+  assert.match(joinerView.turnState.reason || '', /Waiting for Adventurer\./);
+  assert.doesNotMatch(joinerView.turnState.reason || '', /owner-user/);
   assert.equal(joinerView.combatActions.every(action => !action.enabled), true);
 }
 
@@ -1267,6 +1460,12 @@ async function main() {
   await testVisualViewModelInventoryActionAssets();
   await testVisualViewModelActorNamedLogs();
   await testLootCommandPrefersExactCorpseName();
+  await testLootItemIdsAreUniqueWithinTheSameMillisecond();
+  await testIronKeyDiscoveryIsDataDriven();
+  await testBuyFromTraderSpendsGoldAndGrantsItem();
+  await testBuyRefusedWithoutEnoughGold();
+  await testCastConsumesSpellSlotAndIsRefusedWhenEmpty();
+  await testDefendRaisesArmourClassForTheTurn();
 
   console.log('game-engine regression tests passed');
 }

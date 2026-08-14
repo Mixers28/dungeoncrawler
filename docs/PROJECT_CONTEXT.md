@@ -31,7 +31,7 @@
 - **Purpose:** Text-first dungeon crawler with deterministic mechanics, JSON-authored story content, and factual state logs.
 - **Primary stack:** Next.js App Router, TypeScript, React, Tailwind CSS, Auth.js, Drizzle ORM, Postgres.
 - **Deployment target:** Railway.
-- **Local database:** Docker Compose Postgres on port `5433`.
+- **Local database:** Docker Compose Postgres on host port `5442` (env-driven via `POSTGRES_PORT`; see `.env.example`). A throwaway Playwright DB runs on `5443` under the compose `e2e` profile.
 
 ## Core Design Pillars
 
@@ -69,7 +69,7 @@ npm run dev
 Required environment:
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/dungeoncrawler
+DATABASE_URL=postgresql://postgres:postgres@localhost:5442/dungeoncrawler
 AUTH_SECRET=<generate with: openssl rand -base64 32>
 ```
 

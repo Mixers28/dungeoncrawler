@@ -1,42 +1,21 @@
-import { MONSTER_MANUAL, WEAPON_TABLE, STORY_ACTS } from '../../rules';
 import { getClassReference } from '../../5e/classes';
-import { armorByName, weaponsByName, skillsByName, wizardSpellsByName, clericSpellsByName } from '../../5e/reference';
-import { rollLoot } from '../../loot';
-import { getSceneById, pickSceneVariant, type StoryExit, type StoryScene } from '../../story';
+import { wizardSpellsByName, clericSpellsByName } from '../../5e/reference';
+import { getSceneById, pickSceneVariant } from '../../story';
 import { generateCannedFlavor, type NarrationContext } from '../../narrationEngine';
-import { DIFFICULTY_TO_DC, type ClassifiedStunt, type StuntTemplate } from '../../stunts';
-import { getNextLevelDef } from '../../progression';
-import { armorById, armorByName as equipmentArmorByName, normalizeWeaponName, resolveArmorId, resolveWeaponId, weaponsById, weaponsByName as equipmentWeaponsByName } from '../../items';
 import { getTraderAtLocation } from '../../traders';
-import { getConsumableEffect, isConsumableItem, isUndeadOrFiend } from '../../consumables';
 import { d20AttackHits, rollCriticalDamage, rollDice, rollD20 } from '../dice';
-import { type CoreActionIntent, type GameIntent, type TradeIntent } from '../intent';
-import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, computeArmorClassFromInventory, resolveRoomDescription, resolveSceneImage } from '../state';
+import { type CoreActionIntent, type GameIntent } from '../intent';
+import { type GameState, type LogEntry, type NarrationMode, applySceneEntry, resolveRoomDescription, resolveSceneImage } from '../state';
 import { type TurnEvent } from '../../game-schema';
 import {
-  addActorEffect,
-  addActorInventoryItem,
-  addOrStackActorInventoryItem,
-  addMonsterEffect,
-  addSessionStoryFlag,
-  adjustActorGold,
-  applyDamageToActor,
   applyDamageToMonsterTarget,
   appendActorInventoryChange,
   composeGameStateFromTurnContext,
-  consumeActorSpellSlot,
   createTurnContextFromGameState,
-  decrementActorInventoryItemAtIndex,
   findActiveMonsterTarget,
-  getActorSheetFields,
-  getMonsterTargetByIndex,
-  healActor,
   incrementSessionSceneVisit,
-  markSessionEntityLooted,
   removeActorInventoryItemByName,
-  setActorMinimumAc,
   syncTurnContextFromGameState,
-  type TurnContext,
 } from '../turn-context';
 import { type RollEvent } from '../../game-schema';
 
@@ -58,220 +37,34 @@ function expireEffects(state: GameState) {
   }));
 }
 
-function getPlayerAc(state: GameState, baseAc: number): number {
-  const effectBonus = Math.max(
-    0,
-    ...(state.activeEffects || [])
-      .filter(e => e.type === 'ac_bonus' && e.value !== undefined)
-      .map(e => e.value as number)
-  );
-  return baseAc + effectBonus + (state.tempAcBonus || 0);
-}
 
-function getPlayerAttackBonus(state: GameState): number {
-  return Math.max(
-    0,
-    ...(state.activeEffects || [])
-      .filter(e => e.type === 'attack_bonus' && e.value !== undefined)
-      .map(e => e.value as number)
-  );
-}
 
-const normalizeSpellName = (name: string | undefined) =>
-  (name || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+import { resolveCorpseLooting } from './loot';
+import { resolveMonsterTurn } from './combat';
+import { resolveTradeIntent } from './economy';
+import { findSceneExitForAction, normalizeLocationKey, resolveBiomeKey } from './movement';
+import { resolveStunt } from './stunts';
+import { resolveSpellCast } from './spells';
+import { resolveConsumableUse } from './consumables';
+import {
+  dropInventoryItem,
+  equipInventoryItem,
+  findInventoryItemIndex,
+  getEquippedWeaponDamageDice,
+  getPlayerAttackBonus,
+  describeCharacterSheet,
+  summarizeInventory,
+} from './sheet';
+import { resolveSceneDiscoveries } from './discovery';
+import { applySceneCompletion, resolveProgression } from './progression';
 
-const normalizeName = (name: string | undefined) =>
-  (name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-function isShieldName(name: string): boolean {
-  return armorByName[name.toLowerCase()]?.category?.toLowerCase() === 'shield';
-}
 
-function pickDiceAtLevel(map: Record<string, string> | undefined, level: number): string | null {
-  if (!map) return null;
-  const levels = Object.keys(map).map(Number).filter(n => Number.isFinite(n)).sort((a, b) => a - b);
-  if (levels.length === 0) return null;
-  const chosen = levels.filter(l => l <= level).pop() ?? levels[0];
-  return map[String(chosen)] ?? null;
-}
 
-function pickDamageDiceFromMechanics(
-  mechanics: { damage?: { dice?: string; atSlotLevel?: Record<string, string>; atCharacterLevel?: Record<string, string> }; level?: number },
-  characterLevel: number
-): string | null {
-  if (!mechanics.damage) return null;
-  const slotLevel = mechanics.level ?? 1;
-  return (
-    pickDiceAtLevel(mechanics.damage.atCharacterLevel, characterLevel) ||
-    pickDiceAtLevel(mechanics.damage.atSlotLevel, slotLevel) ||
-    mechanics.damage.dice ||
-    null
-  );
-}
 
-function pickHealDiceFromMechanics(
-  mechanics: { healAtSlotLevel?: Record<string, string>; level?: number }
-): string | null {
-  if (!mechanics.healAtSlotLevel) return null;
-  const slotLevel = mechanics.level ?? 1;
-  return pickDiceAtLevel(mechanics.healAtSlotLevel, slotLevel);
-}
 
-// 5e-database dice expressions use "MOD" for the caster's spellcasting ability
-// modifier (e.g. Cure Wounds "1d8 + MOD"); substitute it before rolling.
-function resolveDiceModifiers(dice: string, state: GameState): string {
-  if (!/MOD/i.test(dice)) return dice;
-  const score = (state.abilityScores || {})[state.spellcastingAbility || 'int'] ?? 10;
-  const mod = Math.floor((score - 10) / 2);
-  return dice.replace(/\+\s*MOD/i, mod >= 0 ? `+${mod}` : `${mod}`).replace(/MOD/i, `${mod}`);
-}
 
-function awardGold(state: GameState, amount: number) {
-  if (!Number.isFinite(amount) || amount === 0) return;
-  state.gold = Math.max(0, (state.gold || 0) + amount);
-}
 
-function applyXpAndCheckLevelUp(state: GameState, xpGained: number, logs: string[], reason?: string) {
-  if (!Number.isFinite(xpGained) || xpGained <= 0) return;
-  state.xp += xpGained;
-  if (reason) {
-    logs.push(`You gain ${xpGained} XP ${reason}`);
-  } else {
-    logs.push(`You gain ${xpGained} XP.`);
-  }
-
-  while (true) {
-    const next = getNextLevelDef(state.level);
-    if (!next) break;
-    if (state.xp < next.xpRequired) break;
-    state.level = next.level;
-    state.maxHp += next.hpGain;
-    state.hp = state.maxHp;
-    logs.push(`You reach level ${state.level}. Your maximum HP increases to ${state.maxHp}.`);
-  }
-  const upcoming = getNextLevelDef(state.level);
-  if (upcoming) state.xpToNext = upcoming.xpRequired;
-}
-
-// Mark flag-gated quest objectives done when their story flag is set, completing quests
-// whose objectives are all done. Generic so new flag-driven quests need no bespoke code.
-function reconcileFlagQuests(state: GameState, logs: string[]) {
-  const flags = state.storyFlags || [];
-  state.quests = (state.quests || []).map(quest => {
-    let changed = false;
-    const objectives = (quest.objectives || []).map(obj => {
-      if (obj.flag && !obj.done && flags.includes(obj.flag)) {
-        changed = true;
-        return { ...obj, done: true };
-      }
-      return obj;
-    });
-    const allDone = objectives.length > 0 && objectives.every(o => o.done);
-    const status = allDone && quest.status === 'active' ? 'completed' as const : quest.status;
-    if (changed) {
-      logs.push(`Quest updated: ${quest.title}${allDone ? ' — complete!' : ''}`);
-    }
-    return { ...quest, objectives, status };
-  });
-}
-
-// Applies a scene's onComplete flags/rewards exactly once (guarded by flagsSet).
-// Called both at end-of-turn for the current scene and when exiting a cleared
-// scene, so leaving immediately after a fight still counts as completing it.
-function applySceneCompletion(state: GameState, scene: StoryScene, summaryParts: string[], turnEvents?: TurnEvent[]) {
-  if (!scene.onComplete?.flagsSet) return;
-  const newFlags = scene.onComplete.flagsSet.filter(f => !(state.storyFlags || []).includes(f));
-  if (newFlags.length === 0) return;
-  state.storyFlags = [...(state.storyFlags || []), ...newFlags];
-  const rewardXp = scene.onComplete.reward?.xp || 0;
-  if (rewardXp > 0) {
-    applyXpAndCheckLevelUp(
-      state,
-      rewardXp,
-      summaryParts,
-      `for securing ${scene.title || scene.location}.`
-    );
-  }
-  const rewardItems = scene.onComplete.reward?.items || [];
-  const grantedItems = rewardItems.filter(name =>
-    !state.inventory.some(i => i.name.toLowerCase() === name.toLowerCase())
-  );
-  if (grantedItems.length > 0) {
-    state.inventory = [
-      ...state.inventory,
-      ...grantedItems.map((name, idx) => ({
-        id: `reward-${Date.now().toString(36)}-${idx}`,
-        name,
-        type: (/key|sigil|map/i.test(name) ? 'key' : 'misc') as 'key' | 'misc',
-        quantity: 1,
-        equipped: false,
-      })),
-    ];
-    state.inventoryChangeLog = [...state.inventoryChangeLog, `Scene reward: ${grantedItems.join(', ')}`].slice(-10);
-    summaryParts.push(`You claim ${grantedItems.join(' and ')}.`);
-    turnEvents?.push({
-      type: 'loot',
-      targetName: scene.title || scene.location,
-      items: grantedItems.map(name => ({ name, quantity: 1 })),
-    });
-  }
-  const lootTable = scene.onComplete.reward?.lootTable;
-  if (lootTable) {
-    const loot = rollLoot(lootTable);
-    if (loot) {
-      const coinGain = Object.entries(loot.coins).filter(([, v]) => (v || 0) > 0);
-      if (coinGain.length > 0) {
-        const gold = loot.coins.gp || 0;
-        const silver = loot.coins.sp || 0;
-        const copper = loot.coins.cp || 0;
-        if (gold > 0) {
-          awardGold(state, gold);
-          turnEvents?.push({ type: 'coins', targetName: scene.title || scene.location, amount: gold });
-        }
-        const coinParts = [
-          gold > 0 ? `${gold} gp` : null,
-          silver > 0 ? `${silver} sp` : null,
-          copper > 0 ? `${copper} cp` : null,
-        ].filter(Boolean);
-        summaryParts.push(`You recover ${coinParts.join(', ')}.`);
-      }
-      if (loot.items.length > 0) {
-        const newItems = loot.items.map(it => ({
-          id: `loot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-          name: it.id.replace(/_/g, ' '),
-          type: 'misc' as const,
-          quantity: it.quantity,
-          equipped: false,
-        }));
-        state.inventory = [...state.inventory, ...newItems];
-        state.inventoryChangeLog = [...state.inventoryChangeLog, `Scene loot: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}`].slice(-10);
-        summaryParts.push(`Loot found: ${newItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}.`);
-        turnEvents?.push({
-          type: 'loot',
-          targetName: scene.title || scene.location,
-          items: newItems.map(i => ({ name: i.name, quantity: i.quantity })),
-        });
-      }
-    }
-  }
-}
-
-function normalizeLocationKey(location: string): string {
-  return location
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .trim() || 'unknown';
-}
-
-function resolveBiomeKey(location: string): string {
-  const lower = location.toLowerCase();
-  if (lower.includes('crypt')) return 'crypt';
-  if (lower.includes('sewer') || lower.includes('sewers')) return 'sewers';
-  if (lower.includes('courtyard') || lower.includes('gate') || lower.includes('citadel')) return 'fortress';
-  if (lower.includes('throne') || lower.includes('catacomb')) return 'catacombs';
-  return 'default';
-}
 
 function getItemGains(previous: GameState, next: GameState): string[] {
   const prevMap = new Map<string, { name: string; quantity: number }>();
@@ -337,371 +130,17 @@ function sanitizeUserAction(text: string): string {
   return sanitizeForNarrator(text) || "act";
 }
 
-function summarizeInventory(inventory: GameState["inventory"]): { summary: string; items: string[] } {
-  if (!inventory || inventory.length === 0) {
-    return { summary: "Unarmed; nothing notable carried.", items: [] };
-  }
 
-  const primaryWeapon =
-    inventory.find(i => i.type === 'weapon' && i.equipped)?.name ||
-    inventory.find(i => i.type === 'weapon')?.name;
-  const armor =
-    inventory.find(i => i.type === 'armor' && i.equipped && !isShieldName(i.name))?.name ||
-    inventory.find(i => i.type === 'armor' && !isShieldName(i.name))?.name;
-  const extras = inventory
-    .filter(i => i.type !== 'weapon' && i.type !== 'armor')
-    .slice(0, 1)
-    .map(i => i.name);
 
-  const names = [primaryWeapon, armor, ...extras].filter(Boolean) as string[];
-  const summary = names.length > 0 ? names.join(' and ') : "Basic gear only.";
-  return { summary, items: names };
-}
 
-function getSkillModifier(state: GameState, skillName: string): number {
-  if (!skillName) return 0;
-  const hasSkill = (state.skills || []).some(skill => skill.toLowerCase() === skillName.toLowerCase());
-  return hasSkill ? 2 : 0;
-}
 
-function pushStoryFlag(state: GameState, flag: string) {
-  if (!flag) return;
-  const flags = state.storyFlags || [];
-  if (!flags.includes(flag)) {
-    state.storyFlags = [...flags, flag];
-  }
-}
 
-function applyStuntEffect(
-  state: GameState,
-  template: StuntTemplate,
-  success: boolean,
-  targetName?: string
-): string {
-  if (success) {
-    switch (template.successEffect) {
-      case 'knockProne': {
-        const targetKey = normalizeName(targetName);
-        let didApply = false;
-        if (targetKey) {
-          state.nearbyEntities = state.nearbyEntities.map(entity => {
-            const matches = normalizeName(entity.name).includes(targetKey);
-            if (!matches) return entity;
-            didApply = true;
-            return {
-              ...entity,
-              effects: [
-                ...(entity.effects || []),
-                { name: 'Prone', type: 'debuff', expiresAtTurn: (state.turnCounter || 0) + 1 },
-              ],
-            };
-          });
-        }
-        return didApply
-          ? `${targetName ? `The ${targetName}` : 'Your target'} is knocked prone.`
-          : 'You knock your target off balance.';
-      }
-      case 'extraDamage':
-        state.activeEffects = [
-          ...(state.activeEffects || []),
-          { name: 'Stunt Edge', type: 'buff', value: 2, expiresAtTurn: (state.turnCounter || 0) + 1 },
-        ];
-        return 'You set up an opening for a stronger strike.';
-      case 'discoverClue':
-        pushStoryFlag(state, 'stunt_clue_found');
-        return 'You notice a subtle detail you missed before.';
-      case 'gainInfo':
-        pushStoryFlag(state, 'stunt_info_gained');
-        return 'You piece together a useful insight.';
-      case 'improveAttitude':
-        pushStoryFlag(state, 'stunt_attitude_improved');
-        return 'The tension eases, if only slightly.';
-      case 'advantage':
-        state.activeEffects = [
-          ...(state.activeEffects || []),
-          { name: 'Stunt Advantage', type: 'buff', expiresAtTurn: (state.turnCounter || 0) + 1 },
-        ];
-        return 'You gain a brief edge in the next exchange.';
-    }
-  } else {
-    switch (template.failureEffect) {
-      case 'takeDamage': {
-        const dmg = rollDice('1d4');
-        state.hp = Math.max(0, state.hp - dmg);
-        return `You overextend and take ${dmg} damage.`;
-      }
-      case 'losePosition':
-        pushStoryFlag(state, 'stunt_lost_position');
-        return 'You lose your footing and give ground.';
-      case 'alertEnemies':
-        pushStoryFlag(state, 'stunt_alerted_enemies');
-        return 'Your misstep draws unwanted attention.';
-      case 'worsenAttitude':
-        pushStoryFlag(state, 'stunt_attitude_worsened');
-        return 'Your words sour the mood.';
-      case 'wasteAction':
-        return 'The attempt goes nowhere.';
-      case 'noEffect':
-        return '';
-    }
-  }
-  return '';
-}
 
-function resolveStunt(
-  currentState: GameState,
-  stunt: ClassifiedStunt
-): { summary: string; mode: NarrationMode } {
-  const { template, targetName } = stunt;
-  const dc = DIFFICULTY_TO_DC[template.baseDifficulty];
-  const skillName = template.primarySkill;
-  const skillMod = getSkillModifier(currentState, skillName);
-  const roll = rollD20();
-  const total = roll + skillMod;
-  const success = total >= dc;
-  const resultWord = success ? 'succeed' : 'fail';
-  const targetText = targetName ? ` targeting the ${targetName}` : '';
 
-  let mode: NarrationMode = 'GENERAL';
-  if (template.category === 'combat' || template.category === 'physical') {
-    mode = success ? 'COMBAT_HIT' : 'COMBAT_MISS';
-  } else if (template.category === 'mental' || template.category === 'exploration') {
-    mode = 'INVESTIGATE';
-  }
 
-  let summary =
-    `You attempt a ${template.category} stunt${targetText} using ${skillName}. ` +
-    `You roll ${total} vs DC ${dc} and ${resultWord}.`;
 
-  const consequenceText = applyStuntEffect(currentState, template, success, targetName);
-  if (consequenceText) {
-    summary += ` ${consequenceText}`;
-  }
 
-  return { summary, mode };
-}
 
-function getEquippedWeaponDamageDice(state: GameState, fallbackName: string): string {
-  const fallbackId = resolveWeaponId(fallbackName);
-  if (fallbackId) {
-    const def = weaponsById[fallbackId];
-    if (def?.damageDice) return def.damageDice;
-  }
-  const byName = equipmentWeaponsByName[normalizeWeaponName(fallbackName)];
-  if (byName?.damageDice) return byName.damageDice;
-  if (state.equippedWeaponId) {
-    const def = weaponsById[state.equippedWeaponId];
-    if (def?.damageDice) return def.damageDice;
-  }
-  return getWeaponDamageDice(fallbackName);
-}
-
-function getBaseAcFromEquipped(state: GameState): number {
-  if (!state.inventory || state.inventory.length === 0) return state.ac;
-  const abilityScores = state.abilityScores || {};
-  return computeArmorClassFromInventory(state.inventory, abilityScores);
-}
-
-function findInventoryItemIndex(
-  inventory: GameState["inventory"],
-  itemName: string,
-  type?: GameState["inventory"][number]["type"]
-): number {
-  const requested = normalizeName(itemName);
-  if (!requested) return -1;
-  const candidates = inventory
-    .map((item, idx) => ({ item, idx, normalized: normalizeName(item.name) }))
-    .filter(({ item }) => !type || item.type === type);
-
-  const exact = candidates.find(({ normalized }) => normalized === requested);
-  if (exact) return exact.idx;
-
-  const partial = candidates.find(({ normalized }) =>
-    normalized.includes(requested) || requested.includes(normalized)
-  );
-  return partial?.idx ?? -1;
-}
-
-function refreshEquipmentAfterInventoryChange(state: GameState) {
-  const equippedWeapon = state.inventory.find(item => item.type === 'weapon' && item.equipped);
-  const fallbackWeapon = state.inventory.find(item => item.type === 'weapon');
-  const weaponToEquip = equippedWeapon || fallbackWeapon;
-
-  state.inventory = state.inventory.map(item => {
-    if (item.type !== 'weapon') return item;
-    return { ...item, equipped: weaponToEquip ? item.id === weaponToEquip.id : false };
-  });
-  state.equippedWeaponId = weaponToEquip ? resolveWeaponId(weaponToEquip.name) : undefined;
-
-  const equippedBodyArmor = state.inventory.find(item =>
-    item.type === 'armor' && item.equipped && !isShieldName(item.name)
-  );
-  const fallbackBodyArmor = state.inventory.find(item => item.type === 'armor' && !isShieldName(item.name));
-  const bodyArmorToEquip = equippedBodyArmor || fallbackBodyArmor;
-
-  const equippedShield = state.inventory.find(item =>
-    item.type === 'armor' && item.equipped && isShieldName(item.name)
-  );
-  const fallbackShield = state.inventory.find(item => item.type === 'armor' && isShieldName(item.name));
-  const shieldToEquip = equippedShield || fallbackShield;
-
-  state.inventory = state.inventory.map(item => {
-    if (item.type !== 'armor') return item;
-    if (isShieldName(item.name)) {
-      return { ...item, equipped: shieldToEquip ? item.id === shieldToEquip.id : false };
-    }
-    return { ...item, equipped: bodyArmorToEquip ? item.id === bodyArmorToEquip.id : false };
-  });
-  state.equippedArmorId = bodyArmorToEquip ? resolveArmorId(bodyArmorToEquip.name) : undefined;
-  state.ac = computeArmorClassFromInventory(state.inventory, state.abilityScores || {});
-}
-
-function equipInventoryItem(state: GameState, itemName: string): string {
-  const idx = findInventoryItemIndex(state.inventory, itemName);
-  if (idx < 0) return `You do not have ${itemName} in your pack.`;
-
-  const item = state.inventory[idx];
-  if (item.type !== 'weapon' && item.type !== 'armor') {
-    return `${item.name} cannot be equipped.`;
-  }
-
-  if (item.type === 'weapon') {
-    state.inventory = state.inventory.map((entry, entryIdx) =>
-      entry.type === 'weapon' ? { ...entry, equipped: entryIdx === idx } : entry
-    );
-    state.equippedWeaponId = resolveWeaponId(item.name);
-    return `You equip ${item.name}.`;
-  }
-
-  const equippingShield = isShieldName(item.name);
-  state.inventory = state.inventory.map((entry, entryIdx) => {
-    if (entry.type !== 'armor') return entry;
-    const entryIsShield = isShieldName(entry.name);
-    if (equippingShield) {
-      return entryIsShield ? { ...entry, equipped: entryIdx === idx } : entry;
-    }
-    return entryIsShield ? entry : { ...entry, equipped: entryIdx === idx };
-  });
-  if (!equippingShield) state.equippedArmorId = resolveArmorId(item.name);
-  state.ac = computeArmorClassFromInventory(state.inventory, state.abilityScores || {});
-  return `You equip ${item.name}. Your AC is now ${state.ac}.`;
-}
-
-function dropInventoryItem(state: GameState, itemName: string): string {
-  const idx = findInventoryItemIndex(state.inventory, itemName);
-  if (idx < 0) return `You do not have ${itemName} in your pack.`;
-
-  const item = state.inventory[idx];
-  if (item.type === 'key') {
-    return `${item.name} feels too important to discard.`;
-  }
-
-  const remainingQty = Math.max(0, item.quantity - 1);
-  state.inventory = remainingQty > 0
-    ? state.inventory.map((entry, entryIdx) =>
-        entryIdx === idx ? { ...entry, quantity: remainingQty } : entry
-      )
-    : state.inventory.filter((_, entryIdx) => entryIdx !== idx);
-
-  if (item.equipped || item.type === 'weapon' || item.type === 'armor') {
-    refreshEquipmentAfterInventoryChange(state);
-  }
-  state.inventoryChangeLog = [...state.inventoryChangeLog, `Dropped ${item.name} at ${state.location}`].slice(-10);
-  return remainingQty > 0
-    ? `You drop one ${item.name}. ${remainingQty} remain.`
-    : `You drop ${item.name}.`;
-}
-
-function resolveTradeIntent(
-  state: GameState,
-  tradeIntent: TradeIntent,
-  context: TurnContext
-): { eventSummary: string; narrationMode: NarrationMode } {
-  syncTurnContextFromGameState(context, state);
-  const trader = getTraderAtLocation(state.location);
-  const narrationMode: NarrationMode = 'GENERAL';
-
-  if (!trader) {
-    return { eventSummary: 'There is no trader here to do business with.', narrationMode };
-  }
-
-  if (tradeIntent.type === 'openShop') {
-    const itemsList = trader.inventory.map(item => `${item.itemId} (${item.price}g)`).join(', ');
-    const eventSummary = `You approach ${trader.name}. For sale: ${itemsList}. You have ${state.gold} gold.`;
-    return { eventSummary, narrationMode };
-  }
-
-  if (tradeIntent.type === 'buy' && tradeIntent.itemName) {
-    const itemName = tradeIntent.itemName.trim().toLowerCase();
-    const invEntry = trader.inventory.find(item => item.itemId.toLowerCase() === itemName);
-    if (!invEntry) {
-      const eventSummary = `${trader.name} does not sell ${tradeIntent.itemName}.`;
-      return { eventSummary, narrationMode };
-    }
-    if (state.gold < invEntry.price) {
-      const eventSummary = `You cannot afford ${invEntry.itemId} (costs ${invEntry.price} gold, you have ${state.gold}).`;
-      return { eventSummary, narrationMode };
-    }
-
-    state.gold = adjustActorGold(context, -invEntry.price);
-    const weaponDef = weaponsById[invEntry.itemId] || equipmentWeaponsByName[invEntry.itemId];
-    const armorDef = armorById[invEntry.itemId] || equipmentArmorByName[invEntry.itemId];
-    const displayName = weaponDef?.name || armorDef?.name || invEntry.itemId.replace(/_/g, ' ');
-    const itemType = weaponDef ? 'weapon' : armorDef ? 'armor' : 'potion';
-    state.inventory = addOrStackActorInventoryItem(context, {
-      id: `shop-${Date.now().toString(36)}`,
-      name: displayName,
-      type: itemType,
-      quantity: 1,
-      equipped: false,
-    });
-
-    if (weaponDef) {
-      state.inventory = state.inventory.map(item =>
-        item.type === 'weapon' ? { ...item, equipped: item.name.toLowerCase() === displayName.toLowerCase() } : item
-      );
-      state.equippedWeaponId = resolveWeaponId(displayName);
-    }
-    if (armorDef) {
-      const buyingShield = isShieldName(displayName);
-      state.inventory = state.inventory.map(item => {
-        if (item.type !== 'armor') return item;
-        const itemIsShield = isShieldName(item.name);
-        if (buyingShield) {
-          return itemIsShield
-            ? { ...item, equipped: item.name.toLowerCase() === displayName.toLowerCase() }
-            : item;
-        }
-        return itemIsShield ? item : { ...item, equipped: item.name.toLowerCase() === displayName.toLowerCase() };
-      });
-      if (!buyingShield) state.equippedArmorId = resolveArmorId(displayName);
-      state.ac = computeArmorClassFromInventory(state.inventory, state.abilityScores || {});
-    }
-
-    const eventSummary = `You buy ${displayName} from ${trader.name} for ${invEntry.price} gold. You now have ${state.gold} gold.`;
-    return { eventSummary, narrationMode };
-  }
-
-  if (tradeIntent.type === 'sell' && tradeIntent.itemName) {
-    const itemName = tradeIntent.itemName.trim().toLowerCase();
-    const invIdx = state.inventory.findIndex(item => item.name.toLowerCase() === itemName);
-    if (invIdx < 0) {
-      const eventSummary = `You do not have ${tradeIntent.itemName} to sell.`;
-      return { eventSummary, narrationMode };
-    }
-
-    const invItem = state.inventory[invIdx];
-    const traderPrice = trader.inventory.find(item => item.itemId.toLowerCase() === itemName)?.price;
-    const basePrice = traderPrice ?? 2;
-    const sellPrice = Math.max(1, Math.floor(basePrice * trader.buybackRate));
-    state.gold = adjustActorGold(context, sellPrice);
-    state.inventory = decrementActorInventoryItemAtIndex(context, invIdx);
-    const eventSummary = `You sell ${invItem.name} for ${sellPrice} gold. You now have ${state.gold} gold.`;
-    return { eventSummary, narrationMode };
-  }
-
-  return { eventSummary: 'You fail to complete any trade.', narrationMode };
-}
 
 function buildAccountantFacts(params: {
   newState: GameState;
@@ -749,17 +188,6 @@ function buildAccountantFacts(params: {
   };
 }
 
-function getWeaponDamageDice(name: string | undefined): string {
-  if (!name) return "1d4";
-  const weapon = weaponsByName[name.toLowerCase()];
-  if (weapon?.damage) {
-    const diceMatch = weapon.damage.match(/\d+d\d+/i);
-    if (diceMatch) return diceMatch[0];
-    const flatMatch = weapon.damage.match(/\d+/);
-    if (flatMatch) return flatMatch[0];
-  }
-  return WEAPON_TABLE[name] || "1d4";
-}
 
 function isWeaponAllowedForClass(weaponName: string | undefined, classKey: string): boolean {
   if (!weaponName) return false;
@@ -767,27 +195,6 @@ function isWeaponAllowedForClass(weaponName: string | undefined, classKey: strin
   return ref.allowedWeapons.map(w => w.toLowerCase()).includes(weaponName.toLowerCase());
 }
 
-function findSceneExitForAction(currentScene: StoryScene | null, userAction: string): StoryExit | undefined {
-  const exits = currentScene?.exits || [];
-  const lowerAction = userAction.toLowerCase();
-  const explicitExit = exits.find(ex => ex.verb.some(v => lowerAction.includes(v.toLowerCase())));
-  if (explicitExit) return explicitExit;
-
-  if (!/\binteract\b/i.test(userAction)) return undefined;
-
-  const interactionExits = exits.filter(exit => {
-    const verbs = exit.verb.map(verb => verb.toLowerCase());
-    const isBacktrack = verbs.some(verb => ['back', 'return', 'leave', 'exit'].includes(verb));
-    const isInteraction = !!exit.consumeItem || verbs.some(verb =>
-      ['open', 'push', 'pull', 'use', 'activate', 'unlock', 'turn', 'door', 'gate', 'lever', 'altar', 'cache', 'armory', 'sanctum'].includes(verb)
-    );
-    return isInteraction && !isBacktrack;
-  });
-
-  if (interactionExits.length === 1) return interactionExits[0];
-  if (exits.length === 1) return exits[0];
-  return undefined;
-}
 
 // --- MAIN LOGIC ENGINE ---
 // DM principles: describe what the player perceives, let the player act, resolve fairly.
@@ -984,100 +391,12 @@ async function _updateGameState(
   attemptedSearch = wantsSearch;
   attemptedInvestigate = wantsInvestigate;
 
-  // Quick-use consumables (potions, bandages, scrolls, food, thrown alchemical items) and short rest.
-  // Match by full item name first (covers the UI "use <name>" buttons), then fall back to a
-  // significant-word match when an explicit use-verb is present (covers free-typed "drink potion").
-  const lowerAction = userAction.toLowerCase();
-  const hasUseVerb = /\b(use|drink|quaff|apply|throw|hurl|consume|eat|drain|pour|splash|read)\b/.test(lowerAction);
-  const matchConsumableIdx = (): number => {
-    let idx = newState.inventory.findIndex(
-      i => i.quantity > 0 && isConsumableItem(i) && lowerAction.includes(i.name.toLowerCase())
-    );
-    if (idx >= 0) return idx;
-    if (hasUseVerb) {
-      idx = newState.inventory.findIndex(
-        i => i.quantity > 0 && isConsumableItem(i)
-          && i.name.toLowerCase().split(/[^a-z]+/).some(w => w.length >= 3 && lowerAction.includes(w))
-      );
-    }
-    return idx;
-  };
-  const consumableItemIdx = matchConsumableIdx();
-  const wantsKnownConsumableKeyword = /\b(bandage|potion|elixir|draught|draft)\b/i.test(userAction);
-  const wantsRest = consumableItemIdx < 0 && !wantsKnownConsumableKeyword && /\b(rest|camp|sleep|recover|take a break|sit down)\b/i.test(userAction);
-  let handledConsumable = false;
-
-  if (consumableItemIdx >= 0) {
-    handledConsumable = true;
-    const item = newState.inventory[consumableItemIdx];
-    const effect = getConsumableEffect(item);
-    const consumeOne = () => {
-      const remainingQty = Math.max(0, item.quantity - 1);
-      newState.inventory = remainingQty <= 0
-        ? newState.inventory.filter((_, idx) => idx !== consumableItemIdx)
-        : newState.inventory.map((it, idx) => idx === consumableItemIdx ? { ...it, quantity: remainingQty } : it);
-    };
-    if (!effect) {
-      summaryParts.push(`You examine ${item.name}, but aren't sure how to use it.`);
-    } else if (effect.kind === 'heal') {
-      const heal = rollDice(effect.dice);
-      newState.hp = Math.min(newState.maxHp, newState.hp + heal);
-      consumeOne();
-      newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} (${heal} HP) at ${newState.location}`].slice(-10);
-      summaryParts.push(`You ${effect.verb} ${item.name}, recovering ${heal} HP.`);
-    } else if (effect.kind === 'buff') {
-      newState.activeEffects = [
-        ...(newState.activeEffects || []),
-        { name: effect.effectName, type: effect.effectType, value: effect.value, expiresAtTurn: (newState.turnCounter || 0) + effect.durationTurns }
-      ];
-      consumeOne();
-      newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} at ${newState.location}`].slice(-10);
-      const bonusLabel = effect.effectType === 'ac_bonus' ? 'AC' : 'attack rolls';
-      summaryParts.push(`You ${effect.verb} ${item.name}, gaining +${effect.value} to ${bonusLabel} for a short while.`);
-    } else if (effect.kind === 'flavor') {
-      newState.activeEffects = [
-        ...(newState.activeEffects || []),
-        { name: effect.effectName, type: 'buff', expiresAtTurn: (newState.turnCounter || 0) + effect.durationTurns }
-      ];
-      consumeOne();
-      newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} at ${newState.location}`].slice(-10);
-      summaryParts.push(effect.message(item.name));
-    } else {
-      // Offensive thrown item (Acid, Alchemist's Fire, Holy Water, Oil) — needs an alive target.
-      if (!activeMonster || activeMonster.status !== 'alive') {
-        summaryParts.push(`You ready ${item.name}, but there is no target in range.`);
-      } else if (effect.undeadFiendOnly && !isUndeadOrFiend(activeMonster.name)) {
-        consumeOne();
-        newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} at ${newState.location}`].slice(-10);
-        summaryParts.push(`You ${effect.verb} ${item.name} at ${activeMonster.name}, but it has no effect on the living.`);
-      } else {
-        const dmg = rollDice(effect.dice);
-        applyDamageToActiveMonster(dmg);
-        consumeOne();
-        newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Used ${item.name} (${dmg} ${effect.damageType}) at ${newState.location}`].slice(-10);
-        summaryParts.push(`You ${effect.verb} ${item.name} at ${activeMonster.name}, dealing ${dmg} ${effect.damageType} damage.`);
-      }
-    }
-  } else if (wantsKnownConsumableKeyword) {
-    handledConsumable = true;
-    if (/bandage/i.test(userAction)) {
-      summaryParts.push("You fumble for a bandage, but you have none left.");
-    } else {
-      summaryParts.push("You fumble for a potion, but you have none left.");
-    }
-  } else if (wantsRest) {
-    handledConsumable = true;
-    const enemiesNearby = newState.nearbyEntities.some(e => e.status === 'alive');
-    if (enemiesNearby || newState.isCombatActive) {
-      summaryParts.push("You cannot rest while enemies are nearby.");
-    } else if (newState.hp >= newState.maxHp) {
-      summaryParts.push("You are already at full health. There is no need to rest.");
-    } else {
-      const healAmount = Math.ceil(newState.maxHp * 0.25);
-      newState.hp = Math.min(newState.maxHp, newState.hp + healAmount);
-      summaryParts.push(`You take a short rest and tend your wounds, recovering ${healAmount} HP. (${newState.hp}/${newState.maxHp} HP)`);
-    }
-  }
+  // Quick-use consumables and short rest — see engine/consumables.ts
+  const consumables = resolveConsumableUse(
+    { state: newState, context: turnContext, events: turnEvents, summary: summaryParts, rolls: rollLog },
+    { userAction, tradeIntent: intent.tradeIntent, activeMonster, applyDamageToActiveMonster }
+  );
+  const handledConsumable = consumables.handledConsumable;
 
   if (!handledConsumable) {
   if (parsedIntent.type === 'equip') {
@@ -1085,168 +404,20 @@ async function _updateGameState(
   } else if (parsedIntent.type === 'drop') {
     summaryParts.push(dropInventoryItem(newState, parsedIntent.itemName));
   } else if (parsedIntent.type === 'castAbility') {
-    const spellKey = parsedIntent.abilityName.toLowerCase();
-    const normalizedKey = normalizeSpellName(spellKey);
-    const spell = spellCatalog[normalizedKey] || spellCatalog[spellKey];
-    const isKnown = (newState.knownSpells || []).some(s => normalizeSpellName(s) === normalizedKey);
-    const isPrepared = (newState.preparedSpells || []).some(s => normalizeSpellName(s) === normalizedKey);
-    let canCast = true;
-
-    if (!spell || !isKnown) {
-      summaryParts.push(`You have not learned that spell.`);
-      canCast = false;
-    } else if (!isPrepared && !spell.level.toLowerCase().includes('cantrip')) {
-      summaryParts.push(`You have not prepared ${spell.name}.`);
-      canCast = false;
-    } else {
-      const isCantrip = spell.level.toLowerCase().includes('cantrip');
-      const spellLevelNum = spell.level.match(/\d+/)?.[0] ?? '1';
-      const slotKey = `level_${spellLevelNum}`;
-      if (!isCantrip) {
-        if (!consumeActorSpellSlot(turnContext, slotKey)) {
-          summaryParts.push(`You have no ${slotKey.replace('_', ' ')} spell slots left.`);
-          canCast = false;
-        } else {
-          newState.spellSlots = turnContext.actor.spellSlots;
-        }
+    const cast = resolveSpellCast(
+      { state: newState, context: turnContext, events: turnEvents, summary: summaryParts, rolls: rollLog },
+      {
+        parsedIntent,
+        spellCatalog,
+        activeMonster,
+        activeMonsterIndex,
+        applyDamageToActiveMonster,
       }
-
-      if (canCast) {
-        // Resolve entirely from reference mechanics (5e data + authored overlay).
-        const targetName = parsedIntent.target || activeMonster?.name || 'the area';
-        const mechanics = spell.mechanics;
-        let handledMechanics = false;
-
-        // Area-of-effect damage: hit every alive nearby entity once. The active monster
-        // goes through applyDamageToActiveMonster so section-7 handles its XP; other kills
-        // are credited inline here (mirrors the section-7 XP formula) to avoid double counting.
-        const dealAoeDamage = (dmg: number, damageType: string): number => {
-          const aliveBefore = newState.nearbyEntities.filter(e => e.status === 'alive').length;
-          if (aliveBefore === 0) return 0;
-          if (activeMonsterIndex >= 0 && activeMonster) applyDamageToActiveMonster(dmg);
-          newState.nearbyEntities = newState.nearbyEntities.map((entity, idx) => {
-            if (idx === activeMonsterIndex || entity.status !== 'alive') return entity;
-            const updatedHp = Math.max(0, entity.hp - dmg);
-            const died = updatedHp <= 0;
-            if (died) {
-              newState.totalKills = (newState.totalKills || 0) + 1;
-              const xp = MONSTER_MANUAL[entity.name]?.hp ? Math.max(25, MONSTER_MANUAL[entity.name].hp * 5) : 50;
-              applyXpAndCheckLevelUp(newState, xp, summaryParts);
-            }
-            return { ...entity, hp: updatedHp, status: died ? 'dead' : entity.status };
-          });
-          void damageType;
-          return aliveBefore;
-        };
-
-        if (mechanics) {
-          const healDice = pickHealDiceFromMechanics(mechanics);
-          if (healDice) {
-            const heal = rollDice(resolveDiceModifiers(healDice, newState));
-            newState.hp = healActor(turnContext, heal);
-            summaryParts.push(`Healing energy restores ${heal} HP.`);
-            handledMechanics = true;
-          } else if (mechanics.damage) {
-            const rawDamageDice = pickDamageDiceFromMechanics(mechanics, newState.level);
-            const damageDice = rawDamageDice ? resolveDiceModifiers(rawDamageDice, newState) : null;
-            if (damageDice && mechanics.areaOfEffect && newState.nearbyEntities.some(e => e.status === 'alive')) {
-              const damageType = mechanics.damage.type ? mechanics.damage.type.toLowerCase() : 'damage';
-              const dmg = rollDice(damageDice);
-              playerDamageRoll = dmg;
-              const hitCount = dealAoeDamage(dmg, damageType);
-              summaryParts.push(`You unleash ${spell.name}, striking ${hitCount} ${hitCount === 1 ? 'foe' : 'foes'} for ${dmg} ${damageType} damage.`);
-              handledMechanics = true;
-            } else if (damageDice && activeMonster) {
-              const damageType = mechanics.damage.type ? mechanics.damage.type.toLowerCase() : 'damage';
-              if (mechanics.attackType) {
-                const rawSpellD20 = rollD20();
-                const spellBonus = newState.spellAttackBonus || 0;
-                const spellAttack = rawSpellD20 + spellBonus;
-                playerAttackRoll = spellAttack;
-                playerAttackIsSave = false;
-                playerAttackDc = null;
-                if (d20AttackHits(rawSpellD20, spellAttack, activeMonster.ac)) {
-                  const dmg = rawSpellD20 === 20 ? rollCriticalDamage(damageDice) : rollDice(damageDice);
-                  playerDamageRoll = dmg;
-                  applyDamageToActiveMonster(dmg);
-                  rollLog.push({ label: spell.name, d20: rawSpellD20, modifier: spellBonus, total: spellAttack, against: activeMonster.ac, outcome: rawSpellD20 === 20 ? 'crit' : 'hit', damage: dmg, damageDice, damageType });
-                  summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
-                } else {
-                  rollLog.push({ label: spell.name, d20: rawSpellD20, modifier: spellBonus, total: spellAttack, against: activeMonster.ac, outcome: 'miss' });
-                  summaryParts.push(`Your ${spell.name} misses ${targetName}.`);
-                }
-              } else if (mechanics.dc?.ability) {
-                const saveDc = newState.spellSaveDc || 10;
-                const rawSaveD20 = rollD20();
-                playerAttackRoll = rawSaveD20;
-                playerAttackIsSave = true;
-                playerAttackDc = saveDc;
-                if (rawSaveD20 < saveDc) {
-                  const dmg = rollDice(damageDice);
-                  playerDamageRoll = dmg;
-                  applyDamageToActiveMonster(dmg);
-                  rollLog.push({ label: `${spell.name} Save`, d20: rawSaveD20, modifier: 0, total: rawSaveD20, against: saveDc, outcome: 'hit', damage: dmg, damageDice, damageType });
-                  summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
-                } else {
-                  rollLog.push({ label: `${spell.name} Save`, d20: rawSaveD20, modifier: 0, total: rawSaveD20, against: saveDc, outcome: 'miss' });
-                  summaryParts.push(`${targetName} resists your ${spell.name}.`);
-                }
-              } else {
-                const dmg = rollDice(damageDice);
-                playerDamageRoll = dmg;
-                playerAttackIsSave = false;
-                playerAttackDc = null;
-                applyDamageToActiveMonster(dmg);
-                summaryParts.push(`You cast ${spell.name} at ${targetName}, dealing ${dmg} ${damageType} damage.`);
-              }
-              handledMechanics = true;
-            }
-          }
-
-          // Non-damage effects (buffs, debuffs, utility) from the authored overlay.
-          if (!handledMechanics && mechanics.effect) {
-            const fx = mechanics.effect;
-            if (fx.target === 'self') {
-              if (fx.minAc !== undefined) {
-                newState.ac = setActorMinimumAc(turnContext, fx.minAc);
-              }
-              if (fx.type) {
-                newState.activeEffects = addActorEffect(turnContext, {
-                  name: spell.name,
-                  type: fx.type,
-                  ...(fx.value !== undefined ? { value: fx.value } : {}),
-                  ...(fx.durationTurns !== undefined
-                    ? { expiresAtTurn: (newState.turnCounter || 0) + fx.durationTurns }
-                    : {}),
-                });
-              }
-              summaryParts.push(fx.log || `You cast ${spell.name} on yourself.`);
-            } else if (fx.target === 'enemy') {
-              if (activeMonster) {
-                addMonsterEffect(turnContext, activeMonsterIndex, {
-                  name: spell.name,
-                  type: (fx.type === 'buff' ? 'buff' : 'debuff') as 'buff' | 'debuff',
-                  ...(fx.durationTurns !== undefined
-                    ? { expiresAtTurn: (newState.turnCounter || 0) + fx.durationTurns }
-                    : {}),
-                });
-                newState.nearbyEntities = turnContext.session.nearbyEntities;
-                summaryParts.push((fx.log || `You cast ${spell.name} at {target}.`).replace('{target}', targetName));
-              } else {
-                summaryParts.push(fx.missLog || `You cast ${spell.name}, but there is no foe here.`);
-              }
-            } else {
-              summaryParts.push(fx.log || `You cast ${spell.name}.`);
-            }
-            handledMechanics = true;
-          }
-        }
-
-        if (!handledMechanics) {
-          summaryParts.push(`You cast ${spell.name}, but its effect is not modeled yet.`);
-        }
-      }
-    }
+    );
+    playerAttackRoll = cast.playerAttackRoll;
+    playerDamageRoll = cast.playerDamageRoll;
+    playerAttackIsSave = cast.playerAttackIsSave;
+    playerAttackDc = cast.playerAttackDc;
   } else if (parsedIntent.type === 'look') {
     lookedAround = true;
     const threats = newState.nearbyEntities.filter(e => e.status === 'alive');
@@ -1290,41 +461,7 @@ async function _updateGameState(
     newState.isCombatActive = false;
     summaryParts.push("You flee the encounter.");
   } else if (parsedIntent.type === 'checkSheet') {
-    // All sheet facts are enriched from the 5e reference layer, never invented.
-    const sheet = getActorSheetFields(turnContext);
-    const sheetClassKey = (sheet.character?.class || 'fighter').toLowerCase();
-    const sheetSpellCatalog = sheetClassKey === 'cleric' ? clericSpellsByName : wizardSpellsByName;
-    const sheetClassRef = getClassReference(sheetClassKey);
-    const describeSkill = (raw: string) => {
-      const ref = skillsByName[raw.toLowerCase().replace(/_/g, ' ')];
-      return ref ? `${ref.name} (${ref.ability})` : raw;
-    };
-    const describeSpell = (raw: string) => {
-      const def = sheetSpellCatalog[normalizeSpellName(raw)];
-      if (!def) return raw;
-      const level = def.level.toLowerCase() === 'cantrip' ? 'cantrip' : `${def.level} level`;
-      return `${def.name} (${level})`;
-    };
-    const skills = sheet.skills?.length ? sheet.skills.map(describeSkill).join(', ') : 'None';
-    const equippedWeapon = sheet.inventory.find(i => i.type === 'weapon' && i.equipped)
-      || sheet.inventory.find(i => i.type === 'weapon');
-    const weaponRef = equippedWeapon ? weaponsByName[normalizeWeaponName(equippedWeapon.name)] : undefined;
-    const weaponText = equippedWeapon
-      ? (weaponRef ? `${equippedWeapon.name} — ${weaponRef.damage} (${weaponRef.category})` : equippedWeapon.name)
-      : 'None';
-    const equippedArmor = sheet.inventory.find(i => i.type === 'armor' && i.equipped)
-      || sheet.inventory.find(i => i.type === 'armor');
-    const armorRef = equippedArmor ? armorByName[equippedArmor.name.toLowerCase()] : undefined;
-    const armorText = equippedArmor
-      ? (armorRef ? `${equippedArmor.name} — AC ${armorRef.baseAC} (${armorRef.category})` : equippedArmor.name)
-      : 'None';
-    const profText = `weapons — ${sheetClassRef.weaponProficiencyTokens.join(', ') || 'none'}; armor — ${sheetClassRef.armorProficiencyTokens.join(', ') || 'none'}`;
-    const known = sheet.knownSpells?.length ? sheet.knownSpells.map(describeSpell).join(', ') : 'None';
-    const prepared = sheet.preparedSpells?.length ? sheet.preparedSpells.map(describeSpell).join(', ') : 'None';
-    const slotText = Object.entries(sheet.spellSlots || {})
-      .map(([lvl, data]) => `${lvl.replace('_', ' ')}: ${data.current}/${data.max}`)
-      .join('; ');
-    summaryParts.push(`Class: ${sheetClassRef.name}. Skills: ${skills}. Equipped weapon: ${weaponText}. Armor: ${armorText}. Proficiencies: ${profText}. Spells known: ${known}. Spells prepared: ${prepared}. Slots: ${slotText || 'None'}.`);
+    summaryParts.push(describeCharacterSheet(turnContext));
   } else {
     if (intent.tradeIntent) {
       const tradeResult = resolveTradeIntent(newState, intent.tradeIntent, turnContext);
@@ -1347,45 +484,18 @@ async function _updateGameState(
   }
   } // end handledBandage guard
 
-  // 5. MONSTER TURN (only if still present and player didn't run)
-  let monsterAttackRoll = 0;
-  let monsterDamageRoll = 0;
-  let monsterDamageNotation = "";
-  syncTurnContextFromGameState(turnContext, newState);
-  const currentActiveMonster = getMonsterTargetByIndex(turnContext, activeMonsterIndex).entity;
-  const monsterStillAlive = currentActiveMonster && currentActiveMonster.status === 'alive';
-  const monsterIsActive = newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend';
-  if (shouldResolveMonsterTurn && monsterStillAlive && monsterIsActive && actionIntent !== 'run') {
-    // Conditions that fully prevent the monster from acting this turn.
-    const DISABLING_CONDITIONS = ['mage hand', 'stunned', 'paralyzed', 'held', 'frightened', 'sleep'];
-    const disablingEffect = (currentActiveMonster.effects || []).find(e => DISABLING_CONDITIONS.includes(e.name.toLowerCase()));
-    if (disablingEffect) {
-      summaryParts.push(`${currentActiveMonster.name} is ${disablingEffect.name.toLowerCase() === 'mage hand' ? 'pinned by the spectral hand' : disablingEffect.name.toLowerCase()} and cannot attack this moment.`);
-    } else {
-      const rawMonsterD20 = Math.floor(Math.random() * 20) + 1;
-      // Bane (5e): target takes -1d4 to attack rolls.
-      const hasBane = (currentActiveMonster.effects || []).some(e => e.name.toLowerCase() === 'bane');
-      const banePenalty = hasBane ? rollDice('1d4') : 0;
-      const monsterBonus = currentActiveMonster.attackBonus - banePenalty;
-      monsterAttackRoll = rawMonsterD20 + monsterBonus;
-      monsterDamageNotation = currentActiveMonster.damageDice;
-      const playerAc = getPlayerAc(newState, getBaseAcFromEquipped(newState));
-      const baneNote = hasBane ? ` (Bane -${banePenalty})` : '';
-      if (d20AttackHits(rawMonsterD20, monsterAttackRoll, playerAc)) {
-        monsterDamageRoll = rawMonsterD20 === 20
-          ? rollCriticalDamage(monsterDamageNotation)
-          : rollDice(monsterDamageNotation);
-        newState.hp = applyDamageToActor(turnContext, monsterDamageRoll);
-        rollLog.push({ label: `${currentActiveMonster.name}${baneNote}`, d20: rawMonsterD20, modifier: monsterBonus, total: monsterAttackRoll, against: playerAc, outcome: rawMonsterD20 === 20 ? 'crit' : 'hit', damage: monsterDamageRoll, damageDice: monsterDamageNotation });
-        summaryParts.push(`${currentActiveMonster.name} hits you for ${monsterDamageRoll} damage.`);
-      } else {
-        rollLog.push({ label: `${currentActiveMonster.name}${baneNote}`, d20: rawMonsterD20, modifier: monsterBonus, total: monsterAttackRoll, against: playerAc, outcome: 'miss' });
-        summaryParts.push(`${currentActiveMonster.name} misses you${hasBane ? ', its cursed strike going wide' : ''}.`);
-      }
+  // 5. MONSTER TURN — see engine/combat.ts
+  const monsterTurn = resolveMonsterTurn(
+    { state: newState, context: turnContext, events: turnEvents, summary: summaryParts, rolls: rollLog },
+    {
+      activeMonsterIndex,
+      actionIntent,
+      shouldResolveMonsterTurn,
+      isCastAbility: parsedIntent.type === 'castAbility',
     }
-  } else if (!monsterStillAlive && actionIntent === 'attack' && parsedIntent.type !== 'castAbility') {
-    summaryParts.push("There is nothing left to attack.");
-  }
+  );
+  const monsterAttackRoll = monsterTurn.monsterAttackRoll;
+  const monsterDamageRoll = monsterTurn.monsterDamageRoll;
 
   // 6. CLEANUP COMBAT FLAGS
   newState.tempAcBonus = 0;
@@ -1393,61 +503,14 @@ async function _updateGameState(
   newState.isCombatActive = (anyAlive && (newState.isCombatActive || actionIntent === 'attack' || actionIntent === 'defend')) && newState.hp > 0;
   newState.nearbyEntities = [...newState.nearbyEntities];
 
-  // 6a. LOOTING / KEY RECOVERY (simple heuristic for the Iron Key at the gate)
-  const wantsKey = /(key|glint|shiny|metal|object|take|grab|pick|retrieve)/i.test(userAction) && newState.location.toLowerCase().includes('gate');
-  if (wantsKey) attemptedSearch = true;
-  const hasIronKey = newState.inventory.some(i => i.name === 'Iron Key');
-  if (wantsKey && !hasIronKey) {
-    newState.inventory = [
-      ...newState.inventory,
-      { id: `key-${Date.now().toString(36)}`, name: 'Iron Key', type: 'key', quantity: 1, equipped: false }
-    ];
-    newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Gained Iron Key at ${newState.location}`].slice(-10);
-    summaryParts.push("You recover the Iron Key from the debris.");
-    newState.quests = newState.quests.map(quest => {
-      const objectives = (quest.objectives || []).map(obj =>
-        obj.id === 'find-iron-key' ? { ...obj, done: true } : obj
-      );
-      const hasObjective = objectives.some(obj => obj.id === 'find-iron-key');
-      const allDone = objectives.length > 0 && objectives.every(obj => obj.done);
-      if (hasObjective) {
-        summaryParts.push(`Quest updated: ${quest.title} — Find the Iron Key ✓`);
-      }
-      return { ...quest, objectives, status: allDone ? 'completed' : quest.status };
-    });
-    foundSearchItems = true;
-    // Once the key is taken, nearby rats lose interest
-    newState.nearbyEntities = newState.nearbyEntities.map(ent =>
-      ent.name.toLowerCase().includes('rat')
-        ? { ...ent, status: ent.status === 'alive' ? 'fleeing' : ent.status }
-        : ent
-    );
-    newState.isCombatActive = newState.nearbyEntities.some(e => e.status === 'alive' && e.hp > 0) && newState.hp > 0;
-  }
-
-  // 6a-ii. SCENE DISCOVERY (keys/maps found via search/investigate, data-driven from story JSON)
-  if (wantsSearch || wantsInvestigate) {
-    syncTurnContextFromGameState(turnContext, newState);
-    const sceneForDiscovery = getSceneById(newState.storySceneId);
-    for (const disc of sceneForDiscovery?.discovery || []) {
-      const alreadyFound = newState.storyFlags.includes(disc.onceFlag)
-        || newState.inventory.some(i => i.name.toLowerCase() === disc.item.toLowerCase());
-      if (alreadyFound) continue;
-      if (Math.random() >= (disc.chance ?? 1)) continue;
-      const itemType = /key|sigil|map/i.test(disc.item) ? 'key' as const : 'misc' as const;
-      newState.inventory = addActorInventoryItem(turnContext, {
-        id: `disc-${Date.now().toString(36)}`,
-        name: disc.item,
-        type: itemType,
-        quantity: 1,
-        equipped: false,
-      });
-      newState.storyFlags = addSessionStoryFlag(turnContext, disc.onceFlag);
-      newState.inventoryChangeLog = appendActorInventoryChange(turnContext, `Found ${disc.item} at ${newState.location}`);
-      summaryParts.push(disc.log || `Your search turns up ${disc.item}.`);
-      foundSearchItems = true;
-    }
-  }
+  // 6a. SCENE DISCOVERY — see engine/discovery.ts
+  const discoveries = resolveSceneDiscoveries(
+    { state: newState, context: turnContext, events: turnEvents, summary: summaryParts, rolls: rollLog },
+    { userAction, wantsSearch, wantsInvestigate }
+  );
+  // These flags are only ever raised, never cleared, by this section.
+  if (discoveries.attemptedSearch) attemptedSearch = true;
+  if (discoveries.foundSearchItems) foundSearchItems = true;
 
   // 6b. TRACK LOCATION HISTORY
   if (newState.location !== currentState.location) {
@@ -1456,132 +519,21 @@ async function _updateGameState(
     newState.locationHistory = updatedHistory;
   }
 
-  // 7. XP, KILLS & STORY ACT PROGRESSION
+  // 7. XP, KILLS & STORY ACT PROGRESSION — see engine/progression.ts
   const monsterNow = activeMonsterIndex >= 0 ? newState.nearbyEntities[activeMonsterIndex] : null;
-  const monsterKilled = monsterWasAlive && monsterNow && monsterNow.status === 'dead';
-  if (monsterKilled) {
-    newState.totalKills = (newState.totalKills || 0) + 1;
-    const xpAward = MONSTER_MANUAL[activeMonster!.name]?.hp ? Math.max(25, MONSTER_MANUAL[activeMonster!.name].hp * 5) : 50;
-    applyXpAndCheckLevelUp(newState, xpAward, summaryParts);
-  }
-
-  // Advance story act based on key item possession and boss kills
-  const maxAct = Math.max(...Object.keys(STORY_ACTS).map(Number));
-  if (newState.storyAct === 0 && newState.inventory.some(i => i.name === 'Iron Key')) {
-    newState.storyAct = 1;
-    summaryParts.push("You hold the Iron Key. The inner sanctum's gate can be breached.");
-  }
-  if (newState.storyAct === 1 && newState.inventory.some(i => i.name === 'Cursed Crown')) {
-    newState.storyAct = 2;
-    summaryParts.push("The Cursed Crown is yours. One foe remains — face the Iron King.");
-  }
-  if (newState.storyAct >= 2 && monsterKilled && activeMonster?.name === 'Iron King') {
-    newState.storyFlags = [...(newState.storyFlags || []), 'iron_king_defeated'];
-    summaryParts.push("The Iron King falls. The curse shatters. Aethelgard breathes again.");
-  }
-  newState.storyAct = Math.min(maxAct, Math.max(0, newState.storyAct));
-
-  // Scene completion rewards
-  const sceneForReward = getSceneById(newState.storySceneId);
-  const sceneCleared = !newState.nearbyEntities.some(e => e.status === 'alive');
-  if (sceneForReward && sceneCleared) {
-    applySceneCompletion(newState, sceneForReward, summaryParts, turnEvents);
-  }
-
-  // Reconcile flag-gated quest objectives now that all story flags for this turn are set.
-  reconcileFlagQuests(newState, summaryParts);
-
-
-  // 8b. LOOT CORPSES (simple generic loot)
-  const wantsLoot = /(loot|rummage|pick over|salvage)/i.test(userAction);
-  attemptedLoot = wantsLoot;
-  const lootTarget = normalizeName(
-    userAction
-      .replace(/\b(loot|rummage|pick over|salvage)\b/gi, '')
-      .replace(/\b(the|a|an|corpse|body|monster|remains)\b/gi, '')
-      .trim()
+  const monsterKilled = !!(monsterWasAlive && monsterNow && monsterNow.status === 'dead');
+  resolveProgression(
+    { state: newState, context: turnContext, events: turnEvents, summary: summaryParts, rolls: rollLog },
+    { monsterKilled, activeMonsterName: activeMonster?.name }
   );
-  const corpseMatches = (e: (typeof newState.nearbyEntities)[number], exact: boolean): boolean => {
-    if (e.status !== 'dead' || e.name.toLowerCase().includes('looted')) return false;
-    if (!lootTarget) return true;
-    const corpseName = normalizeName(e.name.replace(/\s*\(looted\)\s*$/i, ''));
-    // Exact match first: "loot skeleton archer" must not grab the plain
-    // Skeleton via substring overlap and leave the Archer lootable again.
-    return exact
-      ? corpseName === lootTarget
-      : corpseName.includes(lootTarget) || lootTarget.includes(corpseName);
-  };
-  let deadCorpseIndex = newState.nearbyEntities.findIndex(e => corpseMatches(e, true));
-  if (lootTarget && deadCorpseIndex < 0) {
-    deadCorpseIndex = newState.nearbyEntities.findIndex(e => corpseMatches(e, false));
-  }
-  const deadCorpse = deadCorpseIndex >= 0 ? newState.nearbyEntities[deadCorpseIndex] : null;
-  if (wantsLoot && deadCorpse) {
-    syncTurnContextFromGameState(turnContext, newState);
-    const monsterLootMap: Record<string, string> = {
-      'skeleton': '5e_minor_undead_treasure',
-      'zombie': '5e_minor_undead_treasure',
-      'skeleton archer': '5e_minor_undead_treasure',
-      'armoured zombie': '5e_minor_undead_treasure',
-      'fallen knight': '5e_major_undead_boss_treasure',
-      'cultist acolyte': '5e_minor_cultist_treasure',
-    };
-    const corpseKey = normalizeName(deadCorpse.name);
-    let table = monsterLootMap[corpseKey] || Object.entries(monsterLootMap).find(([key]) => corpseKey.includes(key))?.[1];
-    if (!table) {
-      if (corpseKey.includes('skeleton') || corpseKey.includes('zombie')) table = '5e_minor_undead_treasure';
-      if (corpseKey.includes('cultist')) table = table || '5e_minor_cultist_treasure';
-    }
-    const loot = table ? rollLoot(table) : null;
-    let goldFind = 0;
-    const newItems: GameState['inventory'] = [];
-    if (loot) {
-      goldFind = loot.coins.gp || 0;
-      if (goldFind > 0) newState.gold = adjustActorGold(turnContext, goldFind);
-      if (loot.items.length > 0) {
-        for (const it of loot.items) {
-          newItems.push({
-            id: `loot-${Date.now().toString(36)}`,
-            name: it.id.replace(/_/g, ' '),
-            type: 'misc',
-            quantity: it.quantity,
-            equipped: false,
-          });
-        }
-      }
-    } else {
-      goldFind = Math.max(1, Math.floor(Math.random() * 6));
-      newItems.push({
-        id: `loot-${Date.now().toString(36)}`,
-        name: `${deadCorpse.name} Remnant`,
-        type: 'misc',
-        quantity: 1,
-        equipped: false,
-      });
-      newState.gold = adjustActorGold(turnContext, goldFind);
-    }
-    for (const item of newItems) {
-      newState.inventory = addActorInventoryItem(turnContext, item);
-    }
-    foundLootItems = goldFind > 0 || newItems.length > 0;
-    const corpseDisplayName = deadCorpse.name.replace(/\s*\(looted\)\s*$/i, '');
-    if (newItems.length > 0) {
-      turnEvents.push({
-        type: 'loot',
-        targetName: corpseDisplayName,
-        items: newItems.map(i => ({ name: i.name, quantity: i.quantity })),
-      });
-    }
-    if (goldFind > 0) {
-      turnEvents.push({ type: 'coins', targetName: corpseDisplayName, amount: goldFind });
-    }
-    newState.nearbyEntities = markSessionEntityLooted(turnContext, deadCorpseIndex);
-    newState.inventoryChangeLog = [...newState.inventoryChangeLog, `Looted ${deadCorpse.name}: +${goldFind} gold${newItems.length ? ', +' + newItems.map(i => `${i.quantity}x ${i.name}`).join(', ') : ''}`].slice(-10);
-    const parts = [];
-    if (goldFind > 0) parts.push(`${goldFind} gold`);
-    if (newItems.length > 0) parts.push(newItems.map(i => `${i.quantity}x ${i.name}`).join(', '));
-    summaryParts.push(`You loot the ${deadCorpse.name}${parts.length ? ', gaining ' + parts.join(' and ') : '.'}`);
-  }
+
+  // 8b. LOOT CORPSES (simple generic loot) — see engine/loot.ts
+  const looting = resolveCorpseLooting(
+    { state: newState, context: turnContext, events: turnEvents, summary: summaryParts, rolls: rollLog },
+    userAction
+  );
+  attemptedLoot = looting.attemptedLoot;
+  foundLootItems = looting.foundLootItems;
 
   // 9. SUMMARY & ROLLS
   newState.lastActionSummary = summaryParts.join(' ').trim() || "Nothing of note happens.";

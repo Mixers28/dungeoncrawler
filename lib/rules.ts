@@ -58,8 +58,6 @@ export const MONSTER_MANUAL: Record<string, MonsterStatBlock> = {
   },
 };
 
-export const EASY_MOBS = ["Giant Rat", "Skeleton", "Green Slime"];
-
 export const WEAPON_TABLE: Record<string, string> = {
   "Rusty Dagger": "1d4",
   "Dagger": "1d4",
@@ -88,5 +86,3 @@ export const STORY_ACTS: Record<number, { name: string; goal: string; boss: stri
     clue: "The throne room is ahead. The air is freezing.",
   },
 };
-
-export const KEY_ITEMS = ["Iron Key", "Cursed Crown"];

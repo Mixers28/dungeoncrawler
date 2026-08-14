@@ -14,10 +14,16 @@ Branch `dcv01` focuses on hybrid facts+flavor, deterministic mechanics, a prefab
 
 ## Run
 1) Install: `npm install`
-2) Start Postgres: `docker compose up -d`
-3) Env: copy `.env.local.example` to `.env.local`, then set `DATABASE_URL` and `AUTH_SECRET`.
+2) Start Postgres: `npm run infra:up` (project-owned container on host port **5442**)
+3) Env: copy `.env.example` to `.env.local`, then set `DATABASE_URL` and `AUTH_SECRET`.
 4) Apply migrations: `npm run db:migrate`
 5) Dev server: `npm run dev` then open http://localhost:3000.
+   Port taken? `PORT=3210 npm run dev`, or run the whole stack in Docker with
+   `docker compose up -d` (app on **3210**).
+
+All published ports are env-driven with a dungeoncrawler-specific default block
+so this project never fights another local stack for 3000/5432/5433 — see
+`.env.example`. Tear down with `npm run infra:down`.
 
 ## Quick checks
 - `check skills` → factual summary of skills/equipped gear (no Narrator).
