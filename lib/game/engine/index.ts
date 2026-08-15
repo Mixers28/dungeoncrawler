@@ -398,10 +398,15 @@ async function _updateGameState(
   );
   const handledConsumable = consumables.handledConsumable;
 
+  // A trade command names goods the player may not own yet, so it must not be
+  // read as equip/drop: "buy shortsword" reported "you do not have shortsword
+  // in your pack" instead of quoting a price.
+  const isTradeCommand = !!intent.tradeIntent && intent.tradeIntent.type !== 'openShop';
+
   if (!handledConsumable) {
-  if (parsedIntent.type === 'equip') {
+  if (parsedIntent.type === 'equip' && !isTradeCommand) {
     summaryParts.push(equipInventoryItem(newState, parsedIntent.itemName));
-  } else if (parsedIntent.type === 'drop') {
+  } else if (parsedIntent.type === 'drop' && !isTradeCommand) {
     summaryParts.push(dropInventoryItem(newState, parsedIntent.itemName));
   } else if (parsedIntent.type === 'castAbility') {
     const cast = resolveSpellCast(

@@ -32,11 +32,20 @@ function parseTradeIntent(userAction: string): TradeIntent | null {
 export function parseIntent(userAction: string, state: GameState): GameIntent {
   const classKey = (state.character?.class || 'fighter').toLowerCase();
   const spellCatalog = classKey === 'cleric' ? clericSpellsByName : wizardSpellsByName;
-  const parsedIntent = parseActionIntentWithKnown(
+  const tradeIntent = parseTradeIntent(userAction);
+  const rawParsedIntent = parseActionIntentWithKnown(
     userAction,
     state.knownSpells || [],
     Object.keys(spellCatalog)
   );
+
+  // A buy/sell command names goods, and those names collide with weapons and
+  // gear: "buy shortsword" parsed as an attack with a weapon the player does
+  // not own yet, which short-circuited the turn before the trade ever ran.
+  const isGoodsTrade = !!tradeIntent && tradeIntent.type !== 'openShop';
+  const parsedIntent: ParsedIntent = isGoodsTrade
+    ? { type: 'other', raw: userAction }
+    : rawParsedIntent;
 
   const actionIntent: CoreActionIntent =
     parsedIntent.type === 'attack' || parsedIntent.type === 'castAbility'
@@ -51,7 +60,7 @@ export function parseIntent(userAction: string, state: GameState): GameIntent {
     userAction,
     parsedIntent,
     actionIntent,
-    tradeIntent: parseTradeIntent(userAction),
+    tradeIntent,
     stunt: classifyStunt(userAction),
   };
 }

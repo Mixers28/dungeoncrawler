@@ -430,6 +430,32 @@ async function testBuyRefusedWithoutEnoughGold() {
   );
 }
 
+async function testBuyingStockedGearQuotesAPriceInsteadOfEquipFailure() {
+  const state = await makeState();
+  const shopper: GameState = {
+    ...state,
+    location: 'The Iron Gate',
+    gold: 0,
+    nearbyEntities: [],
+    isCombatActive: false,
+  };
+
+  // Regression: the equip intent used to win over the trade intent, so buying
+  // gear you don't own yet answered "you do not have <item> in your pack".
+  const broke = await turn(shopper, 'buy shortsword');
+  assert.doesNotMatch(broke.logEntry.summary, /in your pack/i);
+  assert.match(broke.logEntry.summary, /cannot afford shortsword/i);
+  // The price quote reads as prose, never as a raw snake_case id.
+  assert.doesNotMatch(broke.logEntry.summary, /_/);
+
+  const funded = await turn({ ...shopper, gold: 50 }, 'buy shortsword');
+  assert.ok(
+    funded.newState.inventory.some(item => /shortsword/i.test(item.name)),
+    'a funded purchase should grant the item'
+  );
+  assert.ok(funded.newState.gold < 50, 'a funded purchase should spend gold');
+}
+
 async function testCastConsumesSpellSlotAndIsRefusedWhenEmpty() {
   const wizard = await buildNewGameState('wizard');
   const caster: GameState = {
@@ -1464,6 +1490,7 @@ async function main() {
   await testIronKeyDiscoveryIsDataDriven();
   await testBuyFromTraderSpendsGoldAndGrantsItem();
   await testBuyRefusedWithoutEnoughGold();
+  await testBuyingStockedGearQuotesAPriceInsteadOfEquipFailure();
   await testCastConsumesSpellSlotAndIsRefusedWhenEmpty();
   await testDefendRaisesArmourClassForTheTurn();
 

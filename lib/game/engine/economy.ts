@@ -52,7 +52,7 @@ export function resolveTradeIntent(
       return { eventSummary, narrationMode };
     }
     if (state.gold < invEntry.price) {
-      const eventSummary = `You cannot afford ${invEntry.itemId} (costs ${invEntry.price} gold, you have ${state.gold}).`;
+      const eventSummary = `You cannot afford ${tradeKey(invEntry.itemId)} (costs ${invEntry.price} gold, you have ${state.gold}).`;
       return { eventSummary, narrationMode };
     }
 

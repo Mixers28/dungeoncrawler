@@ -9,6 +9,8 @@ interface NarrationLogProps {
   maxEntries?: number;
   showMode?: boolean;
   compact?: boolean;
+  /** Hide the internal heading when the surrounding surface already names it. */
+  showHeader?: boolean;
 }
 
 /**
@@ -26,6 +28,7 @@ export function NarrationLog({
   maxEntries = 10,
   showMode = false,
   compact = false,
+  showHeader = true,
 }: NarrationLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -90,7 +93,7 @@ export function NarrationLog({
   return (
     <div className={`bg-gradient-to-br from-slate-900 to-slate-800 rounded-lg border border-amber-900/30 shadow-lg ${compact ? 'p-3' : 'p-4'}`}>
       {/* Header */}
-      {!compact && (
+      {!compact && showHeader && (
         <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-700/50">
           <ScrollText size={16} className="text-amber-500" />
           <h3 className="text-sm font-semibold text-amber-100">Adventure Log</h3>
