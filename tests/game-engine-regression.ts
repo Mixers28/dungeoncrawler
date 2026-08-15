@@ -492,6 +492,47 @@ async function testCastConsumesSpellSlotAndIsRefusedWhenEmpty() {
   }
 }
 
+async function testCastingWithNoTargetKeepsTheSpellSlot() {
+  const wizard = await buildNewGameState('wizard');
+  const slots = wizard.spellSlots?.level_1?.current ?? 0;
+  assert.ok(slots > 0, 'the wizard prefab should start with a level 1 slot');
+
+  const emptyRoom: GameState = {
+    ...wizard,
+    hp: wizard.maxHp,
+    nearbyEntities: [],
+    isCombatActive: false,
+    log: [],
+    narrativeHistory: [],
+  };
+
+  setRandomSource(() => 0.5);
+  try {
+    // Regression: an attack spell cast with nothing to hit spent the slot and
+    // claimed the spell was unimplemented.
+    const wasted = await turn(emptyRoom, 'cast magic missile');
+    assert.equal(
+      wasted.newState.spellSlots?.level_1?.current,
+      slots,
+      'a cast that hits nothing must not cost a slot'
+    );
+    assert.doesNotMatch(wasted.logEntry.summary, /not modeled/i);
+    assert.match(wasted.logEntry.summary, /nothing here for Magic Missile/i);
+
+    // With a target it resolves normally and does cost the slot.
+    const withFoe: GameState = {
+      ...emptyRoom,
+      nearbyEntities: [makeMonster('Skeleton', 20)],
+      isCombatActive: true,
+    };
+    const cast = await turn(withFoe, 'cast magic missile');
+    assert.equal(cast.newState.spellSlots?.level_1?.current, slots - 1);
+    assert.ok(cast.newState.nearbyEntities[0].hp < 20, 'Magic Missile always hits');
+  } finally {
+    setRandomSource(null);
+  }
+}
+
 async function testDefendRaisesArmourClassForTheTurn() {
   const state = await makeState();
   const defender: GameState = {
@@ -1492,6 +1533,7 @@ async function main() {
   await testBuyRefusedWithoutEnoughGold();
   await testBuyingStockedGearQuotesAPriceInsteadOfEquipFailure();
   await testCastConsumesSpellSlotAndIsRefusedWhenEmpty();
+  await testCastingWithNoTargetKeepsTheSpellSlot();
   await testDefendRaisesArmourClassForTheTurn();
 
   console.log('game-engine regression tests passed');

@@ -126,6 +126,18 @@ export function healActor(context: TurnContext, amount: number): number {
   return context.actor.hp;
 }
 
+/** Give back a slot spent on a cast that turned out to resolve to nothing. */
+export function restoreActorSpellSlot(context: TurnContext, slotKey: string): boolean {
+  const slots = context.actor.spellSlots || {};
+  const slot = slots[slotKey];
+  if (!slot || slot.current >= slot.max) return false;
+  context.actor.spellSlots = {
+    ...slots,
+    [slotKey]: { ...slot, current: slot.current + 1 },
+  };
+  return true;
+}
+
 export function consumeActorSpellSlot(context: TurnContext, slotKey: string): boolean {
   const slots = context.actor.spellSlots || {};
   const slot = slots[slotKey];

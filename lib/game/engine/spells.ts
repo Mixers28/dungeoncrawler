@@ -8,6 +8,7 @@ import {
   addActorEffect,
   addMonsterEffect,
   consumeActorSpellSlot,
+  restoreActorSpellSlot,
   healActor,
   setActorMinimumAc,
 } from '../turn-context';
@@ -85,6 +86,7 @@ export function resolveSpellCast(
   let playerDamageRoll = 0;
   let playerAttackIsSave = false;
   let playerAttackDc: number | null = null;
+  let spentSlotKey: string | null = null;
 
   const spellKey = parsedIntent.abilityName.toLowerCase();
   const normalizedKey = normalizeSpellName(spellKey);
@@ -108,6 +110,7 @@ export function resolveSpellCast(
         summaryParts.push(`You have no ${slotKey.replace('_', ' ')} spell slots left.`);
         canCast = false;
       } else {
+        spentSlotKey = slotKey;
         newState.spellSlots = turnContext.actor.spellSlots;
       }
     }
@@ -244,7 +247,18 @@ export function resolveSpellCast(
       }
 
       if (!handledMechanics) {
-        summaryParts.push(`You cast ${spell.name}, but its effect is not modeled yet.`);
+        // Nothing happened, so the slot should not have been spent: casting an
+        // attack spell into an empty room used to cost a slot and report the
+        // spell as unimplemented.
+        const refunded = spentSlotKey ? restoreActorSpellSlot(turnContext, spentSlotKey) : false;
+        if (refunded) newState.spellSlots = turnContext.actor.spellSlots;
+        const keptNote = refunded ? ' You keep the spell slot.' : '';
+        const wantedTarget = !!mechanics?.damage && !pickHealDiceFromMechanics(mechanics);
+        summaryParts.push(
+          wantedTarget && !activeMonster
+            ? `There is nothing here for ${spell.name} to strike.${keptNote}`
+            : `You cast ${spell.name}, but its effect is not modeled yet.${keptNote}`
+        );
       }
     }
   }
