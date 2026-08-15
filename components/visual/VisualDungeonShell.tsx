@@ -191,7 +191,8 @@ export function VisualDungeonShell({ gameState, viewModel, isLoading, onCommand,
 
       <VisualDrawer title="Adventure Log" isOpen={isLogDrawerOpen} onClose={() => setIsLogDrawerOpen(false)}>
         <div data-testid="log-strip">
-          <NarrationLog entries={visibleLogEntries} maxEntries={12} />
+          {/* The drawer title already says "Adventure Log". */}
+          <NarrationLog entries={visibleLogEntries} maxEntries={12} showHeader={false} />
         </div>
       </VisualDrawer>
     </div>
